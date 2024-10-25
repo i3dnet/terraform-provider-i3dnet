@@ -1,0 +1,23 @@
+provider:
+  name: i3dnet
+resources:
+  flexmetal_server:
+    create:
+      path: /v3/flexMetal/servers
+      method: POST
+    read:
+      path: /v3/flexMetal/servers/{uuid}
+      method: GET
+    delete:
+      path: /v3/flexMetal/servers/{uuid}
+      method: DELETE
+  ssh_key:
+    create:
+      path: /v3/sshKey
+      method: POST
+    read:
+      path: /v3/sshKey/{uuid}
+      method: GET
+    delete:
+      path: /v3/sshKey/{uuid}
+      method: DELETE

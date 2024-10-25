@@ -1,0 +1,231 @@
+{
+	"provider": {
+		"name": "i3dnet"
+	},
+	"resources": [
+		{
+			"name": "flexmetal_server",
+			"schema": {
+				"attributes": [
+					{
+						"name": "instance_type",
+						"string": {
+							"computed_optional_required": "required",
+							"description": "Server instance type. Available instance types can be obtained from /v3/flexMetal/location/{locationId}}/instanceTypes. Use the `name` field from the response."
+						}
+					},
+					{
+						"name": "location",
+						"string": {
+							"computed_optional_required": "required",
+							"description": "Server location. Available locations can be obtained from /v3/flexMetal/location. Use the `name` field from the response."
+						}
+					},
+					{
+						"name": "name",
+						"string": {
+							"computed_optional_required": "required",
+							"description": "Server name or hostname, depending on the chosen OS. E.g. Talos requires a hostname but regular Linux OSs work with either."
+						}
+					},
+					{
+						"name": "os",
+						"single_nested": {
+							"computed_optional_required": "required",
+							"attributes": [
+								{
+									"name": "kernel_params",
+									"list_nested": {
+										"computed_optional_required": "computed_optional",
+										"nested_object": {
+											"attributes": [
+												{
+													"name": "key",
+													"string": {
+														"computed_optional_required": "required",
+														"description": "Key of the kernel param"
+													}
+												},
+												{
+													"name": "value",
+													"string": {
+														"computed_optional_required": "required",
+														"description": "Value of the kernel param"
+													}
+												}
+											]
+										},
+										"description": "Kernel params for the PXE stage of the OS installation. Most operating systems do not require these, but e.g. Talos does."
+									}
+								},
+								{
+									"name": "partitions",
+									"list_nested": {
+										"computed_optional_required": "computed_optional",
+										"nested_object": {
+											"attributes": [
+												{
+													"name": "filesystem",
+													"string": {
+														"computed_optional_required": "required",
+														"description": "Type of filesystem to use for the target. Allowed: ext2, ext3, ext4, xfs"
+													}
+												},
+												{
+													"name": "size",
+													"int64": {
+														"computed_optional_required": "required",
+														"description": "The size of the partition, in MB. Use -1 to indicate usage of the remaining space on the disk."
+													}
+												},
+												{
+													"name": "target",
+													"string": {
+														"computed_optional_required": "required",
+														"description": "Mount point for the partition"
+													}
+												}
+											]
+										},
+										"description": "Custom partitions for the OS installation. If not provided, the default partitioning scheme will be used."
+									}
+								},
+								{
+									"name": "slug",
+									"string": {
+										"computed_optional_required": "required",
+										"description": "Identifier of the OS. Available operating systems can be obtained from /v3/operatingsystem. Use the `slug` field from the response."
+									}
+								}
+							],
+							"description": "Server operating system."
+						}
+					},
+					{
+						"name": "post_install_script",
+						"string": {
+							"computed_optional_required": "computed_optional",
+							"description": "Post install script. A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems."
+						}
+					},
+					{
+						"name": "ssh_key",
+						"list": {
+							"computed_optional_required": "required",
+							"element_type": {
+								"string": {}
+							},
+							"description": "A list of SSH keys. You can either supply SSH key UUIDs from stored objects in /v3/sshKey or provide public keys directly. SSH keys are installed for the root user."
+						}
+					},
+					{
+						"name": "tags",
+						"list": {
+							"computed_optional_required": "computed_optional",
+							"element_type": {
+								"string": {}
+							},
+							"description": "A list of tags. There is a maximum of 60 tags per server. Each tag must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
+						}
+					},
+					{
+						"name": "created_at",
+						"int64": {
+							"computed_optional_required": "computed",
+							"description": "Server creation timestamp."
+						}
+					},
+					{
+						"name": "delivered_at",
+						"int64": {
+							"computed_optional_required": "computed",
+							"description": "Server delivery timestamp."
+						}
+					},
+					{
+						"name": "ip_addresses",
+						"list_nested": {
+							"computed_optional_required": "computed",
+							"nested_object": {
+								"attributes": [
+									{
+										"name": "ip_address",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "Server IP address."
+										}
+									}
+								]
+							},
+							"description": "Server IP address details."
+						}
+					},
+					{
+						"name": "released_at",
+						"int64": {
+							"computed_optional_required": "computed",
+							"description": "Server release timestamp."
+						}
+					},
+					{
+						"name": "status",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "Server delivery status.\u003cbr /\u003e\u003cli\u003e\u003cul\u003ecreated\u003c/ul\u003e\u003cul\u003ediscovering\u003c/ul\u003e\u003cul\u003ediscovered\u003c/ul\u003e\u003cul\u003eallocating\u003c/ul\u003e\u003cul\u003eallocated\u003c/ul\u003e\u003cul\u003econfiguring_network\u003c/ul\u003e\u003cul\u003enetwork_configured\u003c/ul\u003e\u003cul\u003eprovisioning\u003c/ul\u003e\u003cul\u003eprovisioned\u003c/ul\u003e\u003cul\u003edelivered\u003c/ul\u003e\u003cul\u003efailed\u003c/ul\u003e\u003cul\u003ereleasing\u003c/ul\u003e\u003cul\u003ereleased\u003c/ul\u003e\u003c/li\u003e"
+						}
+					},
+					{
+						"name": "status_message",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "Status message."
+						}
+					},
+					{
+						"name": "uuid",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "Server UUID."
+						}
+					}
+				]
+			}
+		},
+		{
+			"name": "ssh_key",
+			"schema": {
+				"attributes": [
+					{
+						"name": "created_at",
+						"int64": {
+							"computed_optional_required": "required",
+							"description": "SSH key createdAt"
+						}
+					},
+					{
+						"name": "name",
+						"string": {
+							"computed_optional_required": "required",
+							"description": "SSH key name"
+						}
+					},
+					{
+						"name": "public_key",
+						"string": {
+							"computed_optional_required": "required",
+							"description": "Public SSH key contents"
+						}
+					},
+					{
+						"name": "uuid",
+						"string": {
+							"computed_optional_required": "required",
+							"description": "SSH key UUID as specified in RFC 4122"
+						}
+					}
+				]
+			}
+		}
+	],
+	"version": "0.1"
+}

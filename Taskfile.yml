@@ -1,0 +1,12 @@
+version: '3'
+
+dotenv: [ '.env' ]
+
+tasks:
+  testacc:
+    cmds:
+      - TF_ACC=1 I3D_API_KEY=$I3D_API_KEY I3D_BASE_URL=$I3D_BASE_URL go test -v $PKG_NAME/... $TESTARGS -timeout $ACCTEST_TIMEOUT -parallel=$ACCTEST_PARALLELISM
+  docs:
+    description: Format and generate documentation for Terraform registry
+    cmds:
+      - cd tools; go generate
