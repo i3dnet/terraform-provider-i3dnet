@@ -1,0 +1,18 @@
+provider:
+  name: i3dflexmetal
+resources:
+  servers:
+    create:
+      path: /v3/flexMetal/servers
+      method: POST
+    read:
+      path: /v3/flexMetal/servers/{uuid}
+      method: GET
+    delete:
+      path: /v3/flexMetal/servers/{uuid}
+      method: DELETE
+data_sources:
+  servers:
+    read:
+      path: /v3/flexMetal/servers/{uuid}
+      method: GET
