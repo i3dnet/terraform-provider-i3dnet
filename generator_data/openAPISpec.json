@@ -2,7 +2,7 @@
     "openapi": "3.0.1",
     "info": {
         "title": "i3D.net Endpoints",
-        "description": "Documentation for the i3D.net API endpoints",
+        "description": "Documentation links:\n- <a href='https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Usage/'>API Usage</a>\n- <a href='https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Authentication/'>API Authentication</a>\n- <a href='https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Error-Handling/'>API Error Handling</a>\n- <a href='https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Error-Codes/'>API Error Codes</a>\n- <a href='https://www.i3d.net/docs/one/odp/'>All ONE Deployment Platform Documentation</a>",
         "contact": {
             "name": "email",
             "email": "info@i3d.net"
@@ -1963,7 +1963,7 @@
                     "multipart/form-data"
                 ],
                 "requestBody": {
-                    "description": "Upload any attachments you want to attach to a ticket reply using this endpoint. The resultingn`attachmentId`(s) can then be sent along with your ticket reply to couple the attachment to the reply.nAlso see [POST /v3/tickets/{ticketId}/reply](all#/Tickets/createTicketReply)",
+                    "description": "Upload any attachments you want to attach to a ticket reply using this endpoint. The resulting\n`attachmentId`(s) can then be sent along with your ticket reply to couple the attachment to the reply.\nAlso see [POST /v3/tickets/{ticketId}/reply](all#/Tickets/createTicketReply)",
                     "content": {
                         "multipart/form-data": {
                             "schema": {
@@ -2146,7 +2146,7 @@
                     {
                         "name": "labels",
                         "in": "query",
-                        "description": "Label expressions can be used to apply more specific search parameters and can be written in standard SQL query language.<br />nE.g. `region_id=123` or multiple filters: `region_id=123 and fleet_id=456 or host_id=46256` The provided filter query needs to be url encoded. E.g.<br />n`region_id%3D123` or multiple filters: `region_id%3D123%20and%20fleet_id%3D456%20or%20host_id%3D46256` The total would look like:<br />n`/dedicatedServer?labels=region_id%3D123%20and%20fleet_id%3D456%20or%20host_id%3D46256`<br />nIf you want to filter on a non-numeric label such as `region_name`, you have to wrap the value in double quotes: `region_name='Rotterdam'`<br />nWarning: the `labels` query parameter is ignored when passing a `PAGE-TOKEN` and the original `labels` string will be used for that request instead.<br />nFor more information about labels check <a href='https://www.i3d.net/docs/one/odp/Platform-Elements/Application/Label/#pre-defined-labels'>details</a>",
+                        "description": "Label expressions can be used to apply more specific search parameters and can be written in standard SQL query language.<br />\nE.g. `region_id=123` or multiple filters: `region_id=123 and fleet_id=456 or host_id=46256` The provided filter query needs to be url encoded. E.g.<br />\n`region_id%3D123` or multiple filters: `region_id%3D123%20and%20fleet_id%3D456%20or%20host_id%3D46256` The total would look like:<br />\n`/dedicatedServer?labels=region_id%3D123%20and%20fleet_id%3D456%20or%20host_id%3D46256`<br />\nIf you want to filter on a non-numeric label such as `region_name`, you have to wrap the value in double quotes: `region_name='Rotterdam'`<br />\nWarning: the `labels` query parameter is ignored when passing a `PAGE-TOKEN` and the original `labels` string will be used for that request instead.<br />\nFor more information about labels check <a href='https://www.i3d.net/docs/one/odp/Platform-Elements/Application/Label/#pre-defined-labels'>details</a>",
                         "schema": {
                             "type": "string"
                         }
@@ -4361,7 +4361,7 @@
                     {
                         "name": "filter",
                         "in": "query",
-                        "description": "The filter to search for the description<br />nThe filter parameter can be used to apply a more specific search, the only element that can be filtered is 'description'.<br />nThe filter will be done on a part of the provided description (it should contain the searched element).<br />nE.g. we need to filter for a string 'this is an example'<br />nRemember to urlencode the provided filter<br />nThe final call would look like:<br />n/billing/invoice?filter=this%20is%20an%20example",
+                        "description": "The filter to search for the description<br />\nThe filter parameter can be used to apply a more specific search, the only element that can be filtered is 'description'.<br />\nThe filter will be done on a part of the provided description (it should contain the searched element).<br />\nE.g. we need to filter for a string 'this is an example'<br />\nRemember to urlencode the provided filter<br />\nThe final call would look like:<br />\n/billing/invoice?filter=this%20is%20an%20example",
                         "schema": {
                             "type": "string"
                         }
@@ -4416,7 +4416,7 @@
                     {
                         "name": "filter",
                         "in": "query",
-                        "description": "The filter to search for the description<br />nThe filter parameter can be used to apply a more specific search, the only element that can be filtered is 'description'.<br />nThe filter will be done on a part of the provided description (it should contain the searched element).<br />nE.g. we need to filter for a string 'this is an example'<br />nRemember to urlencode the provided filter<br />nThe final call would look like:<br />n/billing/invoice?filter=this%20is%20an%20example",
+                        "description": "The filter to search for the description<br />\nThe filter parameter can be used to apply a more specific search, the only element that can be filtered is 'description'.<br />\nThe filter will be done on a part of the provided description (it should contain the searched element).<br />\nE.g. we need to filter for a string 'this is an example'<br />\nRemember to urlencode the provided filter<br />\nThe final call would look like:<br />\n/billing/invoice?filter=this%20is%20an%20example",
                         "schema": {
                             "type": "string"
                         }
@@ -4620,7 +4620,7 @@
                     {
                         "name": "invoiceIds",
                         "in": "query",
-                        "description": "The invoiceId(s) to prepare pay data for separated by comma (,)<br />nRemember to urlencode the provided invoiceIds<br />nThe invoiceIds call would look like:<br />n/v3/account/invoice/pay/prepare?invoiceIds=111111%2C22222%2C33333%2C44444",
+                        "description": "The invoiceId(s) to prepare pay data for separated by comma (,)<br />\nRemember to urlencode the provided invoiceIds<br />\nThe invoiceIds call would look like:<br />\n/v3/account/invoice/pay/prepare?invoiceIds=111111%2C22222%2C33333%2C44444",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -8123,7 +8123,6 @@
         },
         "/v3/currency": {
             "get": {
-                "deprecated": true,
                 "tags": [
                     "Currency"
                 ],
@@ -8159,382 +8158,43 @@
                 }
             }
         },
-        "/v3/flexMetal/profile": {
-            "get": {
-                "deprecated": true,
-                "tags": [
-                    "FlexMetal"
-                ],
-                "summary": "Get all your profiles",
-                "operationId": "getFlexMetalProfiles",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/FlexMetalProfile"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Invalid credentials"
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "deprecated": true,
-                "tags": [
-                    "FlexMetal"
-                ],
-                "summary": "Create a new profile",
-                "operationId": "createFlexMetalProfile",
-                "requestBody": {
-                    "description": "",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/FlexMetalProfile"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/FlexMetalProfile"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Invalid credentials"
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v3/flexMetal/profile/{profileId}": {
-            "get": {
-                "deprecated": true,
-                "tags": [
-                    "FlexMetal"
-                ],
-                "summary": "Get a specific profile by its ID",
-                "operationId": "getFlexMetalProfile",
-                "parameters": [
-                    {
-                        "name": "profileId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FlexMetalProfile"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Invalid credentials"
-                    },
-                    "404": {
-                        "description": "Invalid ID"
-                    }
-                }
-            },
-            "put": {
-                "deprecated": true,
-                "tags": [
-                    "FlexMetal"
-                ],
-                "summary": "Update an existing Profile",
-                "operationId": "updateFlexMetalProfile",
-                "parameters": [
-                    {
-                        "name": "profileId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/FlexMetalProfile"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/FlexMetalProfile"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Invalid credentials"
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "deprecated": true,
-                "tags": [
-                    "FlexMetal"
-                ],
-                "summary": "Delete a specific profile by its ID",
-                "operationId": "deleteFlexMetalProfile",
-                "parameters": [
-                    {
-                        "name": "profileId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "403": {
-                        "description": "Invalid credentials"
-                    },
-                    "404": {
-                        "description": "Invalid ID"
-                    }
-                }
-            }
-        },
-        "/v3/flexMetal/order": {
-            "post": {
-                "deprecated": true,
-                "tags": [
-                    "FlexMetal"
-                ],
-                "summary": "Create a new FlexMetal order",
-                "operationId": "createFlexMetalOrder",
-                "requestBody": {
-                    "description": "",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/FlexMetalOrder"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/FlexMetalOrderId"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body"
-                    },
-                    "403": {
-                        "description": "Invalid credentials"
-                    },
-                    "405": {
-                        "description": "Method not allowed"
-                    },
-                    "422": {
-                        "description": "Unprocessable content"
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v3/flexMetal/order/{uuid}": {
-            "get": {
-                "deprecated": true,
-                "tags": [
-                    "FlexMetal"
-                ],
-                "summary": "Get a FlexMetal order",
-                "operationId": "getFlexMetalOrder",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/FlexMetalOrderStatus"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid UUID or request body"
-                    },
-                    "403": {
-                        "description": "Invalid credentials"
-                    },
-                    "405": {
-                        "description": "Method not allowed"
-                    },
-                    "422": {
-                        "description": "Unprocessable content"
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v3/flexMetal/release": {
-            "post": {
-                "tags": [
-                    "FlexMetal"
-                ],
-                "summary": "FlexMetalRelease (dispose of) one or more FlexMetal servers",
-                "description": "When submitted, the servers will immediately become unavailable",
-                "operationId": "createFlexMetalRelease",
-                "requestBody": {
-                    "description": "",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/FlexMetalRelease"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FlexMetalRelease"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body"
-                    },
-                    "403": {
-                        "description": "Invalid credentials"
-                    },
-                    "405": {
-                        "description": "Method not allowed"
-                    },
-                    "422": {
-                        "description": "Unprocessable content"
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/v3/flexMetal/servers": {
             "get": {
                 "tags": [
-                    "FlexMetalServers"
+                    "FlexMetalServer"
                 ],
                 "summary": "Get all your FlexMetal servers",
                 "operationId": "getFlexMetalServers",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by status [creating, provisioning, delivered, failed, releasing, released]",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tag",
+                        "in": "query",
+                        "description": "Filter by one or more server tags (only servers with all tags will be returned)",
+                        "required": true,
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": ""
+                        }
+                    },
+                    {
+                        "name": "RANGED-DATA",
+                        "in": "header",
+                        "description": "Example header and default range: RANGED-DATA:start=0,results=25",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -8552,9 +8212,6 @@
                     "403": {
                         "description": "Invalid credentials"
                     },
-                    "405": {
-                        "description": "Method not allowed"
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "content": {
@@ -8569,7 +8226,7 @@
             },
             "post": {
                 "tags": [
-                    "FlexMetalServers"
+                    "FlexMetalServer"
                 ],
                 "summary": "Create a new FlexMetal server",
                 "operationId": "createFlexMetalServer",
@@ -8601,9 +8258,6 @@
                     "403": {
                         "description": "Invalid credentials"
                     },
-                    "405": {
-                        "description": "Method not allowed"
-                    },
                     "422": {
                         "description": "Unprocessable content"
                     },
@@ -8623,10 +8277,21 @@
         "/v3/flexMetal/servers/{uuid}": {
             "get": {
                 "tags": [
-                    "FlexMetalServers"
+                    "FlexMetalServer"
                 ],
                 "summary": "Get a specific FlexMetal server",
                 "operationId": "getFlexMetalServer",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "The server identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -8644,8 +8309,8 @@
                     "403": {
                         "description": "Invalid credentials"
                     },
-                    "405": {
-                        "description": "Method not allowed"
+                    "404": {
+                        "description": "Resource not found"
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -8661,10 +8326,21 @@
             },
             "delete": {
                 "tags": [
-                    "FlexMetalServers"
+                    "FlexMetalServer"
                 ],
                 "summary": "Release a FlexMetal server",
                 "operationId": "deleteFlexMetalServer",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "The server identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -8679,8 +8355,120 @@
                     "403": {
                         "description": "Invalid credentials"
                     },
-                    "405": {
-                        "description": "Method not allowed"
+                    "404": {
+                        "description": "Resource not found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexMetal/servers/{uuid}/tag/{tag}": {
+            "post": {
+                "tags": [
+                    "FlexMetalServer"
+                ],
+                "summary": "Add a tag to a FlexMetal server",
+                "operationId": "createFlexMetalServerTag",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "The server identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "description": "The tag to add to the server",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexMetalServer"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Resource not found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "FlexMetalServer"
+                ],
+                "summary": "Remove a tag from a FlexMetal server",
+                "operationId": "deleteFlexMetalServerTag",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "The server identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "description": "The tag to remove from the server",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexMetalServer"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Resource not found"
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -8698,7 +8486,7 @@
         "/v3/flexMetal/capacity/commit": {
             "get": {
                 "tags": [
-                    "FlexMetal"
+                    "FlexMetalServer"
                 ],
                 "summary": "Get your FlexMetal capacity commits and usage",
                 "operationId": "getFlexMetalCapacityCommits",
@@ -8732,10 +8520,139 @@
                 }
             }
         },
+        "/v3/flexMetal/tags": {
+            "get": {
+                "tags": [
+                    "FlexMetalTags"
+                ],
+                "summary": "Get all your FlexMetal tags",
+                "operationId": "getFlexMetalTags",
+                "parameters": [
+                    {
+                        "name": "RANGED-DATA",
+                        "in": "header",
+                        "description": "Example header and default range: RANGED-DATA:start=0,results=25",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of tags",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalTag"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexMetal/tags/{tag}": {
+            "delete": {
+                "tags": [
+                    "FlexMetalTags"
+                ],
+                "summary": "Delete a FlexMetal tag",
+                "operationId": "deleteFlexMetalTag",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Resource not found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "FlexMetalTags"
+                ],
+                "summary": "Rename a FlexMetal tag",
+                "operationId": "updateFlexMetalTag",
+                "requestBody": {
+                    "description": "Tag rename request model",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FlexMetalTagRenameRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The updated tag name",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalTagRenameResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Resource not found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v3/flexMetal/location": {
             "get": {
                 "tags": [
-                    "FlexMetal"
+                    "FlexMetalServer"
                 ],
                 "summary": "Get all available Bare Metal locations",
                 "operationId": "getFlexMetalLocations",
@@ -8769,7 +8686,7 @@
         "/v3/flexMetal/location/{locationId}/instanceTypes": {
             "get": {
                 "tags": [
-                    "FlexMetal"
+                    "FlexMetalServer"
                 ],
                 "summary": "Get all instance types for a location.",
                 "description": "For an overview of all locations, see /v3/flexMetal/location",
@@ -8863,7 +8780,7 @@
                     "method": {
                         "type": "string",
                         "format": "",
-                        "description": "The Http method that was used in the request. Possible values are:n* GETn* POSTn* PUTn* DELETE",
+                        "description": "The Http method that was used in the request. Possible values are:\n* GET\n* POST\n* PUT\n* DELETE",
                         "readOnly": true
                     },
                     "header": {
@@ -9813,7 +9730,7 @@
                     "flags": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "ApplicationInstanceConfiguration flagsnIMMUTABLE         1;nINSTANT_CONFIG    2;nALLOW_DOWNGRADE   4;nIS_DEAL           8;nON_DEAL_PAGE      16;nCOLO_NO_CONN      32;nPRIVATE_CONFIG    64;"
+                        "description": "ApplicationInstanceConfiguration flags\nIMMUTABLE         1;\nINSTANT_CONFIG    2;\nALLOW_DOWNGRADE   4;\nIS_DEAL           8;\nON_DEAL_PAGE      16;\nCOLO_NO_CONN      32;\nPRIVATE_CONFIG    64;"
                     },
                     "bwPriceDedi": {
                         "type": "integer",
@@ -9898,7 +9815,7 @@
                     "flags": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "FLAG_HASQUANTITY                  1nFLAG_HASPRICE                     2nFLAG_ALLOW_EMPTY_SELECTION        4nFLAG_INCLUDE_ON_INVOICE_IF_EMPTY  8nFLAG_NOTE_ACTIVE                  16nFLAG_APPLY_PERIOD_DISCOUNT        32nFLAG_EXCLUDE_FROM_UPGRADES        64"
+                        "description": "FLAG_HASQUANTITY                  1\nFLAG_HASPRICE                     2\nFLAG_ALLOW_EMPTY_SELECTION        4\nFLAG_INCLUDE_ON_INVOICE_IF_EMPTY  8\nFLAG_NOTE_ACTIVE                  16\nFLAG_APPLY_PERIOD_DISCOUNT        32\nFLAG_EXCLUDE_FROM_UPGRADES        64"
                     },
                     "noDowngrade": {
                         "type": "boolean",
@@ -10017,7 +9934,7 @@
                     "priceLinkGroupId": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "Item price is dependent on the price of this group or the entire order.nIf -1, the price is a percentage (priceLinkPercentage) of the order.nIf > 0, the price is a percentage (priceLinkPercentage) of the indicated group."
+                        "description": "Item price is dependent on the price of this group or the entire order.\nIf -1, the price is a percentage (priceLinkPercentage) of the order.\nIf > 0, the price is a percentage (priceLinkPercentage) of the indicated group."
                     },
                     "priceLinkPercentage": {
                         "type": "number",
@@ -10160,7 +10077,7 @@
                     "configFlags": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "ApplicationInstanceConfiguration flagsnIMMUTABLE         1;nINSTANT_CONFIG    2;nALLOW_DOWNGRADE   4;nIS_DEAL           8;nON_DEAL_PAGE      16;nCOLO_NO_CONN      32;nPRIVATE_CONFIG    64;"
+                        "description": "ApplicationInstanceConfiguration flags\nIMMUTABLE         1;\nINSTANT_CONFIG    2;\nALLOW_DOWNGRADE   4;\nIS_DEAL           8;\nON_DEAL_PAGE      16;\nCOLO_NO_CONN      32;\nPRIVATE_CONFIG    64;"
                     },
                     "instantDeliverable": {
                         "type": "boolean",
@@ -10390,28 +10307,6 @@
                         "type": "string",
                         "format": "",
                         "description": "For sending additional meta information about the callback request."
-                    }
-                },
-                "additionalProperties": false
-            },
-            "Client": {
-                "type": "object",
-                "required": [
-                    "id",
-                    "name"
-                ],
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "ID of the client",
-                        "readOnly": true
-                    },
-                    "name": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Name of the client",
-                        "readOnly": true
                     }
                 },
                 "additionalProperties": false
@@ -10896,13 +10791,13 @@
                     "currencyId": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The currency in which the various 'price' fields are:n* 0: EUROn* 1: USDn* 9: YEN",
+                        "description": "The currency in which the various 'price' fields are:\n* 0: EURO\n* 1: USD\n* 9: YEN",
                         "readOnly": true
                     },
                     "bandwidthBillingType": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The bandwidth billing method for this service:n* 1: unmetered connectionn* 2: measured in TB per monthn* 3: measured in mbit 95th percentile",
+                        "description": "The bandwidth billing method for this service:\n* 1: unmetered connection\n* 2: measured in TB per month\n* 3: measured in mbit 95th percentile",
                         "readOnly": true
                     },
                     "bandwidthContractual": {
@@ -11149,7 +11044,7 @@
                     "unit": {
                         "type": "string",
                         "format": "",
-                        "description": "Unit of data frequency, which is always `null` in this endpoint. This property is therenfor consistency across all telemetry endpoints. It's `null` because the data is not aggregated",
+                        "description": "Unit of data frequency, which is always `null` in this endpoint. This property is there\nfor consistency across all telemetry endpoints. It's `null` because the data is not aggregated",
                         "readOnly": true
                     },
                     "data": {
@@ -11378,7 +11273,7 @@
                     "currencyId": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The currency IDn* 0: EUROn* 1: USDn* 9: YEN",
+                        "description": "The currency ID\n* 0: EURO\n* 1: USD\n* 9: YEN",
                         "readOnly": true
                     },
                     "colocatedServerId": {
@@ -11529,7 +11424,7 @@
                     "connectivityType": {
                         "type": "string",
                         "format": "",
-                        "description": "The type of connectivity servicenFollowing will be possible values:n* Connectivity: Transportn* Connectivity: IP connectivityn* Connectivity: Crossconnect",
+                        "description": "The type of connectivity service\nFollowing will be possible values:\n* Connectivity: Transport\n* Connectivity: IP connectivity\n* Connectivity: Crossconnect",
                         "readOnly": true
                     },
                     "outgoingTrafficSum": {
@@ -11547,7 +11442,7 @@
                     "bandwidthBillingType": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The bandwidth billing method for this service:n* 1: unmetered connectionn* 2: measured in TB per monthn* 3: measured in mbit 95th percentile",
+                        "description": "The bandwidth billing method for this service:\n* 1: unmetered connection\n* 2: measured in TB per month\n* 3: measured in mbit 95th percentile",
                         "readOnly": true
                     }
                 },
@@ -12002,12 +11897,14 @@
                     "id": {
                         "type": "integer",
                         "format": "integer",
+                        "example": 128,
                         "description": "Instance type ID",
                         "readOnly": true
                     },
                     "name": {
                         "type": "string",
                         "format": "",
+                        "example": "bm7.std.8",
                         "description": "Instance type name",
                         "readOnly": true
                     }
@@ -12024,11 +11921,13 @@
                     "key": {
                         "type": "string",
                         "format": "",
+                        "example": "siderolink.api",
                         "description": "Key of the kernel param"
                     },
                     "value": {
                         "type": "string",
                         "format": "",
+                        "example": "url.to.omni",
                         "description": "Value of the kernel param"
                     }
                 },
@@ -12101,6 +12000,7 @@
                     "id": {
                         "type": "integer",
                         "format": "integer",
+                        "example": 18,
                         "description": "ID of the location",
                         "readOnly": true
                     },
@@ -12109,27 +12009,6 @@
                         "format": "",
                         "description": "Name of the location",
                         "readOnly": true
-                    }
-                },
-                "additionalProperties": false
-            },
-            "FlexMetalOperatingSystem": {
-                "type": "object",
-                "required": [
-                    "id"
-                ],
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Identifier of the OS. For an overview of available operating systems, see: /v3/operatingsystem"
-                    },
-                    "kernelParams": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/FlexMetalKernelParam"
-                        },
-                        "description": "Kernel params of the OS."
                     }
                 },
                 "additionalProperties": false
@@ -12143,6 +12022,7 @@
                     "slug": {
                         "type": "string",
                         "format": "",
+                        "example": "ubuntu-2404-lts",
                         "description": "Identifier of the OS. Available operating systems can be obtained from /v3/operatingsystem. Use the `slug` field from the response."
                     },
                     "kernelParams": {
@@ -12164,187 +12044,8 @@
                     "slug": {
                         "type": "string",
                         "format": "",
+                        "example": "ubuntu-2404-lts",
                         "description": "Identifier of the OS. Available operating systems can be obtained from /v3/operatingsystem. Use the `slug` field from the response."
-                    }
-                },
-                "additionalProperties": false
-            },
-            "FlexMetalOrder": {
-                "type": "object",
-                "required": [
-                    "uuid",
-                    "clientId",
-                    "locationId",
-                    "instanceTypeId",
-                    "amount",
-                    "profileId",
-                    "sshKeyUuid"
-                ],
-                "properties": {
-                    "uuid": {
-                        "type": "string",
-                        "format": "",
-                        "description": "MetalWorks UUID",
-                        "readOnly": true
-                    },
-                    "clientId": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Client id"
-                    },
-                    "locationId": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Location id"
-                    },
-                    "instanceTypeId": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Instance type id"
-                    },
-                    "amount": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Quantity of servers to order"
-                    },
-                    "profileId": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Profile id"
-                    },
-                    "sshKeyUuid": {
-                        "type": "string",
-                        "format": "",
-                        "description": "SshKey UUID"
-                    }
-                },
-                "additionalProperties": false,
-                "description": "For an overview of available SSH keys, see /v3/sshKey"
-            },
-            "FlexMetalOrderId": {
-                "type": "object",
-                "required": [
-                    "orderId"
-                ],
-                "properties": {
-                    "orderId": {
-                        "type": "string",
-                        "format": "",
-                        "description": "The identifier of the order you have successfully placed"
-                    }
-                },
-                "additionalProperties": false,
-                "description": "Using this ID, you can get the status of the order via: /v3/flexMetal/order/{orderId}"
-            },
-            "FlexMetalOrderStatus": {
-                "type": "object",
-                "required": [
-                    "client",
-                    "orderId",
-                    "location",
-                    "amount",
-                    "status",
-                    "servers",
-                    "createdAt"
-                ],
-                "properties": {
-                    "client": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/Client"
-                            }
-                        ],
-                        "description": "Client details"
-                    },
-                    "orderId": {
-                        "type": "string",
-                        "format": "",
-                        "description": "MetalWorks UUID"
-                    },
-                    "location": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/Location"
-                            }
-                        ],
-                        "description": "Location details"
-                    },
-                    "amount": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Quantity of servers to order"
-                    },
-                    "status": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Order status"
-                    },
-                    "servers": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/FlexMetalServerDeprecated"
-                        },
-                        "description": "Ordered servers"
-                    },
-                    "createdAt": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Order created at timestamp"
-                    }
-                },
-                "additionalProperties": false,
-                "description": "For an overview of available locations, see: /v3/flexMetal/location"
-            },
-            "FlexMetalProfile": {
-                "type": "object",
-                "required": [
-                    "id",
-                    "name",
-                    "os",
-                    "postInstallScript"
-                ],
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Identifier of the Profile",
-                        "readOnly": true
-                    },
-                    "name": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Name of the Profile"
-                    },
-                    "os": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/FlexMetalOperatingSystem"
-                            }
-                        ],
-                        "description": "Operating system"
-                    },
-                    "postInstallScript": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Post Install Script"
-                    }
-                },
-                "additionalProperties": false,
-                "description": "A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems"
-            },
-            "FlexMetalRelease": {
-                "type": "object",
-                "required": [
-                    "serverIds"
-                ],
-                "properties": {
-                    "serverIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer",
-                            "format": "integer"
-                        },
-                        "description": "Server IDs to release (dispose of)"
                     }
                 },
                 "additionalProperties": false
@@ -12360,6 +12061,7 @@
                     "instanceType",
                     "os",
                     "ipAddresses",
+                    "tags",
                     "createdAt",
                     "deliveredAt",
                     "releasedAt"
@@ -12368,23 +12070,27 @@
                     "uuid": {
                         "type": "string",
                         "format": "",
+                        "example": "019256ab-1554-73a7-b091-f024b0a724ea",
                         "description": "Server UUID.",
                         "readOnly": true
                     },
                     "name": {
                         "type": "string",
                         "format": "",
+                        "example": "host.example.com",
                         "description": "Server host name."
                     },
                     "status": {
                         "type": "string",
                         "format": "",
+                        "example": "delivered",
                         "description": "Server delivery status.<br /><li><ul>created</ul><ul>discovering</ul><ul>discovered</ul><ul>allocating</ul><ul>allocated</ul><ul>configuring_network</ul><ul>network_configured</ul><ul>provisioning</ul><ul>provisioned</ul><ul>delivered</ul><ul>failed</ul><ul>releasing</ul><ul>released</ul></li>",
                         "readOnly": true
                     },
                     "statusMessage": {
                         "type": "string",
                         "format": "",
+                        "example": "OK",
                         "description": "Status message.",
                         "readOnly": true
                     },
@@ -12423,15 +12129,27 @@
                         "description": "Server IP address details.",
                         "readOnly": true
                     },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "",
+                            "example": "my-tag"
+                        },
+                        "description": "Server tags.",
+                        "readOnly": true
+                    },
                     "createdAt": {
                         "type": "integer",
                         "format": "integer",
+                        "example": 1728030905,
                         "description": "Server creation timestamp.",
                         "readOnly": true
                     },
                     "deliveredAt": {
                         "type": "integer",
                         "format": "integer",
+                        "example": 1728031748,
                         "description": "Server delivery timestamp.",
                         "readOnly": true
                     },
@@ -12440,54 +12158,6 @@
                         "format": "integer",
                         "description": "Server release timestamp.",
                         "readOnly": true
-                    }
-                },
-                "additionalProperties": false
-            },
-            "FlexMetalServerDeprecated": {
-                "type": "object",
-                "required": [
-                    "id",
-                    "status",
-                    "profile",
-                    "deliveredAt",
-                    "releasedAt"
-                ],
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Server ID"
-                    },
-                    "hostId": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Host ID for use in /v3/host/{hostId} endpoints"
-                    },
-                    "status": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Status"
-                    },
-                    "profile": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/Profile"
-                            }
-                        ],
-                        "description": "Installed profile"
-                    },
-                    "deliveredAt": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Delivered at timestamp",
-                        "nullable": true
-                    },
-                    "releasedAt": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Released at timestamp",
-                        "nullable": true
                     }
                 },
                 "additionalProperties": false
@@ -12501,6 +12171,7 @@
                     "ipAddress": {
                         "type": "string",
                         "format": "",
+                        "example": "1.2.3.4",
                         "description": "Server IP address.",
                         "readOnly": true
                     }
@@ -12520,6 +12191,7 @@
                     "name": {
                         "type": "string",
                         "format": "",
+                        "example": "host.example.com",
                         "description": "Server name or hostname, depending on the chosen OS. E.g. Talos requires a hostname but regular Linux OSs work with either."
                     },
                     "location": {
@@ -12530,6 +12202,7 @@
                     "instanceType": {
                         "type": "string",
                         "format": "",
+                        "example": "bm7.std.8",
                         "description": "Server instance type. Available instance types can be obtained from /v3/flexMetal/location/{locationId}}/instanceTypes. Use the `name` field from the response."
                     },
                     "os": {
@@ -12544,18 +12217,134 @@
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "format": ""
+                            "format": "",
+                            "example": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHo8IaPkQ6UnDZvi4F4RBSouRa6Gtysdg2EF+SIXheVF2SGBQ2uH7RfDjXRfvq4VpHJrKYs4kWfNoHQg8ZG6PH4= ecdsa-key-20240131"
                         },
                         "description": "A list of SSH keys. You can either supply SSH key UUIDs from stored objects in /v3/sshKey or provide public keys directly. SSH keys are installed for the root user."
                     },
                     "postInstallScript": {
                         "type": "string",
                         "format": "",
+                        "example": "#!/bin/bash\necho 'Hello world!' > /root/blah.txt",
                         "description": "Post install script. A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems."
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "",
+                            "example": "my-tag"
+                        },
+                        "description": "A list of tags. There is a maximum of 60 tags per server. Each tag must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
                     }
                 },
                 "additionalProperties": false,
                 "description": "Request object for creating a new Flex Metal server"
+            },
+            "FlexMetalTag": {
+                "type": "object",
+                "required": [
+                    "tag",
+                    "resources"
+                ],
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "format": "",
+                        "example": "my-tag",
+                        "description": "The tag name"
+                    },
+                    "resources": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexMetalTagSummary"
+                            }
+                        ],
+                        "description": "A list of resources that use this tag"
+                    }
+                },
+                "additionalProperties": false,
+                "description": "A Flex Metal tag"
+            },
+            "FlexMetalTagRenameRequest": {
+                "type": "object",
+                "required": [
+                    "tag"
+                ],
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "format": "",
+                        "example": "new-tag",
+                        "description": "The new tag name. It must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
+                    }
+                },
+                "additionalProperties": false,
+                "description": "Request object for renaming an existing Flex Metal tag"
+            },
+            "FlexMetalTagRenameResponse": {
+                "type": "object",
+                "required": [
+                    "oldTag",
+                    "newTag"
+                ],
+                "properties": {
+                    "oldTag": {
+                        "type": "string",
+                        "format": "",
+                        "example": "old-tag",
+                        "description": "The old tag name."
+                    },
+                    "newTag": {
+                        "type": "string",
+                        "format": "",
+                        "example": "new-tag",
+                        "description": "The new tag name. It must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
+                    }
+                },
+                "additionalProperties": false,
+                "description": "Response object for renaming an existing Flex Metal tag"
+            },
+            "FlexMetalTagResourceUsage": {
+                "type": "object",
+                "required": [
+                    "count"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 1,
+                        "description": "The amount of resources of this type that use this tag."
+                    }
+                },
+                "additionalProperties": false,
+                "description": "Tag resource usage"
+            },
+            "FlexMetalTagSummary": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "flexMetalServers"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 1,
+                        "description": "The total number of resources that use this tag"
+                    },
+                    "flexMetalServers": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexMetalTagResourceUsage"
+                            }
+                        ],
+                        "description": "A summary of tag usage for the FlexMetalServer resource type"
+                    }
+                },
+                "additionalProperties": false,
+                "description": "A Flex Metal tag"
             },
             "GeometryModel": {
                 "type": "object",
@@ -12680,7 +12469,7 @@
                     "serverType": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The type of the server:n* 1: Bare metal servern* 2: Flex metal servern* 3: Virtual machine",
+                        "description": "The type of the server:\n* 1: Bare metal server\n* 2: Flex metal server\n* 3: Virtual machine",
                         "readOnly": true
                     },
                     "projectName": {
@@ -12738,13 +12527,13 @@
                     "instanceType": {
                         "type": "string",
                         "format": "",
-                        "description": "The instance type of this server, which is one of [`GET /v3/host/instanceType`](#/Host/getHostInstanceTypes) for a bare metal, or one ofn[`GET /v3/cloud/instanceType`](#/Cloud/getCloudInstanceTypes) for a virtual machine",
+                        "description": "The instance type of this server, which is one of [`GET /v3/host/instanceType`](#/Host/getHostInstanceTypes) for a bare metal, or one of\n[`GET /v3/cloud/instanceType`](#/Cloud/getCloudInstanceTypes) for a virtual machine",
                         "readOnly": true
                     },
                     "fleetId": {
                         "type": "string",
                         "format": "",
-                        "description": "The fleet ID, if this host has been assigned to a fleetnIf `0`, the host has not been assigned to a fleet, otherwise, the fleet is assigned to this host and the host can serve application instances for that fleet.",
+                        "description": "The fleet ID, if this host has been assigned to a fleet\nIf `0`, the host has not been assigned to a fleet, otherwise, the fleet is assigned to this host and the host can serve application instances for that fleet.",
                         "readOnly": true
                     },
                     "newFleetId": {
@@ -12835,13 +12624,13 @@
                     "currencyId": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The currency of the `pricePerMonth` field:n* 0: EUROn* 1: USDn* 9: YEN",
+                        "description": "The currency of the `pricePerMonth` field:\n* 0: EURO\n* 1: USD\n* 9: YEN",
                         "readOnly": true
                     },
                     "bandwidthBillingType": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The bandwidth billing method for this service:n* 1: unmetered connectionn* 2: measured in TB per monthn* 3: measured in mbit 95th percentile",
+                        "description": "The bandwidth billing method for this service:\n* 1: unmetered connection\n* 2: measured in TB per month\n* 3: measured in mbit 95th percentile",
                         "readOnly": true
                     },
                     "bandwidthContractual": {
@@ -13168,7 +12957,7 @@
                     "type": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "IP type:n1) normal,n2) KVM,n253) VRRP1,n254) VRRP2,n255) gateway",
+                        "description": "IP type:\n1) normal,\n2) KVM,\n253) VRRP1,\n254) VRRP2,\n255) gateway",
                         "readOnly": true
                     },
                     "private": {
@@ -13364,7 +13153,7 @@
                     "serverType": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The type of the server:n* 1: Bare metal servern* 2: Flex metal servern* 3: Virtual machine",
+                        "description": "The type of the server:\n* 1: Bare metal server\n* 2: Flex metal server\n* 3: Virtual machine",
                         "readOnly": true
                     },
                     "projectName": {
@@ -13422,13 +13211,13 @@
                     "instanceType": {
                         "type": "string",
                         "format": "",
-                        "description": "The instance type of this server, which is one of [`GET /v3/host/instanceType`](#/Host/getHostInstanceTypes) for a bare metal, or one ofn[`GET /v3/cloud/instanceType`](#/Cloud/getCloudInstanceTypes) for a virtual machine",
+                        "description": "The instance type of this server, which is one of [`GET /v3/host/instanceType`](#/Host/getHostInstanceTypes) for a bare metal, or one of\n[`GET /v3/cloud/instanceType`](#/Cloud/getCloudInstanceTypes) for a virtual machine",
                         "readOnly": true
                     },
                     "fleetId": {
                         "type": "string",
                         "format": "",
-                        "description": "The fleet ID, if this host has been assigned to a fleetnIf `0`, the host has not been assigned to a fleet, otherwise, the fleet is assigned to this host and the host can serve application instances for that fleet.",
+                        "description": "The fleet ID, if this host has been assigned to a fleet\nIf `0`, the host has not been assigned to a fleet, otherwise, the fleet is assigned to this host and the host can serve application instances for that fleet.",
                         "readOnly": true
                     },
                     "newFleetId": {
@@ -13519,13 +13308,13 @@
                     "currencyId": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The currency of the `pricePerMonth` field:n* 0: EUROn* 1: USDn* 9: YEN",
+                        "description": "The currency of the `pricePerMonth` field:\n* 0: EURO\n* 1: USD\n* 9: YEN",
                         "readOnly": true
                     },
                     "bandwidthBillingType": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The bandwidth billing method for this service:n* 1: unmetered connectionn* 2: measured in TB per monthn* 3: measured in mbit 95th percentile",
+                        "description": "The bandwidth billing method for this service:\n* 1: unmetered connection\n* 2: measured in TB per month\n* 3: measured in mbit 95th percentile",
                         "readOnly": true
                     },
                     "bandwidthContractual": {
@@ -13694,64 +13483,6 @@
                         "type": "integer",
                         "format": "integer",
                         "description": "Whether or not Data Processing Agreement is agreed to. Cannot be changed after agreeing."
-                    }
-                },
-                "additionalProperties": false
-            },
-            "InstanceType": {
-                "type": "object",
-                "required": [
-                    "instanceTypeId",
-                    "cloudProviderId",
-                    "dcLocationId",
-                    "instanceType",
-                    "numCores",
-                    "memory",
-                    "storage",
-                    "status"
-                ],
-                "properties": {
-                    "instanceTypeId": {
-                        "type": "integer",
-                        "format": "integer",
-                        "readOnly": true
-                    },
-                    "cloudProviderId": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "The cloud provider ID. For a list of cloud providers see [`GET /v3/cloud/provider`](#/Cloud/get_v3_cloud_provider))",
-                        "readOnly": true
-                    },
-                    "dcLocationId": {
-                        "type": "integer",
-                        "format": "integer",
-                        "readOnly": true
-                    },
-                    "instanceType": {
-                        "type": "string",
-                        "format": "",
-                        "readOnly": true
-                    },
-                    "numCores": {
-                        "type": "integer",
-                        "format": "integer",
-                        "readOnly": true
-                    },
-                    "memory": {
-                        "type": "integer",
-                        "format": "integer",
-                        "readOnly": true
-                    },
-                    "storage": {
-                        "type": "string",
-                        "format": "",
-                        "readOnly": true
-                    },
-                    "status": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "It will show either instance type is available or not",
-                        "readOnly": true
                     }
                 },
                 "additionalProperties": false
@@ -14437,56 +14168,6 @@
                 },
                 "additionalProperties": false
             },
-            "Location": {
-                "type": "object",
-                "required": [
-                    "id",
-                    "countryName",
-                    "countryNameShort",
-                    "regionId",
-                    "regionName",
-                    "continent",
-                    "city"
-                ],
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Location ID"
-                    },
-                    "countryName": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Name of the country of this location"
-                    },
-                    "countryNameShort": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Name of the country of this location"
-                    },
-                    "regionId": {
-                        "type": "integer",
-                        "format": "integer",
-                        "description": "Region ID"
-                    },
-                    "regionName": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Name of the region this location is situated in (regions are smaller than continents, but may be a whole continent)."
-                    },
-                    "continent": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Name of the continent of this location"
-                    },
-                    "city": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Name of the city of this location"
-                    }
-                },
-                "additionalProperties": false
-            },
             "MemoryTriggerRule": {
                 "type": "object",
                 "required": [
@@ -14611,7 +14292,7 @@
                     "status": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The status of all the systemsn* 1: All systems operationaln* 2: Multiple systems have performance issuesn* 3: Multiple systems are offlinen* 4: All systems are offline",
+                        "description": "The status of all the systems\n* 1: All systems operational\n* 2: Multiple systems have performance issues\n* 3: Multiple systems are offline\n* 4: All systems are offline",
                         "readOnly": true
                     },
                     "groups": {
@@ -14641,7 +14322,7 @@
                     "status": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The status of the componentn* 1: All systems operationaln* 2: Multiple systems have performance issuesn* 3: Multiple systems are offlinen* 4: All systems are offline",
+                        "description": "The status of the component\n* 1: All systems operational\n* 2: Multiple systems have performance issues\n* 3: Multiple systems are offline\n* 4: All systems are offline",
                         "readOnly": true
                     }
                 },
@@ -14664,7 +14345,7 @@
                     "status": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The status of the groupn* 1: All systems operationaln* 2: Multiple systems have performance issuesn* 3: Multiple systems are offlinen* 4: All systems are offline",
+                        "description": "The status of the group\n* 1: All systems operational\n* 2: Multiple systems have performance issues\n* 3: Multiple systems are offline\n* 4: All systems are offline",
                         "readOnly": true
                     },
                     "components": {
@@ -14711,7 +14392,7 @@
                     "osGroup": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The operating system group.n1) Windowsn2) Linux / BSD",
+                        "description": "The operating system group.\n1) Windows\n2) Linux / BSD",
                         "readOnly": true
                     },
                     "isOdp": {
@@ -15612,51 +15293,6 @@
                 },
                 "additionalProperties": false
             },
-            "Profile": {
-                "type": "object",
-                "required": [
-                    "operatingSystem",
-                    "postScript",
-                    "instanceType",
-                    "sshKey"
-                ],
-                "properties": {
-                    "operatingSystem": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/OperatingSystem"
-                            }
-                        ],
-                        "description": "Operating system",
-                        "readOnly": true
-                    },
-                    "postScript": {
-                        "type": "string",
-                        "format": "",
-                        "description": "Post script",
-                        "readOnly": true
-                    },
-                    "instanceType": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/InstanceType"
-                            }
-                        ],
-                        "description": "Instance type",
-                        "readOnly": true
-                    },
-                    "sshKey": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/SSHKey"
-                            }
-                        ],
-                        "description": "SSH key",
-                        "readOnly": true
-                    }
-                },
-                "additionalProperties": false
-            },
             "PropertiesModel": {
                 "type": "object",
                 "required": [
@@ -15750,28 +15386,6 @@
                         "type": "string",
                         "format": "",
                         "description": "The corresponding ip for the host",
-                        "readOnly": true
-                    }
-                },
-                "additionalProperties": false
-            },
-            "SSHKey": {
-                "type": "object",
-                "required": [
-                    "name",
-                    "content"
-                ],
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "format": "",
-                        "description": "SSH key name",
-                        "readOnly": true
-                    },
-                    "content": {
-                        "type": "string",
-                        "format": "",
-                        "description": "SSH key content",
                         "readOnly": true
                     }
                 },
@@ -16488,7 +16102,7 @@
                     "operator": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The operator used for this rule, you can find the list on this endpoint [GETn/v3/trigger/type/operators](all#/Trigger/getTriggerTypeOperators)"
+                        "description": "The operator used for this rule, you can find the list on this endpoint [GET\n/v3/trigger/type/operators](all#/Trigger/getTriggerTypeOperators)"
                     },
                     "threshold": {
                         "type": "integer",
@@ -16508,7 +16122,7 @@
                     "unit": {
                         "type": "string",
                         "format": "",
-                        "description": "Unit of data frequency,  possible interval options are as followsn- day",
+                        "description": "Unit of data frequency,  possible interval options are as follows\n- day",
                         "readOnly": true
                     },
                     "data": {
@@ -16623,7 +16237,7 @@
                     "active": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "Status of the triggern* 1 the trigger is enabledn* 0 the trigger is disabled",
+                        "description": "Status of the trigger\n* 1 the trigger is enabled\n* 0 the trigger is disabled",
                         "readOnly": true
                     }
                 },
@@ -16789,7 +16403,7 @@
                     "side": {
                         "type": "string",
                         "format": "",
-                        "description": "Side of the uplinknFollowing will be possible values for sides uplink:n* An* Z",
+                        "description": "Side of the uplink\nFollowing will be possible values for sides uplink:\n* A\n* Z",
                         "readOnly": true
                     },
                     "uplinkId": {
@@ -16942,15 +16556,15 @@
             "description": "Email confirmation"
         },
         {
-            "name": "FlexMetal",
-            "description": "Order Bare Metal servers on demand, billed hourly"
-        },
-        {
-            "name": "FlexMetalServers",
+            "name": "FlexMetalServer",
             "description": "FlexMetal servers are physical servers that can be requested and released at will.",
             "externalDocs": {
-                "url": "https://example.com/docs/flex-metal"
+                "url": "https://www.i3d.net/docs/one/Compute/FlexMetal/api/"
             }
+        },
+        {
+            "name": "FlexMetalTags",
+            "description": "FlexMetal tags can be assigned to FlexMetal servers to administratively group them together and use them for filtering."
         },
         {
             "name": "Health",

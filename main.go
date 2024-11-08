@@ -11,7 +11,7 @@ import (
 
 func main() {
 	opts := providerserver.ServeOpts{
-		Address: "i3d.net/test/flexmetal",
+		Address: "terraform.ubisoft.com/rks/flexmetal",
 	}
 
 	err := providerserver.Serve(context.Background(), provider.New(), opts)

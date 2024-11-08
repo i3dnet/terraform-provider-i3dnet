@@ -131,6 +131,13 @@ func ServersResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Status message.",
 				MarkdownDescription: "Status message.",
 			},
+			"tags": schema.ListAttribute{
+				ElementType:         types.StringType,
+				Optional:            true,
+				Computed:            true,
+				Description:         "A list of tags. There is a maximum of 60 tags per server. Each tag must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$",
+				MarkdownDescription: "A list of tags. There is a maximum of 60 tags per server. Each tag must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$",
+			},
 			"uuid": schema.StringAttribute{
 				Computed:            true,
 				Description:         "Server UUID.",
@@ -153,6 +160,7 @@ type ServersModel struct {
 	SshKey            types.List   `tfsdk:"ssh_key"`
 	Status            types.String `tfsdk:"status"`
 	StatusMessage     types.String `tfsdk:"status_message"`
+	Tags              types.List   `tfsdk:"tags"`
 	Uuid              types.String `tfsdk:"uuid"`
 }
 

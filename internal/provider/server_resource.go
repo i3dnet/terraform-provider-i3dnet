@@ -52,6 +52,10 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 			"value": kernelParam1.Value.ValueString(),
 		})
 	}
+	tags := []string{}
+	for _, tag := range data.Tags.Elements() {
+		tags = append(tags, strings.Replace(tag.String(), "\"", "", -1))
+	}
 
 	sskKeys := []string{}
 
@@ -68,6 +72,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 			"slug":         data.Os.Slug.ValueString(),
 			"kernelParams": kernelParams,
 		},
+		"tags":              tags,
 		"sshKey":            sskKeys,
 		"postInstallScript": data.PostInstallScript.ValueString(),
 	}
@@ -223,6 +228,18 @@ func ParseResponseBody(ctx context.Context, responseBody []byte, server *resourc
 				)
 
 			}
+		}
+		server.Tags = basetypes.NewListNull(basetypes.StringType{})
+		if answer["tags"] != nil {
+			values := []attr.Value{}
+			for _, tag := range answer["tags"].([]interface{}) {
+				values = append(values, basetypes.NewStringValue(tag.(string)))
+			}
+			values = append(server.Tags.Elements(), values...)
+			server.Tags = basetypes.NewListValueMust(
+				basetypes.StringType{},
+				values,
+			)
 		}
 		if answer["createdAt"] != nil {
 			server.CreatedAt = basetypes.NewInt64Value(int64(answer["createdAt"].(float64)))
