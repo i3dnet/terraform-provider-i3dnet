@@ -1,6 +1,5 @@
 ---
 build:
-  extends: .setup
   stage: build
   image: golang:1.23
   script:
