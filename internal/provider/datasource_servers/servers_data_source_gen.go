@@ -131,6 +131,12 @@ func ServersDataSourceSchema(ctx context.Context) schema.Schema {
 							Description:         "Status message.",
 							MarkdownDescription: "Status message.",
 						},
+						"tags": schema.ListAttribute{
+							ElementType:         types.StringType,
+							Computed:            true,
+							Description:         "Server tags.",
+							MarkdownDescription: "Server tags.",
+						},
 						"uuid": schema.StringAttribute{
 							Computed:            true,
 							Description:         "Server UUID.",
@@ -145,12 +151,18 @@ func ServersDataSourceSchema(ctx context.Context) schema.Schema {
 				},
 				Computed: true,
 			},
+			"uuid": schema.StringAttribute{
+				Required:            true,
+				Description:         "The server identifier",
+				MarkdownDescription: "The server identifier",
+			},
 		},
 	}
 }
 
 type ServersModel struct {
-	Servers types.Set `tfsdk:"servers"`
+	Servers types.Set    `tfsdk:"servers"`
+	Uuid    types.String `tfsdk:"uuid"`
 }
 
 var _ basetypes.ObjectTypable = ServersType{}
@@ -358,6 +370,24 @@ func (t ServersType) ValueFromObject(ctx context.Context, in basetypes.ObjectVal
 			fmt.Sprintf(`status_message expected to be basetypes.StringValue, was: %T`, statusMessageAttribute))
 	}
 
+	tagsAttribute, ok := attributes["tags"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`tags is missing from object`)
+
+		return nil, diags
+	}
+
+	tagsVal, ok := tagsAttribute.(basetypes.ListValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`tags expected to be basetypes.ListValue, was: %T`, tagsAttribute))
+	}
+
 	uuidAttribute, ok := attributes["uuid"]
 
 	if !ok {
@@ -391,6 +421,7 @@ func (t ServersType) ValueFromObject(ctx context.Context, in basetypes.ObjectVal
 		ReleasedAt:    releasedAtVal,
 		Status:        statusVal,
 		StatusMessage: statusMessageVal,
+		Tags:          tagsVal,
 		Uuid:          uuidVal,
 		state:         attr.ValueStateKnown,
 	}, diags
@@ -639,6 +670,24 @@ func NewServersValue(attributeTypes map[string]attr.Type, attributes map[string]
 			fmt.Sprintf(`status_message expected to be basetypes.StringValue, was: %T`, statusMessageAttribute))
 	}
 
+	tagsAttribute, ok := attributes["tags"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`tags is missing from object`)
+
+		return NewServersValueUnknown(), diags
+	}
+
+	tagsVal, ok := tagsAttribute.(basetypes.ListValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`tags expected to be basetypes.ListValue, was: %T`, tagsAttribute))
+	}
+
 	uuidAttribute, ok := attributes["uuid"]
 
 	if !ok {
@@ -672,6 +721,7 @@ func NewServersValue(attributeTypes map[string]attr.Type, attributes map[string]
 		ReleasedAt:    releasedAtVal,
 		Status:        statusVal,
 		StatusMessage: statusMessageVal,
+		Tags:          tagsVal,
 		Uuid:          uuidVal,
 		state:         attr.ValueStateKnown,
 	}, diags
@@ -755,12 +805,13 @@ type ServersValue struct {
 	ReleasedAt    basetypes.Int64Value  `tfsdk:"released_at"`
 	Status        basetypes.StringValue `tfsdk:"status"`
 	StatusMessage basetypes.StringValue `tfsdk:"status_message"`
+	Tags          basetypes.ListValue   `tfsdk:"tags"`
 	Uuid          basetypes.StringValue `tfsdk:"uuid"`
 	state         attr.ValueState
 }
 
 func (v ServersValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	attrTypes := make(map[string]tftypes.Type, 11)
+	attrTypes := make(map[string]tftypes.Type, 12)
 
 	var val tftypes.Value
 	var err error
@@ -783,13 +834,16 @@ func (v ServersValue) ToTerraformValue(ctx context.Context) (tftypes.Value, erro
 	attrTypes["released_at"] = basetypes.Int64Type{}.TerraformType(ctx)
 	attrTypes["status"] = basetypes.StringType{}.TerraformType(ctx)
 	attrTypes["status_message"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["tags"] = basetypes.ListType{
+		ElemType: types.StringType,
+	}.TerraformType(ctx)
 	attrTypes["uuid"] = basetypes.StringType{}.TerraformType(ctx)
 
 	objectType := tftypes.Object{AttributeTypes: attrTypes}
 
 	switch v.state {
 	case attr.ValueStateKnown:
-		vals := make(map[string]tftypes.Value, 11)
+		vals := make(map[string]tftypes.Value, 12)
 
 		val, err = v.CreatedAt.ToTerraformValue(ctx)
 
@@ -870,6 +924,14 @@ func (v ServersValue) ToTerraformValue(ctx context.Context) (tftypes.Value, erro
 		}
 
 		vals["status_message"] = val
+
+		val, err = v.Tags.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["tags"] = val
 
 		val, err = v.Uuid.ToTerraformValue(ctx)
 
@@ -1000,6 +1062,45 @@ func (v ServersValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue,
 		)
 	}
 
+	var tagsVal basetypes.ListValue
+	switch {
+	case v.Tags.IsUnknown():
+		tagsVal = types.ListUnknown(types.StringType)
+	case v.Tags.IsNull():
+		tagsVal = types.ListNull(types.StringType)
+	default:
+		var d diag.Diagnostics
+		tagsVal, d = types.ListValue(types.StringType, v.Tags.Elements())
+		diags.Append(d...)
+	}
+
+	if diags.HasError() {
+		return types.ObjectUnknown(map[string]attr.Type{
+			"created_at":   basetypes.Int64Type{},
+			"delivered_at": basetypes.Int64Type{},
+			"instance_type": basetypes.ObjectType{
+				AttrTypes: InstanceTypeValue{}.AttributeTypes(ctx),
+			},
+			"ip_addresses": basetypes.ListType{
+				ElemType: IpAddressesValue{}.Type(ctx),
+			},
+			"location": basetypes.ObjectType{
+				AttrTypes: LocationValue{}.AttributeTypes(ctx),
+			},
+			"name": basetypes.StringType{},
+			"os": basetypes.ObjectType{
+				AttrTypes: OsValue{}.AttributeTypes(ctx),
+			},
+			"released_at":    basetypes.Int64Type{},
+			"status":         basetypes.StringType{},
+			"status_message": basetypes.StringType{},
+			"tags": basetypes.ListType{
+				ElemType: types.StringType,
+			},
+			"uuid": basetypes.StringType{},
+		}), diags
+	}
+
 	attributeTypes := map[string]attr.Type{
 		"created_at":   basetypes.Int64Type{},
 		"delivered_at": basetypes.Int64Type{},
@@ -1019,7 +1120,10 @@ func (v ServersValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue,
 		"released_at":    basetypes.Int64Type{},
 		"status":         basetypes.StringType{},
 		"status_message": basetypes.StringType{},
-		"uuid":           basetypes.StringType{},
+		"tags": basetypes.ListType{
+			ElemType: types.StringType,
+		},
+		"uuid": basetypes.StringType{},
 	}
 
 	if v.IsNull() {
@@ -1043,6 +1147,7 @@ func (v ServersValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue,
 			"released_at":    v.ReleasedAt,
 			"status":         v.Status,
 			"status_message": v.StatusMessage,
+			"tags":           tagsVal,
 			"uuid":           v.Uuid,
 		})
 
@@ -1104,6 +1209,10 @@ func (v ServersValue) Equal(o attr.Value) bool {
 		return false
 	}
 
+	if !v.Tags.Equal(other.Tags) {
+		return false
+	}
+
 	if !v.Uuid.Equal(other.Uuid) {
 		return false
 	}
@@ -1139,7 +1248,10 @@ func (v ServersValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 		"released_at":    basetypes.Int64Type{},
 		"status":         basetypes.StringType{},
 		"status_message": basetypes.StringType{},
-		"uuid":           basetypes.StringType{},
+		"tags": basetypes.ListType{
+			ElemType: types.StringType,
+		},
+		"uuid": basetypes.StringType{},
 	}
 }
 

@@ -5,6 +5,13 @@
 			"schema": {
 				"attributes": [
 					{
+						"name": "uuid",
+						"string": {
+							"computed_optional_required": "required",
+							"description": "The server identifier"
+						}
+					},
+					{
 						"name": "servers",
 						"set_nested": {
 							"computed_optional_required": "computed",
@@ -133,6 +140,16 @@
 										}
 									},
 									{
+										"name": "tags",
+										"list": {
+											"computed_optional_required": "computed",
+											"element_type": {
+												"string": {}
+											},
+											"description": "Server tags."
+										}
+									},
+									{
 										"name": "uuid",
 										"string": {
 											"computed_optional_required": "computed",
@@ -232,6 +249,16 @@
 								"string": {}
 							},
 							"description": "A list of SSH keys. You can either supply SSH key UUIDs from stored objects in /v3/sshKey or provide public keys directly. SSH keys are installed for the root user."
+						}
+					},
+					{
+						"name": "tags",
+						"list": {
+							"computed_optional_required": "computed_optional",
+							"element_type": {
+								"string": {}
+							},
+							"description": "A list of tags. There is a maximum of 60 tags per server. Each tag must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
 						}
 					},
 					{
