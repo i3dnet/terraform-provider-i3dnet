@@ -1,0 +1,11 @@
+---
+build:
+  extends: .setup
+  stage: build
+  image: golang:1.23
+  script:
+    - go build -o terraform-provider-flexmetal
+  artifacts:
+    paths:
+    - ./terraform-provider-flexmetal
+    expire_in: 1 day
