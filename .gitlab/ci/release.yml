@@ -6,10 +6,10 @@ release:
       aud: https://live01-ncsa.vault.ubisoft.com:8200/auth/gitlab-ncsa-id-token/login
     ARTIFACTORY_ID_TOKEN:
       aud: https://artifactory.ubisoft.org/
-  only:
-    - tags
-  except:
-    - schedules
+  # only:
+  #   - tags
+  # except:
+  #   - schedules
   image:
     name: goreleaser/goreleaser
     entrypoint: ['']
@@ -34,4 +34,5 @@ release:
       -H "accept: text/plain" -H "Content-Type: application/json" --data "$PAYLOAD")
     - export ARTIFACTORY_UBISOFT_SECRET=$(echo $RESPONSE | yq '.artifactoryApiKey')
     - export ARTIFACTORY_UBISOFT_USERNAME=$(echo $RESPONSE | yq '.username')
+    - VERSION=$(git describe --tags || git log -n 1 --format=%h)
     - goreleaser release --clean
