@@ -46,7 +46,7 @@ release:
       name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
   gitlab:
     owner: it/rome/kubeanywhere/prototypes
-    name: terraform-provider-flexmetal
+    name: flexmetal-terraform-provider
   ids: ["doesnotexist"] # hack to disable uploading assets to gitlab - as we push them to artifactory
 
 changelog:
