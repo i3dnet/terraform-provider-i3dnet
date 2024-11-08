@@ -21,6 +21,8 @@ release:
     # Disable shallow cloning so that goreleaser can diff between tags to
     # generate a changelog.
     GIT_DEPTH: 0
+  before_script:
+    - apk update && apk add curl jq yq
   script:
     # prettier-ignore
     - |-
