@@ -1,0 +1,20 @@
+---
+stages:
+  - build
+  - release
+
+default:
+  tags:
+    - square_linux_2
+
+variables:
+  VAULT_SERVER_URL: https://live01-ncsa.vault.ubisoft.com:8200
+  VAULT_AUTH_ROLE: gitlab_app
+  VAULT_AUTH_PATH: gitlab-ncsa-id-token
+  VAULT_NAMESPACE: talos-iac-build-60ebdb4209604d60a7010203ee0b2725
+
+include:
+  - .gitlab/ci/build.yml
+  - local: .gitlab/ci/release.yml
+
+
