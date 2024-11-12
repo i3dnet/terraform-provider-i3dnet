@@ -1,0 +1,39 @@
+---
+release:
+  stage: release
+  id_tokens:
+    VAULT_ID_TOKEN:
+      aud: https://live01-ncsa.vault.ubisoft.com:8200/auth/gitlab-ncsa-id-token/login
+    ARTIFACTORY_ID_TOKEN:
+      aud: https://artifactory.ubisoft.org/
+  only:
+    - tags
+  except:
+    - schedules
+  image:
+    name: goreleaser/goreleaser:v2.4.4
+    entrypoint: ['']
+  secrets:
+    GITLAB_TOKEN:
+        vault: services/gitlab/svc_rome_gitlab@kv
+        file: false
+  variables:
+    # Disable shallow cloning so that goreleaser can diff between tags to
+    # generate a changelog.
+    GIT_DEPTH: 0
+  before_script:
+    - apk update && apk add curl jq yq
+  script:
+    # prettier-ignore
+    - |-
+      PAYLOAD=$(cat <<JSON
+        { "jwt": "$ARTIFACTORY_ID_TOKEN", "serverUrl": "https://artifactory.ubisoft.org/" }
+      JSON
+      )
+    - >
+      RESPONSE=$(curl --insecure --silent --fail-with-body -XPOST
+      --url "https://token-gateway.square.ubisoft.org/Artifactory/AccessToken/FromGitLabJobJwt"
+      -H "accept: text/plain" -H "Content-Type: application/json" --data "$PAYLOAD")
+    - export ARTIFACTORY_UBISOFT_SECRET=$(echo $RESPONSE | yq '.artifactoryApiKey')
+    - export ARTIFACTORY_UBISOFT_USERNAME=$(echo $RESPONSE | yq '.username')
+    - goreleaser release --clean

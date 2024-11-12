@@ -1,0 +1,68 @@
+# Visit https://goreleaser.com for documentation on how to customize this
+# behavior.
+version: 2
+before:
+  hooks:
+    - go mod tidy
+
+project_name: terraform-provider-flexmetal
+
+builds:
+- env:
+    # goreleaser does not work with CGO, it could also complicate
+    # usage by users in CI/CD systems like Terraform Cloud where
+    # they are unable to install libraries.
+    - CGO_ENABLED=0
+    - GOPRIVATE="*.ubisoft.org"
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  flags:
+    - -trimpath
+  ldflags:
+    - '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}}'
+  goos:
+    - windows
+    - linux
+    - darwin
+  goarch:
+    - amd64
+    - arm
+    - arm64
+
+  binary: '{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+
+archives:
+- format: zip
+  name_template: '{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+checksum:
+  extra_files:
+    - glob: 'terraform-registry-manifest.json'
+      name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
+  name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
+  algorithm: sha256
+
+release:
+  extra_files:
+    - glob: 'terraform-registry-manifest.json'
+      name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
+  gitlab:
+    owner: it/rome/kubeanywhere/prototypes
+    name: flexmetal-terraform-provider
+  ids: ["doesnotexist"] # hack to disable uploading assets to gitlab - as we push them to artifactory
+
+changelog:
+  use: gitlab
+  sort: asc
+
+# https://goreleaser.com/scm/gitlab/
+gitlab_urls:
+  api: https://gitlab-ncsa.ubisoft.org/api/v4/
+  download: https://gitlab-ncsa.ubisoft.org
+
+# https://goreleaser.com/customization/artifactory/
+artifactories:
+  - name: ubisoft
+    target: https://artifactory.ubisoft.org/artifactory/terraform-provider/rks/flexmetal/{{ .Version }}/
+    mode: archive
+    checksum: true
+    signature: true
+
