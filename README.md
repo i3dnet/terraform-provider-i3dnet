@@ -68,9 +68,17 @@ provider "flexmetal" {}
 
 resource "flexmetal_server" "example" {
   name              = "example-server"
-  location          = "us-west"
-  instance_type     = "t2.medium"
-  os                = "ubuntu-20.04"
+  location          = "EU: Rotterdam"
+  instance_type     = "bm7.std.8"
+  os = {
+    slug = "ubuntu-2204-lts"
+    kernel_params = [
+      {
+        key   = "KEY_A"
+        value = "VALUE_A"
+      }
+    ]
+  }
   ssh_key           = ["ssh-rsa AAA..."]
   post_install_script = "echo Hello, World!"
 }
