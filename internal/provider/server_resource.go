@@ -208,7 +208,6 @@ func ParseResponseBody(ctx context.Context, responseBody []byte, server *resourc
 		server.Uuid = basetypes.NewStringValue(answer["uuid"].(string))
 		server.Status = basetypes.NewStringValue(answer["status"].(string))
 		server.StatusMessage = basetypes.NewStringValue(answer["statusMessage"].(string))
-		server.PostInstallScript = basetypes.NewStringValue("")
 		// wipe the list
 		server.IpAddresses = basetypes.NewListUnknown(resource_servers.IpAddressesType{})
 		if answer["ipAddresses"] != nil {
