@@ -85,7 +85,7 @@ func ServersResourceSchema(ctx context.Context) schema.Schema {
 							},
 						},
 						Optional:            true,
-						Computed:            true,
+						Computed:            false,
 						Description:         "Kernel params for the PXE stage of the OS installation. Most operating systems do not require these, but e.g. Talos does.",
 						MarkdownDescription: "Kernel params for the PXE stage of the OS installation. Most operating systems do not require these, but e.g. Talos does.",
 					},
@@ -106,7 +106,7 @@ func ServersResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"post_install_script": schema.StringAttribute{
 				Optional:            true,
-				Computed:            true,
+				Computed:            false,
 				Description:         "Post install script. A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems.",
 				MarkdownDescription: "Post install script. A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems.",
 			},

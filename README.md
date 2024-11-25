@@ -80,7 +80,7 @@ resource "flexmetal_server" "example" {
     ]
   }
   ssh_key           = ["ssh-rsa AAA..."]
-  post_install_script = "echo Hello, World!"
+  post_install_script = "#!/bin/bash\necho \"Hi there!\" > /root/output.txt"
 }
 
 ### Usage
