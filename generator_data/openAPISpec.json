@@ -8347,7 +8347,62 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/FlexMetalServer"
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalServer"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Resource not found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexMetal/servers/{uuid}/rootPassword": {
+            "get": {
+                "tags": [
+                    "FlexMetalServer"
+                ],
+                "summary": "Get a FlexMetal server's root password",
+                "description": "Windows only: Fetch the root password within the first 24 hours after installation.",
+                "operationId": "getFlexMetalServerRootPasswords",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "The server identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalServerRootPassword"
+                                    }
                                 }
                             }
                         }
@@ -8404,7 +8459,10 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/FlexMetalServer"
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalServer"
+                                    }
                                 }
                             }
                         }
@@ -8459,7 +8517,10 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/FlexMetalServer"
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalServer"
+                                    }
                                 }
                             }
                         }
@@ -12031,6 +12092,13 @@
                             "$ref": "#/components/schemas/FlexMetalKernelParam"
                         },
                         "description": "Kernel params for the PXE stage of the OS installation. Most operating systems do not require these, but e.g. Talos does."
+                    },
+                    "partitions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexMetalPartition"
+                        },
+                        "description": "Custom partitions for the OS installation. If not provided, the default partitioning scheme will be used."
                     }
                 },
                 "additionalProperties": false
@@ -12046,6 +12114,35 @@
                         "format": "",
                         "example": "ubuntu-2404-lts",
                         "description": "Identifier of the OS. Available operating systems can be obtained from /v3/operatingsystem. Use the `slug` field from the response."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexMetalPartition": {
+                "type": "object",
+                "required": [
+                    "target",
+                    "filesystem",
+                    "size"
+                ],
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "format": "",
+                        "example": "/custom",
+                        "description": "Mount point for the partition"
+                    },
+                    "filesystem": {
+                        "type": "string",
+                        "format": "",
+                        "example": "ext4",
+                        "description": "Type of filesystem to use for the target. Allowed: ext2, ext3, ext4, xfs"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 10240,
+                        "description": "The size of the partition, in MB. Use -1 to indicate usage of the remaining space on the disk."
                     }
                 },
                 "additionalProperties": false
@@ -12240,6 +12337,20 @@
                 },
                 "additionalProperties": false,
                 "description": "Request object for creating a new Flex Metal server"
+            },
+            "FlexMetalServerRootPassword": {
+                "type": "object",
+                "required": [
+                    "rootPassword"
+                ],
+                "properties": {
+                    "rootPassword": {
+                        "type": "string",
+                        "format": "",
+                        "description": "Server root password."
+                    }
+                },
+                "additionalProperties": false
             },
             "FlexMetalTag": {
                 "type": "object",
