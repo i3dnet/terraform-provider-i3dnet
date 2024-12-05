@@ -162,6 +162,62 @@
 					}
 				]
 			}
+		},
+		{
+			"name": "tags",
+			"schema": {
+				"attributes": [
+					{
+						"name": "tags",
+						"set_nested": {
+							"computed_optional_required": "computed",
+							"nested_object": {
+								"attributes": [
+									{
+										"name": "resources",
+										"single_nested": {
+											"computed_optional_required": "computed",
+											"attributes": [
+												{
+													"name": "count",
+													"int64": {
+														"computed_optional_required": "computed",
+														"description": "The total number of resources that use this tag"
+													}
+												},
+												{
+													"name": "flex_metal_servers",
+													"single_nested": {
+														"computed_optional_required": "computed",
+														"attributes": [
+															{
+																"name": "count",
+																"int64": {
+																	"computed_optional_required": "computed",
+																	"description": "The amount of resources of this type that use this tag."
+																}
+															}
+														],
+														"description": "A summary of tag usage for the FlexMetalServer resource type"
+													}
+												}
+											],
+											"description": "A list of resources that use this tag"
+										}
+									},
+									{
+										"name": "tag",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "The tag name"
+										}
+									}
+								]
+							}
+						}
+					}
+				]
+			}
 		}
 	],
 	"provider": {

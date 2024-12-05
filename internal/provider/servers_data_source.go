@@ -47,7 +47,7 @@ func (d *serversDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 	// Example data value setting
-	diags = ParseResponseBodyDataSource(ctx, respBody, &data)
+	diags = ParseServersResponseBodyDataSource(ctx, respBody, &data)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -56,8 +56,8 @@ func (d *serversDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// ParseResponseBody is a helper function to parse the response body from the FlexMetal API
-func ParseResponseBodyDataSource(ctx context.Context, responseBody []byte, servers *datasource_servers.ServersModel) diag.Diagnostics {
+// ParseServersResponseBodyDataSource is a helper function to parse the response body from the FlexMetal API
+func ParseServersResponseBodyDataSource(ctx context.Context, responseBody []byte, servers *datasource_servers.ServersModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	// parse the response body
 	unmarshalledData := []map[string]any{}
@@ -94,6 +94,7 @@ func ParseResponseBodyDataSource(ctx context.Context, responseBody []byte, serve
 
 			}
 		}
+		server.Tags, _ = basetypes.NewListValueFrom(ctx, basetypes.StringType{}, answer["tags"].(string))
 		if answer["createdAt"] != nil {
 			server.CreatedAt = basetypes.NewInt64Value(int64(answer["createdAt"].(float64)))
 		} else {
