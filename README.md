@@ -28,7 +28,14 @@ To get started with the `flexMetal Terraform Provider`, follow the steps below.
     go build -o terraform-provider-flexmetal
     ```
 
-3. Move the provider binary to your Terraform plugins directory:
+3. FOR DEV: Move the provider binary to your Terraform plugins directory:
+    
+   ```sh
+    mkdir -p ~/.terraform.d/plugins/terraform.i3d.net/i3d-net/flexmetal/0.1/linux_amd64
+    mv terraform-provider-flexmetal ~/.terraform.d/plugins/terraform.i3d.net/i3d-net/flexmetal/0.1/linux_amd64
+    ```
+
+4. FOR REAL (probably): Move the provider binary to your Terraform plugins directory:
 
     ```sh
     mkdir -p ~/.terraform.d/plugins
@@ -59,21 +66,60 @@ How to generate the resources & the config:
 
 You can now customize `internal/provider/server_resource.go` to add the good logic.
 
-### Configuration
+### Configuration (for dev)
 
-Create a `main.tf` file in your Terraform configuration directory and add the following:
+Create a Terraform project directory, e.g. `~/fm_tf`
+
+Create a `main.tf` file in your Terraform directory and add the following:
 
 ```hcl
-provider "flexmetal" {}
-
 resource "flexmetal_server" "example" {
   name              = "example-server"
-  location          = "us-west"
-  instance_type     = "t2.medium"
-  os                = "ubuntu-20.04"
+  location          = "EU: Rotterdam"
+  instance_type     = "bm7.std.8"
+  os = {
+    slug = "ubuntu-2404-lts"
+    kernel_params = [
+      {
+        key   = "KEY_A"
+        value = "VALUE_A"
+      }
+    ]
+  }
   ssh_key           = ["ssh-rsa AAA..."]
-  post_install_script = "echo Hello, World!"
+  post_install_script = "#!/bin/bash\necho \"Hi there!\" > /root/output.txt"
 }
+```
+
+Fix the ssh_key entry
+
+Create a `provider.tf` file in your Terraform directory and add the following:
+
+```hcl
+terraform {
+  required_providers {
+    flexmetal = {
+      source  = "terraform.i3d.net/i3d-net/flexmetal"
+      version = ">= 0.1"
+    }
+  }
+}
+
+provider "flexmetal" {}
+```
+
+Create an `outputs.tf` file in your Terraform directory and add the following:
+
+```hcl
+output "inventory" {
+  sensitive = false
+  value = [for s in flexmetal_server.example : {
+    "name" : s.name,
+    "uuid" : s.uuid,
+    "ip" : s.ip_addresses[0].ip_address,
+  }]
+}
+```
 
 ### Usage
 
@@ -93,4 +139,14 @@ Apply the configuration:
 
 ```bash
 terraform apply
+```
+
+This will order 1 FlexMetal server.
+
+This is the minimal configuration to have something working. You can of course expand a lot on this. Request multiple servers in 1 go, or have multiple configurations, or add variables instead of hardcoding the configuration, etc.
+
+To release the server:
+
+```bash
+terraform destroy
 ```

@@ -85,9 +85,39 @@ func ServersResourceSchema(ctx context.Context) schema.Schema {
 							},
 						},
 						Optional:            true,
-						Computed:            true,
+						Computed:            false,
 						Description:         "Kernel params for the PXE stage of the OS installation. Most operating systems do not require these, but e.g. Talos does.",
 						MarkdownDescription: "Kernel params for the PXE stage of the OS installation. Most operating systems do not require these, but e.g. Talos does.",
+					},
+					"partitions": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"filesystem": schema.StringAttribute{
+									Required:            true,
+									Description:         "Type of filesystem to use for the target. Allowed: ext2, ext3, ext4, xfs",
+									MarkdownDescription: "Type of filesystem to use for the target. Allowed: ext2, ext3, ext4, xfs",
+								},
+								"size": schema.Int64Attribute{
+									Required:            true,
+									Description:         "The size of the partition, in MB. Use -1 to indicate usage of the remaining space on the disk.",
+									MarkdownDescription: "The size of the partition, in MB. Use -1 to indicate usage of the remaining space on the disk.",
+								},
+								"target": schema.StringAttribute{
+									Required:            true,
+									Description:         "Mount point for the partition",
+									MarkdownDescription: "Mount point for the partition",
+								},
+							},
+							CustomType: PartitionsType{
+								ObjectType: types.ObjectType{
+									AttrTypes: PartitionsValue{}.AttributeTypes(ctx),
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            false,
+						Description:         "Custom partitions for the OS installation. If not provided, the default partitioning scheme will be used.",
+						MarkdownDescription: "Custom partitions for the OS installation. If not provided, the default partitioning scheme will be used.",
 					},
 					"slug": schema.StringAttribute{
 						Required:            true,
@@ -106,7 +136,7 @@ func ServersResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"post_install_script": schema.StringAttribute{
 				Optional:            true,
-				Computed:            true,
+				Computed:            false,
 				Description:         "Post install script. A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems.",
 				MarkdownDescription: "Post install script. A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems.",
 			},
@@ -531,6 +561,24 @@ func (t OsType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (
 			fmt.Sprintf(`kernel_params expected to be basetypes.ListValue, was: %T`, kernelParamsAttribute))
 	}
 
+	partitionsAttribute, ok := attributes["partitions"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`partitions is missing from object`)
+
+		return nil, diags
+	}
+
+	partitionsVal, ok := partitionsAttribute.(basetypes.ListValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`partitions expected to be basetypes.ListValue, was: %T`, partitionsAttribute))
+	}
+
 	slugAttribute, ok := attributes["slug"]
 
 	if !ok {
@@ -555,6 +603,7 @@ func (t OsType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (
 
 	return OsValue{
 		KernelParams: kernelParamsVal,
+		Partitions:   partitionsVal,
 		Slug:         slugVal,
 		state:        attr.ValueStateKnown,
 	}, diags
@@ -641,6 +690,24 @@ func NewOsValue(attributeTypes map[string]attr.Type, attributes map[string]attr.
 			fmt.Sprintf(`kernel_params expected to be basetypes.ListValue, was: %T`, kernelParamsAttribute))
 	}
 
+	partitionsAttribute, ok := attributes["partitions"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`partitions is missing from object`)
+
+		return NewOsValueUnknown(), diags
+	}
+
+	partitionsVal, ok := partitionsAttribute.(basetypes.ListValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`partitions expected to be basetypes.ListValue, was: %T`, partitionsAttribute))
+	}
+
 	slugAttribute, ok := attributes["slug"]
 
 	if !ok {
@@ -665,6 +732,7 @@ func NewOsValue(attributeTypes map[string]attr.Type, attributes map[string]attr.
 
 	return OsValue{
 		KernelParams: kernelParamsVal,
+		Partitions:   partitionsVal,
 		Slug:         slugVal,
 		state:        attr.ValueStateKnown,
 	}, diags
@@ -739,12 +807,13 @@ var _ basetypes.ObjectValuable = OsValue{}
 
 type OsValue struct {
 	KernelParams basetypes.ListValue   `tfsdk:"kernel_params"`
+	Partitions   basetypes.ListValue   `tfsdk:"partitions"`
 	Slug         basetypes.StringValue `tfsdk:"slug"`
 	state        attr.ValueState
 }
 
 func (v OsValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	attrTypes := make(map[string]tftypes.Type, 2)
+	attrTypes := make(map[string]tftypes.Type, 3)
 
 	var val tftypes.Value
 	var err error
@@ -752,13 +821,16 @@ func (v OsValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
 	attrTypes["kernel_params"] = basetypes.ListType{
 		ElemType: KernelParamsValue{}.Type(ctx),
 	}.TerraformType(ctx)
+	attrTypes["partitions"] = basetypes.ListType{
+		ElemType: PartitionsValue{}.Type(ctx),
+	}.TerraformType(ctx)
 	attrTypes["slug"] = basetypes.StringType{}.TerraformType(ctx)
 
 	objectType := tftypes.Object{AttributeTypes: attrTypes}
 
 	switch v.state {
 	case attr.ValueStateKnown:
-		vals := make(map[string]tftypes.Value, 2)
+		vals := make(map[string]tftypes.Value, 3)
 
 		val, err = v.KernelParams.ToTerraformValue(ctx)
 
@@ -767,6 +839,14 @@ func (v OsValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
 		}
 
 		vals["kernel_params"] = val
+
+		val, err = v.Partitions.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["partitions"] = val
 
 		val, err = v.Slug.ToTerraformValue(ctx)
 
@@ -834,9 +914,41 @@ func (v OsValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag
 		)
 	}
 
+	partitions := types.ListValueMust(
+		PartitionsType{
+			basetypes.ObjectType{
+				AttrTypes: PartitionsValue{}.AttributeTypes(ctx),
+			},
+		},
+		v.Partitions.Elements(),
+	)
+
+	if v.Partitions.IsNull() {
+		partitions = types.ListNull(
+			PartitionsType{
+				basetypes.ObjectType{
+					AttrTypes: PartitionsValue{}.AttributeTypes(ctx),
+				},
+			},
+		)
+	}
+
+	if v.Partitions.IsUnknown() {
+		partitions = types.ListUnknown(
+			PartitionsType{
+				basetypes.ObjectType{
+					AttrTypes: PartitionsValue{}.AttributeTypes(ctx),
+				},
+			},
+		)
+	}
+
 	attributeTypes := map[string]attr.Type{
 		"kernel_params": basetypes.ListType{
 			ElemType: KernelParamsValue{}.Type(ctx),
+		},
+		"partitions": basetypes.ListType{
+			ElemType: PartitionsValue{}.Type(ctx),
 		},
 		"slug": basetypes.StringType{},
 	}
@@ -853,6 +965,7 @@ func (v OsValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag
 		attributeTypes,
 		map[string]attr.Value{
 			"kernel_params": kernelParams,
+			"partitions":    partitions,
 			"slug":          v.Slug,
 		})
 
@@ -878,6 +991,10 @@ func (v OsValue) Equal(o attr.Value) bool {
 		return false
 	}
 
+	if !v.Partitions.Equal(other.Partitions) {
+		return false
+	}
+
 	if !v.Slug.Equal(other.Slug) {
 		return false
 	}
@@ -897,6 +1014,9 @@ func (v OsValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 	return map[string]attr.Type{
 		"kernel_params": basetypes.ListType{
 			ElemType: KernelParamsValue{}.Type(ctx),
+		},
+		"partitions": basetypes.ListType{
+			ElemType: PartitionsValue{}.Type(ctx),
 		},
 		"slug": basetypes.StringType{},
 	}
@@ -1278,5 +1398,439 @@ func (v KernelParamsValue) AttributeTypes(ctx context.Context) map[string]attr.T
 	return map[string]attr.Type{
 		"key":   basetypes.StringType{},
 		"value": basetypes.StringType{},
+	}
+}
+
+var _ basetypes.ObjectTypable = PartitionsType{}
+
+type PartitionsType struct {
+	basetypes.ObjectType
+}
+
+func (t PartitionsType) Equal(o attr.Type) bool {
+	other, ok := o.(PartitionsType)
+
+	if !ok {
+		return false
+	}
+
+	return t.ObjectType.Equal(other.ObjectType)
+}
+
+func (t PartitionsType) String() string {
+	return "PartitionsType"
+}
+
+func (t PartitionsType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	attributes := in.Attributes()
+
+	filesystemAttribute, ok := attributes["filesystem"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`filesystem is missing from object`)
+
+		return nil, diags
+	}
+
+	filesystemVal, ok := filesystemAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`filesystem expected to be basetypes.StringValue, was: %T`, filesystemAttribute))
+	}
+
+	sizeAttribute, ok := attributes["size"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`size is missing from object`)
+
+		return nil, diags
+	}
+
+	sizeVal, ok := sizeAttribute.(basetypes.Int64Value)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`size expected to be basetypes.Int64Value, was: %T`, sizeAttribute))
+	}
+
+	targetAttribute, ok := attributes["target"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`target is missing from object`)
+
+		return nil, diags
+	}
+
+	targetVal, ok := targetAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`target expected to be basetypes.StringValue, was: %T`, targetAttribute))
+	}
+
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	return PartitionsValue{
+		Filesystem: filesystemVal,
+		Size:       sizeVal,
+		Target:     targetVal,
+		state:      attr.ValueStateKnown,
+	}, diags
+}
+
+func NewPartitionsValueNull() PartitionsValue {
+	return PartitionsValue{
+		state: attr.ValueStateNull,
+	}
+}
+
+func NewPartitionsValueUnknown() PartitionsValue {
+	return PartitionsValue{
+		state: attr.ValueStateUnknown,
+	}
+}
+
+func NewPartitionsValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (PartitionsValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	// Reference: https://github.com/hashicorp/terraform-plugin-framework/issues/521
+	ctx := context.Background()
+
+	for name, attributeType := range attributeTypes {
+		attribute, ok := attributes[name]
+
+		if !ok {
+			diags.AddError(
+				"Missing PartitionsValue Attribute Value",
+				"While creating a PartitionsValue value, a missing attribute value was detected. "+
+					"A PartitionsValue must contain values for all attributes, even if null or unknown. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("PartitionsValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
+			)
+
+			continue
+		}
+
+		if !attributeType.Equal(attribute.Type(ctx)) {
+			diags.AddError(
+				"Invalid PartitionsValue Attribute Type",
+				"While creating a PartitionsValue value, an invalid attribute value was detected. "+
+					"A PartitionsValue must use a matching attribute type for the value. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("PartitionsValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
+					fmt.Sprintf("PartitionsValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
+			)
+		}
+	}
+
+	for name := range attributes {
+		_, ok := attributeTypes[name]
+
+		if !ok {
+			diags.AddError(
+				"Extra PartitionsValue Attribute Value",
+				"While creating a PartitionsValue value, an extra attribute value was detected. "+
+					"A PartitionsValue must not contain values beyond the expected attribute types. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("Extra PartitionsValue Attribute Name: %s", name),
+			)
+		}
+	}
+
+	if diags.HasError() {
+		return NewPartitionsValueUnknown(), diags
+	}
+
+	filesystemAttribute, ok := attributes["filesystem"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`filesystem is missing from object`)
+
+		return NewPartitionsValueUnknown(), diags
+	}
+
+	filesystemVal, ok := filesystemAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`filesystem expected to be basetypes.StringValue, was: %T`, filesystemAttribute))
+	}
+
+	sizeAttribute, ok := attributes["size"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`size is missing from object`)
+
+		return NewPartitionsValueUnknown(), diags
+	}
+
+	sizeVal, ok := sizeAttribute.(basetypes.Int64Value)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`size expected to be basetypes.Int64Value, was: %T`, sizeAttribute))
+	}
+
+	targetAttribute, ok := attributes["target"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`target is missing from object`)
+
+		return NewPartitionsValueUnknown(), diags
+	}
+
+	targetVal, ok := targetAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`target expected to be basetypes.StringValue, was: %T`, targetAttribute))
+	}
+
+	if diags.HasError() {
+		return NewPartitionsValueUnknown(), diags
+	}
+
+	return PartitionsValue{
+		Filesystem: filesystemVal,
+		Size:       sizeVal,
+		Target:     targetVal,
+		state:      attr.ValueStateKnown,
+	}, diags
+}
+
+func NewPartitionsValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) PartitionsValue {
+	object, diags := NewPartitionsValue(attributeTypes, attributes)
+
+	if diags.HasError() {
+		// This could potentially be added to the diag package.
+		diagsStrings := make([]string, 0, len(diags))
+
+		for _, diagnostic := range diags {
+			diagsStrings = append(diagsStrings, fmt.Sprintf(
+				"%s | %s | %s",
+				diagnostic.Severity(),
+				diagnostic.Summary(),
+				diagnostic.Detail()))
+		}
+
+		panic("NewPartitionsValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
+	}
+
+	return object
+}
+
+func (t PartitionsType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	if in.Type() == nil {
+		return NewPartitionsValueNull(), nil
+	}
+
+	if !in.Type().Equal(t.TerraformType(ctx)) {
+		return nil, fmt.Errorf("expected %s, got %s", t.TerraformType(ctx), in.Type())
+	}
+
+	if !in.IsKnown() {
+		return NewPartitionsValueUnknown(), nil
+	}
+
+	if in.IsNull() {
+		return NewPartitionsValueNull(), nil
+	}
+
+	attributes := map[string]attr.Value{}
+
+	val := map[string]tftypes.Value{}
+
+	err := in.As(&val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range val {
+		a, err := t.AttrTypes[k].ValueFromTerraform(ctx, v)
+
+		if err != nil {
+			return nil, err
+		}
+
+		attributes[k] = a
+	}
+
+	return NewPartitionsValueMust(PartitionsValue{}.AttributeTypes(ctx), attributes), nil
+}
+
+func (t PartitionsType) ValueType(ctx context.Context) attr.Value {
+	return PartitionsValue{}
+}
+
+var _ basetypes.ObjectValuable = PartitionsValue{}
+
+type PartitionsValue struct {
+	Filesystem basetypes.StringValue `tfsdk:"filesystem"`
+	Size       basetypes.Int64Value  `tfsdk:"size"`
+	Target     basetypes.StringValue `tfsdk:"target"`
+	state      attr.ValueState
+}
+
+func (v PartitionsValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
+	attrTypes := make(map[string]tftypes.Type, 3)
+
+	var val tftypes.Value
+	var err error
+
+	attrTypes["filesystem"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["size"] = basetypes.Int64Type{}.TerraformType(ctx)
+	attrTypes["target"] = basetypes.StringType{}.TerraformType(ctx)
+
+	objectType := tftypes.Object{AttributeTypes: attrTypes}
+
+	switch v.state {
+	case attr.ValueStateKnown:
+		vals := make(map[string]tftypes.Value, 3)
+
+		val, err = v.Filesystem.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["filesystem"] = val
+
+		val, err = v.Size.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["size"] = val
+
+		val, err = v.Target.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["target"] = val
+
+		if err := tftypes.ValidateValue(objectType, vals); err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		return tftypes.NewValue(objectType, vals), nil
+	case attr.ValueStateNull:
+		return tftypes.NewValue(objectType, nil), nil
+	case attr.ValueStateUnknown:
+		return tftypes.NewValue(objectType, tftypes.UnknownValue), nil
+	default:
+		panic(fmt.Sprintf("unhandled Object state in ToTerraformValue: %s", v.state))
+	}
+}
+
+func (v PartitionsValue) IsNull() bool {
+	return v.state == attr.ValueStateNull
+}
+
+func (v PartitionsValue) IsUnknown() bool {
+	return v.state == attr.ValueStateUnknown
+}
+
+func (v PartitionsValue) String() string {
+	return "PartitionsValue"
+}
+
+func (v PartitionsValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	attributeTypes := map[string]attr.Type{
+		"filesystem": basetypes.StringType{},
+		"size":       basetypes.Int64Type{},
+		"target":     basetypes.StringType{},
+	}
+
+	if v.IsNull() {
+		return types.ObjectNull(attributeTypes), diags
+	}
+
+	if v.IsUnknown() {
+		return types.ObjectUnknown(attributeTypes), diags
+	}
+
+	objVal, diags := types.ObjectValue(
+		attributeTypes,
+		map[string]attr.Value{
+			"filesystem": v.Filesystem,
+			"size":       v.Size,
+			"target":     v.Target,
+		})
+
+	return objVal, diags
+}
+
+func (v PartitionsValue) Equal(o attr.Value) bool {
+	other, ok := o.(PartitionsValue)
+
+	if !ok {
+		return false
+	}
+
+	if v.state != other.state {
+		return false
+	}
+
+	if v.state != attr.ValueStateKnown {
+		return true
+	}
+
+	if !v.Filesystem.Equal(other.Filesystem) {
+		return false
+	}
+
+	if !v.Size.Equal(other.Size) {
+		return false
+	}
+
+	if !v.Target.Equal(other.Target) {
+		return false
+	}
+
+	return true
+}
+
+func (v PartitionsValue) Type(ctx context.Context) attr.Type {
+	return PartitionsType{
+		basetypes.ObjectType{
+			AttrTypes: v.AttributeTypes(ctx),
+		},
+	}
+}
+
+func (v PartitionsValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
+	return map[string]attr.Type{
+		"filesystem": basetypes.StringType{},
+		"size":       basetypes.Int64Type{},
+		"target":     basetypes.StringType{},
 	}
 }

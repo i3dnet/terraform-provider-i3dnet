@@ -11,8 +11,22 @@ resources:
     delete:
       path: /v3/flexMetal/servers/{uuid}
       method: DELETE
+  tags:
+    read:
+      path: /v3/flexMetal/tags
+      method: GET
+    update:
+      path: /v3/flexMetal/tags/{tag}
+      method: PATCH
+    delete:
+      path: /v3/flexMetal/tags/{tag}
+      method: DELETE
 data_sources:
   servers:
     read:
       path: /v3/flexMetal/servers/{uuid}
+      method: GET
+  tags:
+    read:
+      path: /v3/flexMetal/tags
       method: GET
