@@ -106,7 +106,7 @@ Terraform has compared your real infrastructure against your configuration and f
     mv terraform-provider-flexmetal ~/.terraform.d/plugins/
     ```
 
-### Generate from open API
+### Generate from OpenAPI specification
 
 A part of this provider is generated using the tf plugin openAPI-generator (see
 this [doc](https://developer.hashicorp.com/terraform/plugin/code-generation/openapi-generator)) and the TF framework
@@ -114,7 +114,7 @@ Generator (see this [doc](https://developer.hashicorp.com/terraform/plugin/code-
 
 How to generate the resources & the config:
 
-1. download the OpenAPI Spec (https://www.i3d.net/docs/api/v3/getjson) and overwrite the
+1. Download the OpenAPI Spec (https://www.i3d.net/docs/api/v3/getjson) and overwrite the
    `./generator_data/openAPISpec.json`.
 2. Create/modify the `./generator_data/GeneratorConfig.yaml`
 3. Generate the `./generator_data/provider_code_spec.json` file:
@@ -126,7 +126,7 @@ How to generate the resources & the config:
     ./generator_data/openAPISpec.json
    ```
 
-4. Generate the skeleton of the provider using the previously generated files:
+4. Generate the skeleton of the provider using the Provider Code Specification from `provider_code_spec.json`:
     ```bash
     tfplugingen-framework generate all \
     --input ./generator_data/provider_code_spec.json \
@@ -134,6 +134,9 @@ How to generate the resources & the config:
     ```
 
 You can now customize `internal/provider/server_resource.go` to add the good logic.
+
+Documentation
+for [generate command](https://developer.hashicorp.com/terraform/plugin/code-generation/framework-generator#generate-command).
 
 ### Configuration (for dev)
 
