@@ -88,7 +88,7 @@ You should get the similar output to validate override is in effect:
 │ Warning: Provider development overrides are in effect
 │ 
 │ The following provider development overrides are set in the CLI configuration:
-│  - terraform.i3d.net/i3d-net/flexmetal in /home/andrei/go/bin
+│  - i3d-net/i3d in /home/andrei/go/bin
 │ 
 │ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become incompatible with published releases.
 ╵
