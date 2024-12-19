@@ -2,7 +2,7 @@
     "openapi": "3.0.1",
     "info": {
         "title": "i3D.net Endpoints",
-        "description": "Documentation links:\n- <a href='https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Usage/'>API Usage</a>\n- <a href='https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Authentication/'>API Authentication</a>\n- <a href='https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Error-Handling/'>API Error Handling</a>\n- <a href='https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Error-Codes/'>API Error Codes</a>\n- <a href='https://www.i3d.net/docs/one/odp/'>All ONE Deployment Platform Documentation</a>",
+        "description": "Documentation links:\n- <a href=\"https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Usage/\">API Usage</a>\n- <a href=\"https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Authentication/\">API Authentication</a>\n- <a href=\"https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Error-Handling/\">API Error Handling</a>\n- <a href=\"https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Error-Codes/\">API Error Codes</a>\n- <a href=\"https://www.i3d.net/docs/one/odp/\">All ONE Deployment Platform Documentation</a>",
         "contact": {
             "name": "email",
             "email": "info@i3d.net"
@@ -1207,7 +1207,7 @@
                 "tags": [
                     "CalcOrders"
                 ],
-                "summary": "Set an order in the cart to 'checkout' (which means it will show up on the checkout page). Updating the order is still allowed after finalization",
+                "summary": "Set an order in the cart to \"checkout\" (which means it will show up on the checkout page). Updating the order is still allowed after finalization",
                 "operationId": "finalizeCalcOrder",
                 "parameters": [
                     {
@@ -2146,7 +2146,7 @@
                     {
                         "name": "labels",
                         "in": "query",
-                        "description": "Label expressions can be used to apply more specific search parameters and can be written in standard SQL query language.<br />\nE.g. `region_id=123` or multiple filters: `region_id=123 and fleet_id=456 or host_id=46256` The provided filter query needs to be url encoded. E.g.<br />\n`region_id%3D123` or multiple filters: `region_id%3D123%20and%20fleet_id%3D456%20or%20host_id%3D46256` The total would look like:<br />\n`/dedicatedServer?labels=region_id%3D123%20and%20fleet_id%3D456%20or%20host_id%3D46256`<br />\nIf you want to filter on a non-numeric label such as `region_name`, you have to wrap the value in double quotes: `region_name='Rotterdam'`<br />\nWarning: the `labels` query parameter is ignored when passing a `PAGE-TOKEN` and the original `labels` string will be used for that request instead.<br />\nFor more information about labels check <a href='https://www.i3d.net/docs/one/odp/Platform-Elements/Application/Label/#pre-defined-labels'>details</a>",
+                        "description": "Label expressions can be used to apply more specific search parameters and can be written in standard SQL query language.<br />\nE.g. `region_id=123` or multiple filters: `region_id=123 and fleet_id=456 or host_id=46256` The provided filter query needs to be url encoded. E.g.<br />\n`region_id%3D123` or multiple filters: `region_id%3D123%20and%20fleet_id%3D456%20or%20host_id%3D46256` The total would look like:<br />\n`/dedicatedServer?labels=region_id%3D123%20and%20fleet_id%3D456%20or%20host_id%3D46256`<br />\nIf you want to filter on a non-numeric label such as `region_name`, you have to wrap the value in double quotes: `region_name=\"Rotterdam\"`<br />\nWarning: the `labels` query parameter is ignored when passing a `PAGE-TOKEN` and the original `labels` string will be used for that request instead.<br />\nFor more information about labels check <a href=\"https://www.i3d.net/docs/one/odp/Platform-Elements/Application/Label/#pre-defined-labels\">details</a>",
                         "schema": {
                             "type": "string"
                         }
@@ -4361,7 +4361,7 @@
                     {
                         "name": "filter",
                         "in": "query",
-                        "description": "The filter to search for the description<br />\nThe filter parameter can be used to apply a more specific search, the only element that can be filtered is 'description'.<br />\nThe filter will be done on a part of the provided description (it should contain the searched element).<br />\nE.g. we need to filter for a string 'this is an example'<br />\nRemember to urlencode the provided filter<br />\nThe final call would look like:<br />\n/billing/invoice?filter=this%20is%20an%20example",
+                        "description": "The filter to search for the description<br />\nThe filter parameter can be used to apply a more specific search, the only element that can be filtered is 'description'.<br />\nThe filter will be done on a part of the provided description (it should contain the searched element).<br />\nE.g. we need to filter for a string \"this is an example\"<br />\nRemember to urlencode the provided filter<br />\nThe final call would look like:<br />\n/billing/invoice?filter=this%20is%20an%20example",
                         "schema": {
                             "type": "string"
                         }
@@ -4416,7 +4416,7 @@
                     {
                         "name": "filter",
                         "in": "query",
-                        "description": "The filter to search for the description<br />\nThe filter parameter can be used to apply a more specific search, the only element that can be filtered is 'description'.<br />\nThe filter will be done on a part of the provided description (it should contain the searched element).<br />\nE.g. we need to filter for a string 'this is an example'<br />\nRemember to urlencode the provided filter<br />\nThe final call would look like:<br />\n/billing/invoice?filter=this%20is%20an%20example",
+                        "description": "The filter to search for the description<br />\nThe filter parameter can be used to apply a more specific search, the only element that can be filtered is 'description'.<br />\nThe filter will be done on a part of the provided description (it should contain the searched element).<br />\nE.g. we need to filter for a string \"this is an example\"<br />\nRemember to urlencode the provided filter<br />\nThe final call would look like:<br />\n/billing/invoice?filter=this%20is%20an%20example",
                         "schema": {
                             "type": "string"
                         }
@@ -4668,7 +4668,7 @@
                 "summary": "post invoice(s) data to register the transaction with the selected payment provider",
                 "operationId": "createAccountInvoicePayRegister",
                 "requestBody": {
-                    "description": "EXAMPLE of the value of invoiceIds property '111111,22222,33333,44444'",
+                    "description": "EXAMPLE of the value of invoiceIds property \"111111,22222,33333,44444\"",
                     "content": {
                         "application/json": {
                             "schema": {
@@ -8043,6 +8043,44 @@
             }
         },
         "/v3/sshKey/{uuid}": {
+            "get": {
+                "tags": [
+                    "SSHKey"
+                ],
+                "summary": "SSH key by ID",
+                "operationId": "getSshKey",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/SshKey"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Entity not found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "SSHKey"
@@ -11491,13 +11529,13 @@
                     "outgoingTrafficSum": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The outgoing traffic (Mbit or GB - defined by 'bandwidthBillingType')",
+                        "description": "The outgoing traffic (Mbit or GB - defined by \"bandwidthBillingType\")",
                         "readOnly": true
                     },
                     "incomingTrafficSum": {
                         "type": "integer",
                         "format": "integer",
-                        "description": "The incoming traffic (Mbit or GB - defined by 'bandwidthBillingType')",
+                        "description": "The incoming traffic (Mbit or GB - defined by \"bandwidthBillingType\")",
                         "readOnly": true
                     },
                     "bandwidthBillingType": {
@@ -12322,7 +12360,7 @@
                     "postInstallScript": {
                         "type": "string",
                         "format": "",
-                        "example": "#!/bin/bash\necho 'Hello world!' > /root/blah.txt",
+                        "example": "#!/bin/bash\necho \"Hello world!\" > /root/blah.txt",
                         "description": "Post install script. A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems."
                     },
                     "tags": {
@@ -12614,7 +12652,7 @@
                     "category": {
                         "type": "string",
                         "format": "",
-                        "description": "Host category. Normally 'Dedicated Game Servers' or 'Dedicated Servers', but can be 'Broken' if the server is in a degraded state",
+                        "description": "Host category. Normally \"Dedicated Game Servers\" or \"Dedicated Servers\", but can be \"Broken\" if the server is in a degraded state",
                         "readOnly": true
                     },
                     "osId": {
@@ -13298,7 +13336,7 @@
                     "category": {
                         "type": "string",
                         "format": "",
-                        "description": "Host category. Normally 'Dedicated Game Servers' or 'Dedicated Servers', but can be 'Broken' if the server is in a degraded state",
+                        "description": "Host category. Normally \"Dedicated Game Servers\" or \"Dedicated Servers\", but can be \"Broken\" if the server is in a degraded state",
                         "readOnly": true
                     },
                     "osId": {
@@ -15974,7 +16012,7 @@
                     "emailCc": {
                         "type": "string",
                         "format": "",
-                        "description": "Ticket's 'Carbon Copy' email addresses in CSV format"
+                        "description": "Ticket's \"Carbon Copy\" email addresses in CSV format"
                     },
                     "emailTo": {
                         "type": "string",
