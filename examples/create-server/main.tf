@@ -1,4 +1,4 @@
-resource "flexmetal_server" "example" {
+resource "i3d_flexmetal_server" "example" {
   name              = "TerraFlex-Server"
   location          = "EU: Rotterdam"
   instance_type     = "bm7.std.8"

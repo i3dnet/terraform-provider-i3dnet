@@ -1,4 +1,4 @@
-module terraform-provider-flexmetal
+module terraform-provider-i3d
 
 go 1.23
 

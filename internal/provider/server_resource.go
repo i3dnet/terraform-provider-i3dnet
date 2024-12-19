@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"terraform-provider-flexmetal/internal/provider/api_utils"
-	"terraform-provider-flexmetal/internal/provider/resource_servers"
+	"terraform-provider-i3d/internal/provider/api_utils"
+	"terraform-provider-i3d/internal/provider/resource_servers"
 )
 
 var timeOut = 30 * time.Minute
@@ -28,7 +28,7 @@ func NewServerResource() resource.Resource {
 type serverResource struct{}
 
 func (r *serverResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_server"
+	resp.TypeName = req.ProviderTypeName + "_flexmetal_server"
 }
 
 func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"terraform-provider-flexmetal/internal/provider/api_utils"
-	"terraform-provider-flexmetal/internal/provider/datasource_servers"
-	"terraform-provider-flexmetal/internal/provider/resource_servers"
+	"terraform-provider-i3d/internal/provider/api_utils"
+	"terraform-provider-i3d/internal/provider/datasource_servers"
+	"terraform-provider-i3d/internal/provider/resource_servers"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"

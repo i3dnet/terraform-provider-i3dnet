@@ -27,7 +27,7 @@ To get started with the `flexMetal Terraform Provider`, follow the steps below.
 2. Build the provider:
 
     ```sh
-    go build -o terraform-provider-flexmetal
+    go build -o terraform-provider-i3d
     ```
 
 3. FOR DEV: Locally install provider and validate that it works:
@@ -65,7 +65,7 @@ use the default path, `/Users/<Username>/go/bin`.
 provider_installation {
 
   dev_overrides {
-    "terraform.i3d.net/i3d-net/flexmetal" = "/Users/<Username>/go/bin"
+    "registry.terraform.io/i3D-net/i3d" = "/Users/<Username>/go/bin"
   }
 
   # For all other providers, install them directly from their origin provider
@@ -103,7 +103,7 @@ Terraform has compared your real infrastructure against your configuration and f
 
     ```sh
     mkdir -p ~/.terraform.d/plugins
-    mv terraform-provider-flexmetal ~/.terraform.d/plugins/
+    mv terraform-provider-i3d ~/.terraform.d/plugins/
     ```
 
 ### Generate from OpenAPI specification
@@ -145,7 +145,7 @@ Create a Terraform project directory, e.g. `~/fm_tf`
 Create a `main.tf` file in your Terraform directory and add the following:
 
 ```hcl
-resource "flexmetal_server" "example" {
+resource "i3d_flexmetal_server" "example" {
   name          = "example-server"
   location      = "EU: Rotterdam"
   instance_type = "bm7.std.8"
@@ -170,14 +170,13 @@ Create a `provider.tf` file in your Terraform directory and add the following:
 ```hcl
 terraform {
   required_providers {
-    flexmetal = {
-      source  = "terraform.i3d.net/i3d-net/flexmetal"
-      version = ">= 0.1"
+    i3d = {
+      source = "registry.terraform.io/i3D-net/i3d"
     }
   }
 }
 
-provider "flexmetal" {}
+provider "i3d" {}
 ```
 
 Create an `outputs.tf` file in your Terraform directory and add the following:
@@ -185,13 +184,7 @@ Create an `outputs.tf` file in your Terraform directory and add the following:
 ```hcl
 output "inventory" {
   sensitive = false
-  value     = [
-    for s in flexmetal_server.example : {
-      "name" : s.name,
-      "uuid" : s.uuid,
-      "ip" : s.ip_addresses[0].ip_address,
-    }
-  ]
+  value = i3d_flexmetal_server.example.name
 }
 ```
 

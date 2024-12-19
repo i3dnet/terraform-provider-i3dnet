@@ -27,7 +27,7 @@ func (p *flexmetalProvider) Configure(ctx context.Context, req provider.Configur
 }
 
 func (p *flexmetalProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "flexmetal"
+	resp.TypeName = "i3d"
 }
 
 func (p *flexmetalProvider) DataSources(ctx context.Context) []func() datasource.DataSource {

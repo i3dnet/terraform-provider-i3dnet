@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"terraform-provider-flexmetal/internal/provider/resource_servers"
+	"terraform-provider-i3d/internal/provider/resource_servers"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -19,7 +19,7 @@ func CallFlexMetalAPI(server *resource_servers.ServersModel, method string, path
 	var diags diag.Diagnostics
 
 	// Create an HTTP client
-	//client := &http.Client{Timeout: 10 * time.Second}
+	// client := &http.Client{Timeout: 10 * time.Second}
 
 	// Build the full URL using the server's endpoint and the provided path
 	url := fmt.Sprintf("%s/%s", "", path)

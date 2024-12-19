@@ -4,14 +4,14 @@ import (
 	"context"
 	"log"
 
-	"terraform-provider-flexmetal/internal/provider"
+	"terraform-provider-i3d/internal/provider"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
 func main() {
 	opts := providerserver.ServeOpts{
-		Address: "terraform.i3d.net/i3d-net/flexmetal",
+		Address: "registry.terraform.io/i3D-net/i3d",
 	}
 
 	err := providerserver.Serve(context.Background(), provider.New(), opts)

@@ -1,10 +1,9 @@
 terraform {
   required_providers {
-    flexmetal = {
-      source  = "terraform.i3d.net/i3d-net/flexmetal"
-      version = ">= 0.1"
+    i3d = {
+      source = "registry.terraform.io/i3D-net/i3d"
     }
   }
 }
 
-provider "flexmetal" {}
+provider "i3d" {}

@@ -1,4 +1,4 @@
 output "inventory" {
   sensitive = false
-  value = flexmetal_server.example.name
+  value = i3d_flexmetal_server.example.name
 }

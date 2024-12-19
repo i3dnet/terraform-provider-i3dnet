@@ -165,11 +165,11 @@
 		}
 	],
 	"provider": {
-		"name": "flexmetal"
+		"name": "i3d"
 	},
 	"resources": [
 		{
-			"name": "servers",
+			"name": "flexmetal_server",
 			"schema": {
 				"attributes": [
 					{
@@ -357,7 +357,7 @@
 			}
 		},
 		{
-			"name": "sshkey",
+			"name": "ssh_key",
 			"schema": {
 				"attributes": [
 					{

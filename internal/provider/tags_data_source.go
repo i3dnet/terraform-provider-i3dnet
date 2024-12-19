@@ -7,8 +7,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"terraform-provider-flexmetal/internal/provider/api_utils"
-	"terraform-provider-flexmetal/internal/provider/datasource_tags"
+	"terraform-provider-i3d/internal/provider/api_utils"
+	"terraform-provider-i3d/internal/provider/datasource_tags"
 )
 
 var _ datasource.DataSource = (*tagsDataSource)(nil)
