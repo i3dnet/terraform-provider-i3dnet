@@ -165,7 +165,7 @@
 		}
 	],
 	"provider": {
-		"name": "i3dflexmetal"
+		"name": "flexmetal"
 	},
 	"resources": [
 		{
