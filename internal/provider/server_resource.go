@@ -7,13 +7,14 @@ import (
 	"strings"
 	"time"
 
+	"terraform-provider-i3d/internal/one_api"
+
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
-	"terraform-provider-i3d/internal/provider/api_utils"
 	"terraform-provider-i3d/internal/provider/resource_servers"
 )
 
@@ -78,7 +79,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 	postBody, _ := json.Marshal(postData)
 
-	respBody, diags := api_utils.CallFlexMetalAPI("POST", "servers", postBody)
+	respBody, diags := one_api.CallFlexMetalAPI("POST", "servers", postBody)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -94,7 +95,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	// Waiting for the server to be ready
 	for data.Status.ValueString() != "delivered" && data.Status.ValueString() != "failed" {
-		respBody, diags = api_utils.CallFlexMetalAPI("GET", fmt.Sprintf("servers/%s", data.Uuid.ValueString()), nil)
+		respBody, diags = one_api.CallFlexMetalAPI("GET", fmt.Sprintf("servers/%s", data.Uuid.ValueString()), nil)
 		if diags.HasError() {
 			resp.Diagnostics.Append(diags...)
 			return
@@ -129,7 +130,7 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	respBody, diags := api_utils.CallFlexMetalAPI("GET", fmt.Sprintf("servers/%s", data.Uuid.ValueString()), nil)
+	respBody, diags := one_api.CallFlexMetalAPI("GET", fmt.Sprintf("servers/%s", data.Uuid.ValueString()), nil)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -168,7 +169,7 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	respBody, diags := api_utils.CallFlexMetalAPI("DELETE", fmt.Sprintf("servers/%s", data.Uuid.ValueString()), nil)
+	respBody, diags := one_api.CallFlexMetalAPI("DELETE", fmt.Sprintf("servers/%s", data.Uuid.ValueString()), nil)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"terraform-provider-i3d/internal/provider/api_utils"
+	"terraform-provider-i3d/internal/one_api"
 	"terraform-provider-i3d/internal/provider/resource_ssh_key"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -21,7 +21,7 @@ func NewSshKeyResource() resource.Resource {
 }
 
 type sshKeyResource struct {
-	client *api_utils.Client
+	client *one_api.Client
 }
 
 func (r *sshKeyResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -31,7 +31,7 @@ func (r *sshKeyResource) Configure(ctx context.Context, req resource.ConfigureRe
 		return
 	}
 
-	client, ok := req.ProviderData.(*api_utils.Client)
+	client, ok := req.ProviderData.(*one_api.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -62,7 +62,7 @@ func (r *sshKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	// Generate API request body from plan
-	reqBody := api_utils.CreateSSHKey{
+	reqBody := one_api.CreateSSHKeyReq{
 		Name:      plan.Name.ValueString(),
 		PublicKey: plan.PublicKey.ValueString(),
 	}

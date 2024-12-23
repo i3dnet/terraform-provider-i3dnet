@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"terraform-provider-i3d/internal/provider/api_utils"
+	"terraform-provider-i3d/internal/one_api"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -94,7 +94,12 @@ func (p *flexmetalProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	client := api_utils.NewClient(apiKey, config.BaseURL.ValueString())
+	client, err := one_api.NewClient(apiKey, config.BaseURL.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Could not initialize i3d API client",
+			fmt.Sprintf("error: %s", err))
+	}
 
 	// Make the API client available during DataSource and Resource type Configure methods.
 	resp.DataSourceData = client

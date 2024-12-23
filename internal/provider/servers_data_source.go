@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"terraform-provider-i3d/internal/provider/api_utils"
+
+	"terraform-provider-i3d/internal/one_api"
 	"terraform-provider-i3d/internal/provider/datasource_servers"
 	"terraform-provider-i3d/internal/provider/resource_servers"
 
@@ -41,7 +42,7 @@ func (d *serversDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	}
 
 	// Read API call logic
-	respBody, diags := api_utils.CallFlexMetalAPI("GET", "servers", nil)
+	respBody, diags := one_api.CallFlexMetalAPI("GET", "servers", nil)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return

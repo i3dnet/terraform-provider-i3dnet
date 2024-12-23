@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"terraform-provider-i3d/internal/one_api"
+	"terraform-provider-i3d/internal/provider/datasource_tags"
+
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"terraform-provider-i3d/internal/provider/api_utils"
-	"terraform-provider-i3d/internal/provider/datasource_tags"
 )
 
 var _ datasource.DataSource = (*tagsDataSource)(nil)
@@ -38,7 +40,7 @@ func (d *tagsDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	}
 
 	// Read API call logic
-	respBody, diags := api_utils.CallFlexMetalAPI("GET", "tags", nil)
+	respBody, diags := one_api.CallFlexMetalAPI("GET", "tags", nil)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return

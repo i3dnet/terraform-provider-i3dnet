@@ -1,11 +1,11 @@
-package api_utils
+package one_api
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -16,108 +16,44 @@ var FlexmetalUrl = "https://api.i3d.net" + "/v3/flexMetal"
 
 type Client struct {
 	apiKey  string
-	baseURL string
+	baseURL *url.URL
 }
 
-func NewClient(apiKey string, baseURL string) *Client {
-	var apiBaseURL = "https://api.i3d.net"
-	if baseURL != "" {
-		apiBaseURL = baseURL
+const (
+	defaultBaseURL = "https://api.i3d.net"
+	apiVersion     = "v3"
+)
+
+func NewClient(apiKey string, rawBaseURL string) (*Client, error) {
+	if rawBaseURL == "" {
+		rawBaseURL = defaultBaseURL
 	}
+
+	baseURL, err := url.Parse(rawBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse base url %s: %w", rawBaseURL, err)
+	}
+
+	baseURL = baseURL.JoinPath(apiVersion)
+
 	return &Client{
 		apiKey:  apiKey,
-		baseURL: apiBaseURL + "/v3",
-	}
-}
-
-type CreateSSHKey struct {
-	Name      string `json:"name"`
-	PublicKey string `json:"publicKey"`
-}
-
-type SshKeyResp struct {
-	Uuid      string `json:"uuid"`
-	Name      string `json:"name"`
-	PublicKey string `json:"publicKey"`
-	CreatedAt int64  `json:"createdAt"`
-}
-
-func (c *Client) CreateSSHKey(req CreateSSHKey) (*SshKeyResp, error) {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.callAPI(http.MethodPost, "sshKey", "", body)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Close()
-
-	var sshKeyResp []SshKeyResp
-	dec := json.NewDecoder(resp)
-	if err := dec.Decode(&sshKeyResp); err != nil {
-		return nil, err
-	}
-
-	if len(sshKeyResp) == 0 {
-		return nil, fmt.Errorf("unexpected empty response")
-	}
-
-	return &sshKeyResp[0], nil
-}
-
-func (c *Client) GetSSHKey(id string) (*SshKeyResp, error) {
-	resp, err := c.callAPI(http.MethodGet, "sshKey", id, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Close()
-
-	var sshKeyResp []SshKeyResp
-	dec := json.NewDecoder(resp)
-	if err := dec.Decode(&sshKeyResp); err != nil {
-		return nil, fmt.Errorf("error decoding respones: %w", err)
-	}
-
-	if len(sshKeyResp) == 0 {
-		return nil, fmt.Errorf("unexpected empty response")
-	}
-
-	return &sshKeyResp[0], nil
-}
-
-func (c *Client) DeleteSSHKey(id string) error {
-	resp, err := c.callAPI(http.MethodDelete, "sshKey", id, nil)
-	if err != nil {
-		return fmt.Errorf("error calling API: %w", err)
-	}
-	defer resp.Close()
-
-	return nil
+		baseURL: baseURL,
+	}, nil
 }
 
 func (c *Client) callAPI(method, endpoint, path string, body []byte) (io.ReadCloser, error) {
-	// Create an HTTP client
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	// Build the full URL using the server's endpoint and the provided path
-	url := fmt.Sprintf("%s/%s", c.baseURL, endpoint)
+	apiURL := c.baseURL
+	if endpoint != "" {
+		apiURL = apiURL.JoinPath(endpoint)
+	}
 	if path != "" {
-		url += "/" + path
+		apiURL = apiURL.JoinPath(path)
 	}
 
-	var req *http.Request
-	var err error
-	if len(body) > 0 {
-		fmt.Println(method, url, string(body))
-
-		fmt.Printf("Request payload: %s\n", string(body)) // Add debug log to check payload
-
-		req, err = http.NewRequest(method, url, bytes.NewBuffer(body))
-	} else {
-		req, err = http.NewRequest(method, url, nil)
-	}
+	req, err := http.NewRequest(method, apiURL.String(), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
