@@ -15,17 +15,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ provider.Provider = (*flexmetalProvider)(nil)
+var _ provider.Provider = (*i3dProvider)(nil)
 
 func New() func() provider.Provider {
 	return func() provider.Provider {
-		return &flexmetalProvider{}
+		return &i3dProvider{}
 	}
 }
 
-type flexmetalProvider struct{}
+type i3dProvider struct{}
 
-func (p *flexmetalProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *i3dProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"api_key": schema.StringAttribute{
@@ -48,7 +48,7 @@ const (
 	envForApiKey = "FLEXMETAL_API_KEY"
 )
 
-func (p *flexmetalProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (p *i3dProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	// Retrieve provider data from configuration
 	var config i3dProviderModel
 	diags := req.Config.Get(ctx, &config)
@@ -106,17 +106,17 @@ func (p *flexmetalProvider) Configure(ctx context.Context, req provider.Configur
 	resp.ResourceData = client
 }
 
-func (p *flexmetalProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+func (p *i3dProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "i3d"
 }
 
-func (p *flexmetalProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *i3dProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewServersDataSource,
 	}
 }
 
-func (p *flexmetalProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *i3dProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewServerResource,
 		NewSshKeyResource,
