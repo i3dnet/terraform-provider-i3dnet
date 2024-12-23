@@ -6,8 +6,7 @@ terraform {
   }
 }
 
-# base_url is optional. If  you omit it, it will used prod OPen API
 provider "i3d" {
-  api_key  = "your-api-key"
+  api_key  = "98brv7g34b9843rjfdde"
   base_url = "http://localhost:8081"
 }

@@ -363,7 +363,7 @@
 					{
 						"name": "created_at",
 						"int64": {
-							"computed_optional_required": "required",
+							"computed_optional_required": "computed",
 							"description": "SSH key createdAt"
 						}
 					},
@@ -384,7 +384,7 @@
 					{
 						"name": "uuid",
 						"string": {
-							"computed_optional_required": "required",
+							"computed_optional_required": "computed",
 							"description": "SSH key UUID as specified in RFC 4122"
 						}
 					}

@@ -1,3 +1,8 @@
 dist/*
 terraform-provider-flexmetal
 /.idea
+
+
+# Ignore terraform state files frome examples
+examples/**/*.tfstate
+examples/**/*.tfstate.backup
