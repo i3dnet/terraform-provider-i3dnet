@@ -15,13 +15,13 @@ func TestAccSSHKeyResource(t *testing.T) {
 				Config: providerConfig + `
 resource "i3d_ssh_key" "test" {
   name       = "Key From Terraform"
-  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri andrei.boar@i3d.net"
+  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// Verify static values are set
 					resource.TestCheckResourceAttr("i3d_ssh_key.test", "name", "Key From Terraform"),
-					resource.TestCheckResourceAttr("i3d_ssh_key.test", "public_key", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri andrei.boar@i3d.net"),
+					resource.TestCheckResourceAttr("i3d_ssh_key.test", "public_key", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"),
 					// Verify dynamic values have any value set in the state.
 					resource.TestCheckResourceAttrSet("i3d_ssh_key.test", "uuid"),
 					resource.TestCheckResourceAttrSet("i3d_ssh_key.test", "created_at"),
