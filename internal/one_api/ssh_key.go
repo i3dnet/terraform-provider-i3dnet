@@ -63,6 +63,26 @@ func (c *Client) GetSSHKey(id string) (*SSHKey, error) {
 	return &sshKeyResp[0], nil
 }
 
+func (c *Client) ListSSHKeys() ([]SSHKey, error) {
+	resp, err := c.callAPI(http.MethodGet, "sshKey", "", nil)
+	if err != nil {
+		return nil, fmt.Errorf("error on calling list ssh key api: %w", err)
+	}
+	defer resp.Close()
+
+	var sshKeyResp []SSHKey
+	dec := json.NewDecoder(resp)
+	if err := dec.Decode(&sshKeyResp); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if len(sshKeyResp) == 0 {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	return sshKeyResp, nil
+}
+
 func (c *Client) DeleteSSHKey(id string) error {
 	resp, err := c.callAPI(http.MethodDelete, "sshKey", id, nil)
 	if err != nil {
