@@ -6,3 +6,4 @@ terraform-provider-flexmetal
 # Ignore terraform state files frome examples
 examples/**/*.tfstate
 examples/**/*.tfstate.backup
+examples/**/*.tfstate.*.backup

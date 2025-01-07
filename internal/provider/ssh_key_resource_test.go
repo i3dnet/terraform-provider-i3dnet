@@ -27,6 +27,11 @@ resource "i3d_ssh_key" "test" {
 					resource.TestCheckResourceAttrSet("i3d_ssh_key.test", "created_at"),
 				),
 			},
+			{
+				ResourceName:      "i3d_ssh_key.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 			// Delete testing automatically occurs in TestCase
 		},
 	})

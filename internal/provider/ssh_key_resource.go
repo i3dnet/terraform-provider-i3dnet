@@ -7,13 +7,17 @@ import (
 	"terraform-provider-i3d/internal/one_api"
 	"terraform-provider-i3d/internal/provider/resource_ssh_key"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 var (
-	_ resource.Resource              = (*sshKeyResource)(nil)
-	_ resource.ResourceWithConfigure = (*sshKeyResource)(nil)
+	_ resource.Resource                = (*sshKeyResource)(nil)
+	_ resource.ResourceWithConfigure   = (*sshKeyResource)(nil)
+	_ resource.ResourceWithImportState = (*sshKeyResource)(nil)
 )
 
 func NewSshKeyResource() resource.Resource {
@@ -50,11 +54,24 @@ func (r *sshKeyResource) Metadata(ctx context.Context, req resource.MetadataRequ
 
 func (r *sshKeyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = resource_ssh_key.SshKeyResourceSchema(ctx)
+
+	// add id to allow for terraform import
+	resp.Schema.Attributes["id"] = schema.StringAttribute{
+		Computed: true,
+	}
+}
+
+// SshKeyModel overrides resource_ssh_key.SshKeyModel due to the fact that .gen files should not be edited
+// and currently the Provider Spec Generator doesn't allow for adding new fields via GeneratorConfig.yaml.
+// Use this struct whenever resource_ssh_key.SshKeyModel is required.
+type SshKeyModel struct {
+	resource_ssh_key.SshKeyModel
+	ID types.String `tfsdk:"id"`
 }
 
 func (r *sshKeyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from plan
-	var plan resource_ssh_key.SshKeyModel
+	var plan SshKeyModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -82,6 +99,7 @@ func (r *sshKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	plan.Name = types.StringValue(sshResp.Name)
 	plan.CreatedAt = types.Int64Value(sshResp.CreatedAt)
 	plan.Uuid = types.StringValue(sshResp.Uuid)
+	plan.ID = types.StringValue(sshResp.Uuid)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -92,7 +110,7 @@ func (r *sshKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 }
 
 func (r *sshKeyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_ssh_key.SshKeyModel
+	var data SshKeyModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -115,13 +133,18 @@ func (r *sshKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	data.Name = types.StringValue(sshResp.Name)
 	data.CreatedAt = types.Int64Value(sshResp.CreatedAt)
 	data.Uuid = types.StringValue(sshResp.Uuid)
+	data.ID = types.StringValue(sshResp.Uuid)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+func (r *sshKeyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("uuid"), req, resp)
+}
+
 func (r *sshKeyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data resource_ssh_key.SshKeyModel
+	var data SshKeyModel
 
 	// Not implemented: We don't have an UPDATE endpoint for ssh keys
 
@@ -139,7 +162,7 @@ func (r *sshKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 }
 
 func (r *sshKeyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_ssh_key.SshKeyModel
+	var data SshKeyModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
