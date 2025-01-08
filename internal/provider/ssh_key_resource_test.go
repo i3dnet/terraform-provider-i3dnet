@@ -12,7 +12,7 @@ func TestAccSSHKeyResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: providerConfig + `
+				Config: providerConfig(t) + `
 resource "i3d_ssh_key" "test" {
   name       = "Key From Terraform"
   public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"

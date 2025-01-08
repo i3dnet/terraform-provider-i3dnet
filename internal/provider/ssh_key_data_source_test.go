@@ -15,7 +15,7 @@ func TestAccSSHKeyDataSource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Read testing
 			{
-				Config: providerConfig + `
+				Config: providerConfig(t) + `
 data "i3d_ssh_key" "example" {
   name = "Demo"
 }

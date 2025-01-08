@@ -184,7 +184,7 @@ Create an `outputs.tf` file in your Terraform directory and add the following:
 ```hcl
 output "inventory" {
   sensitive = false
-  value = i3d_flexmetal_server.example.name
+  value     = i3d_flexmetal_server.example.name
 }
 ```
 
@@ -218,3 +218,33 @@ To release the server:
 ```bash
 terraform destroy
 ```
+
+## Running acceptance tests
+
+Rebuild the provider before running acceptance tests.
+
+Acceptance tests run against a real working environment. To run them you must have these environment variables set:
+`I3D_API_KEY`, `I3D_BASE_URL` and `TF_ACC`.
+
+You can omit `I3D_BASE_URL` in which case the default `https://api.i3d.net` production URL is used.
+
+Then, you can run them using this command:
+
+```shell
+I3D_API_KEY=yourapiKey I3D_BASE_URL=targetBaseURL TF_ACC=1 go test -count=1 -v ./...
+```
+
+You can also run tests using [Task](https://taskfile.dev/). Make sure you have all your variables set in `.env` file.
+
+It is preferable to run one acceptance test at a time. In order to run a specific acceptance test, use the `TESTARGS`
+environment variable. For example, the following command will run `TestAccSSHKeyResource` acceptance test only:
+
+```shell
+TESTARGS='-run=TestAccSSHKeyResource' task testacc
+```
+
+Run all tests:
+
+``shell
+task testacc
+``

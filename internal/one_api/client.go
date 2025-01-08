@@ -20,13 +20,13 @@ type Client struct {
 }
 
 const (
-	defaultBaseURL = "https://api.i3d.net"
+	DefaultBaseURL = "https://api.i3d.net"
 	apiVersion     = "v3"
 )
 
 func NewClient(apiKey string, rawBaseURL string) (*Client, error) {
 	if rawBaseURL == "" {
-		rawBaseURL = defaultBaseURL
+		rawBaseURL = DefaultBaseURL
 	}
 
 	baseURL, err := url.Parse(rawBaseURL)
