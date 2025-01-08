@@ -243,7 +243,7 @@ environment variable. For example, the following command will run `TestAccSSHKey
 TESTARGS='-run=TestAccSSHKeyResource' task testacc
 ```
 
-Run all tests:
+Run all acceptance tests:
 
 ``shell
 task testacc
