@@ -13,7 +13,7 @@ func SshKeyResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"created_at": schema.Int64Attribute{
-				Computed:            true,
+				Required:            true,
 				Description:         "SSH key createdAt",
 				MarkdownDescription: "SSH key createdAt",
 			},
@@ -28,7 +28,7 @@ func SshKeyResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "Public SSH key contents",
 			},
 			"uuid": schema.StringAttribute{
-				Computed:            true,
+				Required:            true,
 				Description:         "SSH key UUID as specified in RFC 4122",
 				MarkdownDescription: "SSH key UUID as specified in RFC 4122",
 			},

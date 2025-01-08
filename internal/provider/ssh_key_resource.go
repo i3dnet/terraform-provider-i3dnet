@@ -53,12 +53,28 @@ func (r *sshKeyResource) Metadata(ctx context.Context, req resource.MetadataRequ
 }
 
 func (r *sshKeyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = resource_ssh_key.SshKeyResourceSchema(ctx)
+	generatedSchema := resource_ssh_key.SshKeyResourceSchema(ctx)
+
+	// currently all fields of SHHKey are marked as required in our public open API SPEC
+	// https://www.i3d.net/docs/api/v3/all#/SSHKey:~:text=SlackSetting-,SshKey,-%7B
+	// until we fix OpenAPI Spec we need to mark `created_at` and `uuid` as computed, not required
+	generatedSchema.Attributes["created_at"] = schema.Int64Attribute{
+		Computed:            true,
+		Description:         generatedSchema.Attributes["created_at"].GetDescription(),
+		MarkdownDescription: generatedSchema.Attributes["created_at"].GetMarkdownDescription(),
+	}
+	generatedSchema.Attributes["uuid"] = schema.StringAttribute{
+		Computed:            true,
+		Description:         generatedSchema.Attributes["uuid"].GetDescription(),
+		MarkdownDescription: generatedSchema.Attributes["uuid"].GetMarkdownDescription(),
+	}
 
 	// add id to allow for terraform import
-	resp.Schema.Attributes["id"] = schema.StringAttribute{
+	generatedSchema.Attributes["id"] = schema.StringAttribute{
 		Computed: true,
 	}
+
+	resp.Schema = generatedSchema
 }
 
 // SshKeyModel overrides resource_ssh_key.SshKeyModel due to the fact that .gen files should not be edited
