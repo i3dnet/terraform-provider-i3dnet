@@ -233,7 +233,8 @@ Then, you can run them using this command:
 I3D_API_KEY=yourapiKey I3D_BASE_URL=targetBaseURL TF_ACC=1 go test -count=1 -v ./...
 ```
 
-You can also run tests using [Task](https://taskfile.dev/). Make sure you have all your variables set in `.env` file.
+You can also run tests using [Task](https://taskfile.dev/). Make sure you have all your variables set in the `.env`
+file.
 
 It is preferable to run one acceptance test at a time. In order to run a specific acceptance test, use the `TESTARGS`
 environment variable. For example, the following command will run `TestAccSSHKeyResource` acceptance test only:
