@@ -6,7 +6,7 @@ terraform {
   }
 }
 
+// Make sure you set `export FLEXMETAL_API_KEY=yourAPIKey` or add the `api_key` attribute
 provider "i3d" {
-  api_key  = "98brv7g34b9843rjfdde"
   base_url = "http://localhost:8081"
 }
