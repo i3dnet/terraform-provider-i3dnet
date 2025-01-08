@@ -1,10 +1,10 @@
-# flexMetal Terraform Provider
+# i3D Terraform Provider
 
-The `flexMetal Terraform Provider` allows you to manage FlexMetal resources using Terraform.
+The `i3D Terraform Provider` allows you to manage i3D resources using Terraform.
 
 ## Getting Started
 
-To get started with the `flexMetal Terraform Provider`, follow the steps below.
+To get started with the `i3D Terraform Provider`, follow the steps below.
 
 ### Prerequisites
 
@@ -21,7 +21,7 @@ To get started with the `flexMetal Terraform Provider`, follow the steps below.
 
     ```sh
     git clone git@github.com:i3D-net/terraform-provider-i3d.git
-    cd flexmetal-terraform-provider
+    cd terraform-provider-i3d
     ```
 
 2. Build the provider:
@@ -88,7 +88,7 @@ You should get the similar output to validate override is in effect:
 │ Warning: Provider development overrides are in effect
 │ 
 │ The following provider development overrides are set in the CLI configuration:
-│  - i3d-net/i3d in /home/andrei/go/bin
+│  - i3d-net/i3d in /Users/<Username>/go/bin
 │ 
 │ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become incompatible with published releases.
 ╵
@@ -99,12 +99,11 @@ Terraform has compared your real infrastructure against your configuration and f
 
 ```
 
-4. FOR REAL (probably): Move the provider binary to your Terraform plugins directory:
+Now you are able to modify and interact with your local build of the provider. Just make sure to run `go install .`
+anytime
+you apply some changes to your provider code.
 
-    ```sh
-    mkdir -p ~/.terraform.d/plugins
-    mv terraform-provider-i3d ~/.terraform.d/plugins/
-    ```
+For more examples on usages see [examples](./examples) directory.
 
 ### Generate from OpenAPI specification
 
