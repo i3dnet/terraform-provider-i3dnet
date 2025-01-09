@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -74,7 +73,7 @@ func (c *Client) callAPI(method, endpoint, path string, body []byte) (io.ReadClo
 }
 
 // CallFlexMetalAPI is a placeholder for the API call logic to the FlexMetal API.
-func CallFlexMetalAPI(method string, path string, body []byte) ([]byte, diag.Diagnostics) {
+func (c *Client) CallFlexMetalAPI(method string, path string, body []byte) ([]byte, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	var responseBody []byte
 	// Create an HTTP client
@@ -98,7 +97,7 @@ func CallFlexMetalAPI(method string, path string, body []byte) ([]byte, diag.Dia
 
 	// Set the required headers (API Key and Content-Type)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("PRIVATE-TOKEN", os.Getenv("FLEXMETAL_API_KEY"))
+	req.Header.Set("PRIVATE-TOKEN", c.apiKey)
 
 	// Execute the request
 	resp, err := client.Do(req)

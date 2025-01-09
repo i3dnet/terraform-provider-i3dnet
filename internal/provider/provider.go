@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var _ provider.Provider = (*i3dProvider)(nil)
@@ -76,6 +77,7 @@ func (p *i3dProvider) Configure(ctx context.Context, req provider.ConfigureReque
 	// with Terraform configuration value if set.
 	apiKey := os.Getenv(envForApiKey)
 	if !config.APIKey.IsNull() {
+		tflog.Info(ctx, "using api key from provider configuration")
 		apiKey = config.APIKey.ValueString()
 	}
 
