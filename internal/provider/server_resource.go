@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -68,77 +67,29 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		Description:         generatedSchema.Attributes["post_install_script"].GetDescription(),
 		MarkdownDescription: generatedSchema.Attributes["post_install_script"].GetMarkdownDescription(),
 	}
+
+	generatedOSAttribute := generatedSchema.Attributes["os"].(schema.SingleNestedAttribute)
+
+	osAttributes := generatedOSAttribute.GetAttributes()
+
+	kernelParams := osAttributes["kernel_params"].(schema.ListNestedAttribute)
+	kernelParams.Optional = true
+	kernelParams.Computed = false
+
+	partitions := osAttributes["partitions"].(schema.ListNestedAttribute)
+	partitions.Optional = true
+	partitions.Computed = false
+
 	generatedSchema.Attributes["os"] = schema.SingleNestedAttribute{
 		Attributes: map[string]schema.Attribute{
-			"kernel_params": schema.ListNestedAttribute{
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"key": schema.StringAttribute{
-							Required:            true,
-							Description:         "Key of the kernel param",
-							MarkdownDescription: "Key of the kernel param",
-						},
-						"value": schema.StringAttribute{
-							Required:            true,
-							Description:         "Value of the kernel param",
-							MarkdownDescription: "Value of the kernel param",
-						},
-					},
-					CustomType: resource_flexmetal_server.KernelParamsType{
-						ObjectType: types.ObjectType{
-							AttrTypes: resource_flexmetal_server.KernelParamsValue{}.AttributeTypes(ctx),
-						},
-					},
-				},
-				Optional:            true,
-				Computed:            false,
-				Description:         "Kernel params for the PXE stage of the OS installation. Most operating systems do not require these, but e.g. Talos does.",
-				MarkdownDescription: "Kernel params for the PXE stage of the OS installation. Most operating systems do not require these, but e.g. Talos does.",
-			},
-			"partitions": schema.ListNestedAttribute{
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"filesystem": schema.StringAttribute{
-							Required:            true,
-							Description:         "Type of filesystem to use for the target. Allowed: ext2, ext3, ext4, xfs",
-							MarkdownDescription: "Type of filesystem to use for the target. Allowed: ext2, ext3, ext4, xfs",
-						},
-						"size": schema.Int64Attribute{
-							Required:            true,
-							Description:         "The size of the partition, in MB. Use -1 to indicate usage of the remaining space on the disk.",
-							MarkdownDescription: "The size of the partition, in MB. Use -1 to indicate usage of the remaining space on the disk.",
-						},
-						"target": schema.StringAttribute{
-							Required:            true,
-							Description:         "Mount point for the partition",
-							MarkdownDescription: "Mount point for the partition",
-						},
-					},
-					CustomType: resource_flexmetal_server.PartitionsType{
-						ObjectType: types.ObjectType{
-							AttrTypes: resource_flexmetal_server.PartitionsValue{}.AttributeTypes(ctx),
-						},
-					},
-				},
-				Optional:            true,
-				Computed:            false,
-				Description:         "Custom partitions for the OS installation. If not provided, the default partitioning scheme will be used.",
-				MarkdownDescription: "Custom partitions for the OS installation. If not provided, the default partitioning scheme will be used.",
-			},
-			"slug": schema.StringAttribute{
-				Required:            true,
-				Description:         "Identifier of the OS. Available operating systems can be obtained from /v3/operatingsystem. Use the `slug` field from the response.",
-				MarkdownDescription: "Identifier of the OS. Available operating systems can be obtained from /v3/operatingsystem. Use the `slug` field from the response.",
-			},
+			"kernel_params": kernelParams,
+			"partitions":    partitions,
+			"slug":          osAttributes["slug"],
 		},
-		CustomType: resource_flexmetal_server.OsType{
-			ObjectType: types.ObjectType{
-				AttrTypes: resource_flexmetal_server.OsValue{}.AttributeTypes(ctx),
-			},
-		},
-		Required:            true,
-		Description:         generatedSchema.Attributes["os"].GetDescription(),
-		MarkdownDescription: generatedSchema.Attributes["os"].GetMarkdownDescription(),
+		CustomType:          generatedOSAttribute.CustomType,
+		Required:            generatedOSAttribute.Required,
+		Description:         generatedOSAttribute.GetDescription(),
+		MarkdownDescription: generatedOSAttribute.GetMarkdownDescription(),
 	}
 
 	resp.Schema = generatedSchema
