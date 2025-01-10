@@ -59,26 +59,27 @@ func (d *sshKeyDataSource) Metadata(ctx context.Context, req datasource.Metadata
 
 func (d *sshKeyDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Get information on a ssh key. This data source provides the name, created_at, public_key and uuid as configured on your i3d account. This is useful if the ssh key in question is not managed by Terraform or you need to utilize any of the keys data.\n\nAn error is triggered if the provided ssh key name does not exist.",
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
 				Required:            true,
-				Description:         "SSH key name",
-				MarkdownDescription: "SSH key name",
+				Description:         "SSH key name.",
+				MarkdownDescription: "SSH key name.",
 			},
 			"uuid": schema.StringAttribute{
 				Computed:            true,
-				Description:         "SSH key UUID as specified in RFC 4122",
-				MarkdownDescription: "SSH key UUID as specified in RFC 4122",
+				Description:         "SSH key UUID as specified in RFC 4122.",
+				MarkdownDescription: "SSH key UUID as specified in RFC 4122.",
 			},
 			"created_at": schema.Int64Attribute{
 				Computed:            true,
-				Description:         "SSH key createdAt",
-				MarkdownDescription: "SSH key createdAt",
+				Description:         "SSH key createdAt.",
+				MarkdownDescription: "SSH key createdAt.",
 			},
 			"public_key": schema.StringAttribute{
 				Computed:            true,
-				Description:         "Public SSH key contents",
-				MarkdownDescription: "Public SSH key contents",
+				Description:         "Public SSH key contents.",
+				MarkdownDescription: "Public SSH key contents.",
 			},
 		},
 	}

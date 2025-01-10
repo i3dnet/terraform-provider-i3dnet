@@ -28,12 +28,15 @@ type i3dProvider struct{}
 
 func (p *i3dProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "The i3d provider is used to interact with the resources supported by DigitalOcean. The provider needs to be configured with the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources.",
 		Attributes: map[string]schema.Attribute{
 			"api_key": schema.StringAttribute{
-				Optional: true, // optional because it can be configured via env variables as well
+				MarkdownDescription: fmt.Sprintf("API Key for i3d One API. May also be provided via `%s` environment variable.", envForApiKey),
+				Optional:            true, // optional because it can be configured via env variables as well
 			},
 			"base_url": schema.StringAttribute{
-				Optional: true, // optional. if not specified it will use the prod api URL
+				MarkdownDescription: "API base URL. By default it's using `https://api.i3d.net` API URL",
+				Optional:            true, // optional. if not specified it will use the prod api URL
 			},
 		},
 	}
@@ -114,7 +117,6 @@ func (p *i3dProvider) Metadata(ctx context.Context, req provider.MetadataRequest
 
 func (p *i3dProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewServersDataSource,
 		NewSshKeyDataSource,
 	}
 }
