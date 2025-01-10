@@ -10,24 +10,7 @@ resource "i3d_flexmetal_server" "example" {
         value = "VALUE_A"
       }
     ]
-    partitions = [
-      {
-        "target": "/boot",
-        "filesystem": "ext2",
-        "size": 4096
-      },
-      {
-        "target": "/",
-        "filesystem": "ext4",
-        "size": -1
-      },
-      {
-        "target"     = "/custom",
-        "filesystem" = "ext4",
-        "size"       = 10240
-      }
-    ]
   }
-  ssh_key = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"]
+  ssh_key             = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"]
   post_install_script = "#!/bin/bash\necho \"Hi TerraFlex there!\" > /root/output.txt"
 }
