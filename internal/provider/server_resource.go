@@ -123,6 +123,23 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		sskKeys = append(sskKeys, strings.Replace(sshKey.String(), "\"", "", -1))
 	}
 
+	type partitionReq struct {
+		Target     string `json:"target"`
+		Filesystem string `json:"filesystem"`
+		Size       int64  `json:"size"`
+	}
+
+	var partitions []partitionReq
+	for _, v := range data.Os.Partitions.Elements() {
+		part := v.(resource_flexmetal_server.PartitionsValue)
+
+		partitions = append(partitions, partitionReq{
+			Target:     part.Target.ValueString(),
+			Filesystem: part.Filesystem.ValueString(),
+			Size:       part.Size.ValueInt64(),
+		})
+	}
+
 	// Build the body for the API call
 	postData := map[string]any{
 		"name":         data.Name.ValueString(),
@@ -131,6 +148,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		"os": map[string]any{
 			"slug":         data.Os.Slug.ValueString(),
 			"kernelParams": kernelParams,
+			"partitions":   partitions,
 		},
 		"tags":              tags,
 		"sshKey":            sskKeys,
