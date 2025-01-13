@@ -9,7 +9,7 @@ To get started with the `i3D Terraform Provider`, follow the steps below.
 ### Prerequisites
 
 - [Terraform](https://www.terraform.io/downloads.html) installed on your machine.
-- FlexMetal API key.
+- FlexMetal API key [https://one.i3d.net/Account/API-Keys](https://one.i3d.net/Account/API-Keys)
 - tfplugingen-openapi (
   `go install github.com/hashicorp/terraform-plugin-codegen-openapi/cmd/tfplugingen-openapi@latest`)
 - tfplugingen-framework (
@@ -43,8 +43,7 @@ Terraform allows you to use local provider builds by setting a `dev_overrides` b
 
 Terraform searches for the `.terraformrc` file in your home directory and applies any configuration settings you set.
 
-Windows users follow instructions
-from [here](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-provider#prepare-terraform-for-local-provider-install).
+Windows users follow instructions from [here](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-provider#prepare-terraform-for-local-provider-install).
 
 Instructions for MAC/Linux:
 
@@ -57,9 +56,8 @@ $ go env GOBIN
 ```
 
 Create a new file called `.terraformrc` in your home directory (~), then add the `dev_overrides` block below. Change
-the <PATH> to the value returned from the `go env GOBIN` command above. If the `GOBIN` go environment variable is not
-set,
-use the default path, `/Users/<Username>/go/bin`.
+the `<PATH>` to the value returned from the `go env GOBIN` command above. If the `GOBIN` go environment variable is not
+set, use the default path, `/Users/<Username>/go/bin`.
 
 ```terraform
 provider_installation {
@@ -73,6 +71,12 @@ provider_installation {
   # the dev_overrides block, and so no other providers will be available.
   direct {}
 }
+```
+
+If you have not yet compiled the plugin, you can do that now. From the project root, do:
+
+```sh
+go install .
 ```
 
 Verify it works:
@@ -99,9 +103,7 @@ Terraform has compared your real infrastructure against your configuration and f
 
 ```
 
-Now you are able to modify and interact with your local build of the provider. Just make sure to run `go install .`
-anytime
-you apply some changes to your provider code.
+Now you are able to modify and interact with your local build of the provider. Just make sure to run `go install .` anytime you apply some changes to your provider code.
 
 For more examples on usages see [examples](./examples) directory.
 
