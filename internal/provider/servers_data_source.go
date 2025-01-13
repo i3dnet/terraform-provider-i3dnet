@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"terraform-provider-flexmetal/internal/provider/api_utils"
-	"terraform-provider-flexmetal/internal/provider/datasource_servers"
-	"terraform-provider-flexmetal/internal/provider/resource_servers"
+
+	"terraform-provider-i3d/internal/one_api"
+	"terraform-provider-i3d/internal/provider/datasource_servers"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -15,12 +15,35 @@ import (
 )
 
 var _ datasource.DataSource = (*serversDataSource)(nil)
+var _ datasource.DataSourceWithConfigure = (*serversDataSource)(nil)
 
 func NewServersDataSource() datasource.DataSource {
 	return &serversDataSource{}
 }
 
-type serversDataSource struct{}
+type serversDataSource struct {
+	client *one_api.Client
+}
+
+func (d *serversDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	// Add a nil check when handling ProviderData because Terraform
+	// sets that data after it calls the ConfigureProvider RPC.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*one_api.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *one_api.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
 
 func (d *serversDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_servers"
@@ -41,7 +64,7 @@ func (d *serversDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	}
 
 	// Read API call logic
-	respBody, diags := api_utils.CallFlexMetalAPI("GET", "servers", nil)
+	respBody, diags := d.client.CallFlexMetalAPI("GET", "servers", nil)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -75,11 +98,11 @@ func ParseServersResponseBodyDataSource(ctx context.Context, responseBody []byte
 		server.Status = basetypes.NewStringValue(answer["status"].(string))
 		server.StatusMessage = basetypes.NewStringValue(answer["statusMessage"].(string))
 		// wipe the list
-		server.IpAddresses = basetypes.NewListUnknown(resource_servers.IpAddressesType{})
+		server.IpAddresses = basetypes.NewListUnknown(datasource_servers.IpAddressesType{})
 		if answer["ipAddresses"] != nil {
 			for _, ip := range answer["ipAddresses"].([]interface{}) {
 
-				ipAddress := resource_servers.NewIpAddressesValueMust(
+				ipAddress := datasource_servers.NewIpAddressesValueMust(
 					map[string]attr.Type{
 						"ip_address": basetypes.StringType{},
 					},
