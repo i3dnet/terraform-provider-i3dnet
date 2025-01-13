@@ -248,3 +248,28 @@ Run all acceptance tests:
 ``shell
 task testacc
 ``
+
+## Generating documentation
+
+Documentation for provider is generated inside `docs` directory
+using [tfplugindocs](https://github.com/hashicorp/terraform-plugin-docs) tool. The generation uses schema
+descriptions and conventionally placed files to produce provider documentation that is compatible with the Terraform
+Registry.
+
+Do not manually edit files inside `docs` directory because they will be overwritten on re-generation.
+
+You can run `task docs` command to generate documentation everytime you update the schema of your provider and
+resources.
+
+```shell
+task docs
+```
+
+`task docs` will format your examples and run `tfplugindocs generate` command. For usage
+see [tools.go](./tools/tools.go).
+
+Use [Doc Preview Tool](https://registry.terraform.io/tools/doc-preview) to preview how provider docs will render on the
+Terraform Registry.
+
+[Provider documentation](https://developer.hashicorp.com/terraform/registry/providers/docs)
+[Schema and configuration for provider documentation](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-documentation-generation#add-configuration-examples)

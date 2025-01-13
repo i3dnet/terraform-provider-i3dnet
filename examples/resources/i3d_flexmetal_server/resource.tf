@@ -12,7 +12,7 @@ resource "i3d_flexmetal_server" "my-server" {
       }
     ]
   }
-  ssh_key             = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"]
+  ssh_key             = ["<YOUR-PUBLIC-SSH-KEY>"]
   post_install_script = "#!/bin/bash\necho \"Hi TerraFlex there!\" > /root/output.txt"
 }
 
@@ -47,6 +47,6 @@ resource "i3d_flexmetal_server" "my-partitioned-server" {
       }
     ]
   }
-  ssh_key             = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"]
+  ssh_key             = ["<YOUR-PUBLIC-SSH-KEY>"]
   post_install_script = "#!/bin/bash\necho \"Hi TerraFlex there!\" > /root/output.txt"
 }
