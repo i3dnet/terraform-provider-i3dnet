@@ -1,3 +1,4 @@
+# Get resource by name
 data "i3d_ssh_key" "example" {
   name = "Demo"
 }

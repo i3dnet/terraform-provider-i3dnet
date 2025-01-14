@@ -43,7 +43,8 @@ Terraform allows you to use local provider builds by setting a `dev_overrides` b
 
 Terraform searches for the `.terraformrc` file in your home directory and applies any configuration settings you set.
 
-Windows users follow instructions from [here](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-provider#prepare-terraform-for-local-provider-install).
+Windows users follow instructions
+from [here](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-provider#prepare-terraform-for-local-provider-install).
 
 Instructions for MAC/Linux:
 
@@ -103,7 +104,8 @@ Terraform has compared your real infrastructure against your configuration and f
 
 ```
 
-Now you are able to modify and interact with your local build of the provider. Just make sure to run `go install .` anytime you apply some changes to your provider code.
+Now you are able to modify and interact with your local build of the provider. Just make sure to run `go install .`
+anytime you apply some changes to your provider code.
 
 For more examples on usages see [examples](./examples) directory.
 
@@ -250,3 +252,34 @@ Run all acceptance tests:
 ``shell
 task testacc
 ``
+
+## Generating documentation
+
+Documentation for provider is generated inside `docs` directory
+using [tfplugindocs](https://github.com/hashicorp/terraform-plugin-docs) tool. The generation uses schema
+descriptions
+and [conventionally placed files](https://github.com/hashicorp/terraform-plugin-docs?tab=readme-ov-file#conventional-paths)
+to produce provider documentation that is compatible with the Terraform
+Registry.
+
+You can run `task docs` command to generate documentation everytime you update the schema of your provider and
+resources.
+
+```shell
+task docs
+```
+
+`task docs` will format your examples and run `tfplugindocs generate` command. For usage
+see [tools.go](./tools/tools.go).
+
+Use [Doc Preview Tool](https://registry.terraform.io/tools/doc-preview) to preview how provider docs will render on the
+Terraform Registry.
+
+Do not manually edit files inside `docs` directory because they will be overwritten on re-generation.
+
+If you want to extend the templates of `tfplugindocs` you can extend them inside [./templates](./templates) directory.
+For more information check the Readme inside that directory. You can view the default templates in the
+`tfplugindocs` [source code](https://github.com/hashicorp/terraform-plugin-docs/blob/a9c737d5accfd312e40b5d54fe2241405606697c/internal/provider/template.go#L272).
+
+[Provider documentation](https://developer.hashicorp.com/terraform/registry/providers/docs)
+[Schema and configuration for provider documentation](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-documentation-generation#add-configuration-examples)

@@ -21,8 +21,3 @@ resources:
     delete:
       path: /v3/sshKey/{uuid}
       method: DELETE
-data_sources:
-  servers:
-    read:
-      path: /v3/flexMetal/servers/{uuid}
-      method: GET

@@ -59,6 +59,8 @@ func (r *serverResource) Metadata(ctx context.Context, req resource.MetadataRequ
 func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	generatedSchema := resource_flexmetal_server.FlexmetalServerResourceSchema(ctx)
 
+	generatedSchema.MarkdownDescription = "FlexMetal servers are physical servers that can be requested and released at will."
+
 	// make post_install_script, os.kernel_params and os.partitions as optional:true and computed:false
 	// because they are not included in the GET response body
 	generatedSchema.Attributes["post_install_script"] = schema.StringAttribute{

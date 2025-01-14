@@ -55,6 +55,9 @@ func (r *sshKeyResource) Metadata(ctx context.Context, req resource.MetadataRequ
 func (r *sshKeyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	generatedSchema := resource_ssh_key.SshKeyResourceSchema(ctx)
 
+	generatedSchema.MarkdownDescription = "Provides an i3D SSH key resource to allow you to manage SSH keys for server access. " +
+		"Keys created with this resource can be referenced in your `i3d_flexmetal_server` resource configuration via its value."
+
 	// currently all fields of SHHKey are marked as required in our public open API SPEC
 	// https://www.i3d.net/docs/api/v3/all#/SSHKey:~:text=SlackSetting-,SshKey,-%7B
 	// until we fix OpenAPI Spec we need to mark `created_at` and `uuid` as computed, not required
@@ -71,7 +74,8 @@ func (r *sshKeyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 
 	// add id to allow for terraform import
 	generatedSchema.Attributes["id"] = schema.StringAttribute{
-		Computed: true,
+		MarkdownDescription: "The ID of this resource. Same as `uuid`.",
+		Computed:            true,
 	}
 
 	resp.Schema = generatedSchema
