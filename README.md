@@ -277,5 +277,9 @@ Terraform Registry.
 
 Do not manually edit files inside `docs` directory because they will be overwritten on re-generation.
 
+If you want to extend the templates of `tfplugindocs` you can extend them inside [./templates](./templates) directory.
+For more information check the Readme inside that directory. You can view the default templates in the
+`tfplugindocs` [source code](https://github.com/hashicorp/terraform-plugin-docs/blob/a9c737d5accfd312e40b5d54fe2241405606697c/internal/provider/template.go#L272).
+
 [Provider documentation](https://developer.hashicorp.com/terraform/registry/providers/docs)
 [Schema and configuration for provider documentation](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-documentation-generation#add-configuration-examples)
