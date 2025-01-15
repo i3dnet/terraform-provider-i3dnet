@@ -14,3 +14,8 @@ variable "i3dnet_api_key" {}
 provider "i3dnet" {
   api_key = var.i3dnet_api_key
 }
+
+# Create a flexmetal server
+resource "i3dnet_flexmetal_server" "my-server" {
+  # ...
+}
