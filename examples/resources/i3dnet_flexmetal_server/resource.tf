@@ -1,5 +1,5 @@
 # Create a Flexmetal Server
-resource "i3d_flexmetal_server" "my-server" {
+resource "i3dnet_flexmetal_server" "my-server" {
   name          = "TerraFlex-Server"
   location      = "EU: Rotterdam"
   instance_type = "bm7.std.8"
@@ -17,7 +17,7 @@ resource "i3d_flexmetal_server" "my-server" {
 }
 
 # Create a partitioned Flexmetal Server
-resource "i3d_flexmetal_server" "my-partitioned-server" {
+resource "i3dnet_flexmetal_server" "my-partitioned-server" {
   name          = "TerraFlex-Server"
   location      = "EU: Rotterdam"
   instance_type = "bm7.std.8"
