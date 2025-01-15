@@ -1,4 +1,10 @@
+ACCTEST_TIMEOUT?=120m
+ACCTEST_PARALLELISM?=2
+PKG_NAME?=.
 default: fmt lint install generate
+
+include .env
+export $(shell sed 's/=.*//' .env)
 
 build:
 	go build -v ./...
@@ -19,6 +25,6 @@ test:
 	go test -v -cover -timeout=120s -parallel=10 ./...
 
 testacc:
-	TF_ACC=1 go test -v -cover -timeout 120m ./...
+	TF_ACC=1 go test -v $(PKG_NAME)/... $(TESTARGS) -timeout $(ACCTEST_TIMEOUT) -parallel=$(ACCTEST_PARALLELISM)
 
 .PHONY: fmt lint test testacc build install generate
