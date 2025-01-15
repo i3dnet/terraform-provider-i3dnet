@@ -3,9 +3,6 @@ ACCTEST_PARALLELISM?=2
 PKG_NAME?=.
 default: fmt lint install generate
 
-include .env
-export $(shell sed 's/=.*//' .env)
-
 build:
 	go build -v ./...
 
