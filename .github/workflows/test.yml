@@ -55,6 +55,8 @@ jobs:
   # Run acceptance tests in a matrix with Terraform CLI versions
   test:
     name: Terraform Provider Acceptance Tests
+    env:
+      I3D_API_KEY: ${{ secrets.I3D_API_KEY }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
