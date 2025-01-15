@@ -3,13 +3,13 @@
 page_title: "i3dnet Provider"
 subcategory: ""
 description: |-
-  The i3d provider is used to interact with the resources supported by i3d.net. The provider needs to be configured with the proper credentials before it can be used.
+  The i3dnet provider is used to interact with the resources supported by i3d.net. The provider needs to be configured with the proper credentials before it can be used.
   Use the navigation to the left to read about the available resources.
 ---
 
 # i3dnet Provider
 
-The i3d provider is used to interact with the resources supported by i3d.net. The provider needs to be configured with the proper credentials before it can be used.
+The `i3dnet` provider is used to interact with the resources supported by i3d.net. The provider needs to be configured with the proper credentials before it can be used.
 
 Use the navigation to the left to read about the available resources.
 
@@ -28,7 +28,7 @@ terraform {
 # or using -var="i3dnet_api_key=..." CLI option
 variable "i3dnet_api_key" {}
 
-# Configure the i3D Provider
+# Configure the Provider
 provider "i3dnet" {
   api_key = var.i3dnet_api_key
 }
