@@ -16,10 +16,9 @@ fmt:
 	gofmt -s -w -e .
 
 test:
-	printenv
 	go test -v -cover -timeout=120s -parallel=10 ./...
 
 testacc:
-	TF_ACC=1 go test -v -cover -timeout 120m ./...
+	TF_ACC=1 I3D_API_KEY=$(I3D_API_KEY) go test -v -cover -timeout 120m ./...
 
 .PHONY: fmt lint test testacc build install generate
