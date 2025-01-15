@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"terraform-provider-i3d/internal/one_api"
+	"terraform-provider-i3dnet/internal/one_api"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -16,22 +16,22 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-var _ provider.Provider = (*i3dProvider)(nil)
+var _ provider.Provider = (*i3dnetProvider)(nil)
 
 func New() func() provider.Provider {
 	return func() provider.Provider {
-		return &i3dProvider{}
+		return &i3dnetProvider{}
 	}
 }
 
-type i3dProvider struct{}
+type i3dnetProvider struct{}
 
-func (p *i3dProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *i3dnetProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "The i3d provider is used to interact with the resources supported by DigitalOcean. The provider needs to be configured with the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources.",
+		MarkdownDescription: "The `i3dnet` provider is used to interact with the resources supported by i3d.net. The provider needs to be configured with the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources.",
 		Attributes: map[string]schema.Attribute{
 			"api_key": schema.StringAttribute{
-				MarkdownDescription: fmt.Sprintf("API Key for i3d One API. May also be provided via `%s` environment variable.", envForApiKey),
+				MarkdownDescription: fmt.Sprintf("API Key for i3d.net One API. May also be provided via `%s` environment variable.", envForApiKey),
 				Optional:            true, // optional because it can be configured via env variables as well
 			},
 			"base_url": schema.StringAttribute{
@@ -42,8 +42,8 @@ func (p *i3dProvider) Schema(ctx context.Context, req provider.SchemaRequest, re
 	}
 }
 
-// i3dProviderModel maps provider schema data to a Go type.
-type i3dProviderModel struct {
+// i3dnetProviderModel maps provider schema data to a Go type.
+type i3dnetProviderModel struct {
 	APIKey  types.String `tfsdk:"api_key"`
 	BaseURL types.String `tfsdk:"base_url"`
 }
@@ -52,9 +52,9 @@ const (
 	envForApiKey = "FLEXMETAL_API_KEY"
 )
 
-func (p *i3dProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (p *i3dnetProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	// Retrieve provider data from configuration
-	var config i3dProviderModel
+	var config i3dnetProviderModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -67,7 +67,7 @@ func (p *i3dProvider) Configure(ctx context.Context, req provider.ConfigureReque
 		resp.Diagnostics.AddAttributeError(
 			path.Root("api_key"),
 			"Unknown API kEY",
-			"The provider cannot create the i3D API client as there is an unknown configuration value for the api_key "+
+			"The provider cannot create the i3Dnet API client as there is an unknown configuration value for the api_key "+
 				fmt.Sprintf("Either target apply the source of the value first, set the value statically in the configuration, or use the %s environment variable.", envForApiKey),
 		)
 	}
@@ -88,7 +88,7 @@ func (p *i3dProvider) Configure(ctx context.Context, req provider.ConfigureReque
 	if apiKey == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("api_key"),
-			"Missing i3D API Key",
+			"Missing i3D.net API Key",
 			"The provider cannot create the API client as there is a missing or empty value for the API key. "+
 				fmt.Sprintf("Set the api_key value in the configuration or use the %s environment variable. ", envForApiKey)+
 				"If either is already set, ensure the value is not empty.",
@@ -102,7 +102,7 @@ func (p *i3dProvider) Configure(ctx context.Context, req provider.ConfigureReque
 	client, err := one_api.NewClient(apiKey, config.BaseURL.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Could not initialize i3d API client",
+			"Could not initialize i3d.net API client",
 			fmt.Sprintf("error: %s", err))
 	}
 
@@ -111,17 +111,17 @@ func (p *i3dProvider) Configure(ctx context.Context, req provider.ConfigureReque
 	resp.ResourceData = client
 }
 
-func (p *i3dProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "i3d"
+func (p *i3dnetProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "i3dnet"
 }
 
-func (p *i3dProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *i3dnetProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewSshKeyDataSource,
 	}
 }
 
-func (p *i3dProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *i3dnetProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewServerResource,
 		NewSshKeyResource,

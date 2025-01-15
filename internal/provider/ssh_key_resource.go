@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"terraform-provider-i3d/internal/one_api"
-	"terraform-provider-i3d/internal/provider/resource_ssh_key"
+	"terraform-provider-i3dnet/internal/one_api"
+	"terraform-provider-i3dnet/internal/provider/resource_ssh_key"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -55,8 +55,8 @@ func (r *sshKeyResource) Metadata(ctx context.Context, req resource.MetadataRequ
 func (r *sshKeyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	generatedSchema := resource_ssh_key.SshKeyResourceSchema(ctx)
 
-	generatedSchema.MarkdownDescription = "Provides an i3D SSH key resource to allow you to manage SSH keys for server access. " +
-		"Keys created with this resource can be referenced in your `i3d_flexmetal_server` resource configuration via its value."
+	generatedSchema.MarkdownDescription = "Provides an i3D.net SSH key resource to allow you to manage SSH keys for server access. " +
+		"Keys created with this resource can be referenced in your `i3dnet_flexmetal_server` resource configuration via its value."
 
 	// currently all fields of SHHKey are marked as required in our public open API SPEC
 	// https://www.i3d.net/docs/api/v3/all#/SSHKey:~:text=SlackSetting-,SshKey,-%7B
@@ -143,7 +143,7 @@ func (r *sshKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	sshResp, err := r.client.GetSSHKey(data.Uuid.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading i3D ssh key",
+			"Error reading ssh key",
 			"Could not read ssh key id "+data.Uuid.ValueString()+": "+err.Error(),
 		)
 		return
@@ -194,7 +194,7 @@ func (r *sshKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	err := r.client.DeleteSSHKey(data.Uuid.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Deleting i3d SSHKey",
+			"Error Deleting SSHKey",
 			"Could not delete ssh key, unexpected error: "+err.Error(),
 		)
 		return

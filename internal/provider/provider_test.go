@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"terraform-provider-i3d/internal/one_api"
+	"terraform-provider-i3dnet/internal/one_api"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -17,16 +17,16 @@ var (
 	// CLI command executed to create a provider server to which the CLI can
 	// reattach.
 	testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServer, error){
-		"i3d": providerserver.NewProtocol6WithError(New()()),
+		"i3dnet": providerserver.NewProtocol6WithError(New()()),
 	}
 )
 
 // providerConfig is a shared configuration to combine with the actual
-// test configuration so the i3d One API client is properly configured.
+// test configuration so the i3d.net One API client is properly configured.
 func providerConfig(t *testing.T) string {
 	const (
 		providerConfigTemplate = `
-provider "i3d" {
+provider "i3dnet" {
   api_key = "%s"
   base_url = "%s"
 }

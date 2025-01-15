@@ -1,10 +1,10 @@
-# i3D Terraform Provider
+# i3D.net Terraform Provider
 
-The `i3D Terraform Provider` allows you to manage i3D resources using Terraform.
+The `i3D.net Terraform Provider` allows you to manage i3D resources using Terraform.
 
 ## Getting Started
 
-To get started with the `i3D Terraform Provider`, follow the steps below.
+To get started with the `i3D.net Terraform Provider`, follow the steps below.
 
 ### Prerequisites
 
@@ -20,14 +20,14 @@ To get started with the `i3D Terraform Provider`, follow the steps below.
 1. Clone the repository:
 
     ```sh
-    git clone git@github.com:i3D-net/terraform-provider-i3d.git
-    cd terraform-provider-i3d
+    git clone https://github.com/i3D-net/terraform-provider-i3dnet
+    cd terraform-provider-i3dnet
     ```
 
 2. Build the provider:
 
     ```sh
-    go build -o terraform-provider-i3d
+    go build -o terraform-provider-i3dnet
     ```
 
 3. FOR DEV: Locally install provider and validate that it works:
@@ -64,7 +64,7 @@ set, use the default path, `/Users/<Username>/go/bin`.
 provider_installation {
 
   dev_overrides {
-    "registry.terraform.io/i3D-net/i3d" = "/Users/<Username>/go/bin"
+    "registry.terraform.io/i3D-net/i3dnet" = "/Users/<Username>/go/bin"
   }
 
   # For all other providers, install them directly from their origin provider
@@ -93,7 +93,7 @@ You should get the similar output to validate override is in effect:
 │ Warning: Provider development overrides are in effect
 │ 
 │ The following provider development overrides are set in the CLI configuration:
-│  - i3d-net/i3d in /Users/<Username>/go/bin
+│  - i3d-net/i3dnet in /Users/<Username>/go/bin
 │ 
 │ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become incompatible with published releases.
 ╵
@@ -148,7 +148,7 @@ Create a Terraform project directory, e.g. `~/fm_tf`
 Create a `main.tf` file in your Terraform directory and add the following:
 
 ```hcl
-resource "i3d_flexmetal_server" "example" {
+resource "i3dnet_flexmetal_server" "example" {
   name          = "example-server"
   location      = "EU: Rotterdam"
   instance_type = "bm7.std.8"
@@ -173,13 +173,13 @@ Create a `provider.tf` file in your Terraform directory and add the following:
 ```hcl
 terraform {
   required_providers {
-    i3d = {
-      source = "registry.terraform.io/i3D-net/i3d"
+    i3dnet = {
+      source = "registry.terraform.io/i3D-net/i3dnet"
     }
   }
 }
 
-provider "i3d" {}
+provider "i3dnet" {}
 ```
 
 Create an `outputs.tf` file in your Terraform directory and add the following:

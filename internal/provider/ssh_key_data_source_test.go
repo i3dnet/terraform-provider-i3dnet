@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"terraform-provider-i3d/internal/one_api"
+	"terraform-provider-i3dnet/internal/one_api"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -18,17 +18,17 @@ func TestAccSSHKeyDataSource(t *testing.T) {
 			// Read testing
 			{
 				Config: providerConfig(t) + `
-data "i3d_ssh_key" "example" {
+data "i3dnet_ssh_key" "example" {
   name = "TestApiKey"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// Verify attributes
-					resource.TestCheckResourceAttr("data.i3d_ssh_key.example", "name", "TestApiKey"),
+					resource.TestCheckResourceAttr("data.i3dnet_ssh_key.example", "name", "TestApiKey"),
 					// Verify dynamic values have any value set in the state.
-					resource.TestCheckResourceAttrSet("data.i3d_ssh_key.example", "uuid"),
-					resource.TestCheckResourceAttrSet("data.i3d_ssh_key.example", "public_key"),
-					resource.TestCheckResourceAttrSet("data.i3d_ssh_key.example", "created_at"),
+					resource.TestCheckResourceAttrSet("data.i3dnet_ssh_key.example", "uuid"),
+					resource.TestCheckResourceAttrSet("data.i3dnet_ssh_key.example", "public_key"),
+					resource.TestCheckResourceAttrSet("data.i3dnet_ssh_key.example", "created_at"),
 				),
 			},
 		},

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"terraform-provider-i3d/internal/one_api"
-	"terraform-provider-i3d/internal/provider/resource_flexmetal_server"
+	"terraform-provider-i3dnet/internal/one_api"
+	"terraform-provider-i3dnet/internal/provider/resource_flexmetal_server"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"

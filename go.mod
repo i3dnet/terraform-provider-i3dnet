@@ -1,4 +1,4 @@
-module terraform-provider-i3d
+module terraform-provider-i3dnet
 
 go 1.23
 
