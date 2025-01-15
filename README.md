@@ -283,3 +283,9 @@ For more information check the Readme inside that directory. You can view the de
 
 [Provider documentation](https://developer.hashicorp.com/terraform/registry/providers/docs)
 [Schema and configuration for provider documentation](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-documentation-generation#add-configuration-examples)
+
+## Updating documentation on Terraform Registry
+
+This `Release` GitHub Action will release new versions of the provider whenever you tag a commit on the main branch.
+
+Terraform provider versions must follow the [Semantic Versioning](https://semver.org/) standard (vMAJOR.MINOR.PATCH).
