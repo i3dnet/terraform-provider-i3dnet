@@ -50,3 +50,23 @@ resource "i3dnet_flexmetal_server" "my-partitioned-server" {
   ssh_key             = ["<YOUR-PUBLIC-SSH-KEY>"]
   post_install_script = "#!/bin/bash\necho \"Hi TerraFlex there!\" > /root/output.txt"
 }
+
+# Create a Talos OS 1.9.0 server
+resource "i3dnet_flexmetal_server" "my-talos" {
+  name          = "Talos Omni 1.9.0"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "talos-omni-190"
+    kernel_params = [
+      {
+        key   = "siderolink.api"
+        value = "https://siderolink.api/?jointoken=secret"
+      },
+      {
+        key   = "talos.customparam"
+        value = "123456"
+      }
+    ]
+  }
+}

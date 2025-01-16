@@ -28,10 +28,13 @@ type i3dnetProvider struct{}
 
 func (p *i3dnetProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "The `i3dnet` provider is used to interact with the resources supported by i3d.net. The provider needs to be configured with the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources.",
+		MarkdownDescription: "The `i3dnet` provider is used to interact with the resources supported by i3D.net. " +
+			"The provider needs to be configured with the proper credentials before it can be used.\n\nUse the navigation " +
+			"to the left to read about the available resources.\n\n  -> **Note** FlexMetal is under active development and still in closed Alpha state. " +
+			"Please get in touch with the i3D.net sales team to learn more about the product state and roadmap or if you wish to be part of the closed Alpha program for FlexMetal.",
 		Attributes: map[string]schema.Attribute{
 			"api_key": schema.StringAttribute{
-				MarkdownDescription: fmt.Sprintf("API Key for i3d.net One API. May also be provided via `%s` environment variable.", envForApiKey),
+				MarkdownDescription: fmt.Sprintf("API Key for i3D.net One API. May also be provided via `%s` environment variable.", envForApiKey),
 				Optional:            true, // optional because it can be configured via env variables as well
 			},
 			"base_url": schema.StringAttribute{
@@ -102,7 +105,7 @@ func (p *i3dnetProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	client, err := one_api.NewClient(apiKey, config.BaseURL.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Could not initialize i3d.net API client",
+			"Could not initialize i3D.net API client",
 			fmt.Sprintf("error: %s", err))
 	}
 

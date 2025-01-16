@@ -3,15 +3,18 @@
 page_title: "i3dnet Provider"
 subcategory: ""
 description: |-
-  The i3dnet provider is used to interact with the resources supported by i3d.net. The provider needs to be configured with the proper credentials before it can be used.
+  The i3dnet provider is used to interact with the resources supported by i3D.net. The provider needs to be configured with the proper credentials before it can be used.
   Use the navigation to the left to read about the available resources.
+  -> Note FlexMetal is under active development and still in closed Alpha state. Please get in touch with the i3D.net sales team to learn more about the product state and roadmap or if you wish to be part of the closed Alpha program for FlexMetal.
 ---
 
 # i3dnet Provider
 
-The `i3dnet` provider is used to interact with the resources supported by i3d.net. The provider needs to be configured with the proper credentials before it can be used.
+The `i3dnet` provider is used to interact with the resources supported by i3D.net. The provider needs to be configured with the proper credentials before it can be used.
 
 Use the navigation to the left to read about the available resources.
+
+  -> **Note** FlexMetal is under active development and still in closed Alpha state. Please get in touch with the i3D.net sales team to learn more about the product state and roadmap or if you wish to be part of the closed Alpha program for FlexMetal.
 
 ## Example Usage
 
@@ -44,5 +47,5 @@ resource "i3dnet_flexmetal_server" "my-server" {
 
 ### Optional
 
-- `api_key` (String) API Key for i3d.net One API. May also be provided via `FLEXMETAL_API_KEY` environment variable.
+- `api_key` (String) API Key for i3D.net One API. May also be provided via `FLEXMETAL_API_KEY` environment variable.
 - `base_url` (String) API base URL. By default it's using `https://api.i3d.net` API URL
