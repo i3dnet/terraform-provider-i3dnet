@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -92,6 +93,14 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		Required:            generatedOSAttribute.Required,
 		Description:         generatedOSAttribute.GetDescription(),
 		MarkdownDescription: generatedOSAttribute.GetMarkdownDescription(),
+	}
+
+	// For certain OS(talos, windows) ssh_key is not needed
+	generatedSchema.Attributes["ssh_key"] = schema.ListAttribute{
+		ElementType:         types.StringType,
+		Optional:            true,
+		Description:         generatedSchema.Attributes["ssh_key"].GetDescription(),
+		MarkdownDescription: generatedSchema.Attributes["ssh_key"].GetMarkdownDescription(),
 	}
 
 	resp.Schema = generatedSchema
