@@ -53,7 +53,7 @@ resource "i3dnet_flexmetal_server" "my-partitioned-server" {
 
 # Create a Talos OS 1.9.0 server
 resource "i3dnet_flexmetal_server" "my-talos" {
-  name          = "Talos Omni 1.9.0"
+  name          = "talosHostName"
   location      = "EU: Rotterdam"
   instance_type = "bm7.std.8"
   os = {
