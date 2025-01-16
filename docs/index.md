@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   The i3dnet provider is used to interact with the resources supported by i3D.net. The provider needs to be configured with the proper credentials before it can be used.
   Use the navigation to the left to read about the available resources.
+  -> Note FlexMetal is under active development and still in closed Alpha state. Please get in touch with the i3D.net sales team to learn more about the product state and roadmap or if you wish to be part of the closed Alpha program for FlexMetal.
 ---
 
 # i3dnet Provider
@@ -12,6 +13,8 @@ description: |-
 The `i3dnet` provider is used to interact with the resources supported by i3D.net. The provider needs to be configured with the proper credentials before it can be used.
 
 Use the navigation to the left to read about the available resources.
+
+  -> **Note** FlexMetal is under active development and still in closed Alpha state. Please get in touch with the i3D.net sales team to learn more about the product state and roadmap or if you wish to be part of the closed Alpha program for FlexMetal.
 
 ## Example Usage
 
