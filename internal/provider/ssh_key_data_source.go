@@ -20,7 +20,7 @@ func NewSshKeyDataSource() datasource.DataSource {
 }
 
 // sshKeyDataSource gets information of a ssh key by name.
-// This data source provides the name, created_at, public_key and uuid as configured on i3d.net.
+// This data source provides the name, created_at, public_key and uuid as configured on i3D.net.
 // An error is triggered if the provided ssh key name does not exist.
 type sshKeyDataSource struct {
 	client *one_api.Client
@@ -59,7 +59,7 @@ func (d *sshKeyDataSource) Metadata(ctx context.Context, req datasource.Metadata
 
 func (d *sshKeyDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Get information on a ssh key. This data source provides the name, created_at, public_key and uuid as configured on your i3d.net account. This is useful if the ssh key in question is not managed by Terraform or you need to utilize any of the keys data.\n\nAn error is triggered if the provided ssh key name does not exist.",
+		Description: "Get information on a ssh key. This data source provides the name, created_at, public_key and uuid as configured on your i3D.net account. This is useful if the ssh key in question is not managed by Terraform or you need to utilize any of the keys data.\n\nAn error is triggered if the provided ssh key name does not exist.",
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
 				Required:            true,
@@ -99,7 +99,7 @@ func (d *sshKeyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	sshKeys, err := d.client.ListSSHKeys()
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to Read i3d.net ssh keys",
+			"Unable to Read i3D.net ssh keys",
 			err.Error(),
 		)
 		return

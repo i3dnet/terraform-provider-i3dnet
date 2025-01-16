@@ -22,7 +22,7 @@ var (
 )
 
 // providerConfig is a shared configuration to combine with the actual
-// test configuration so the i3d.net One API client is properly configured.
+// test configuration so the i3D.net One API client is properly configured.
 func providerConfig(t *testing.T) string {
 	const (
 		providerConfigTemplate = `

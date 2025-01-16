@@ -3,13 +3,13 @@
 page_title: "i3dnet_ssh_key Data Source - i3dnet"
 subcategory: ""
 description: |-
-  Get information on a ssh key. This data source provides the name, created_at, public_key and uuid as configured on your i3d.net account. This is useful if the ssh key in question is not managed by Terraform or you need to utilize any of the keys data.
+  Get information on a ssh key. This data source provides the name, created_at, public_key and uuid as configured on your i3D.net account. This is useful if the ssh key in question is not managed by Terraform or you need to utilize any of the keys data.
   An error is triggered if the provided ssh key name does not exist.
 ---
 
 # i3dnet_ssh_key (Data Source)
 
-Get information on a ssh key. This data source provides the name, created_at, public_key and uuid as configured on your i3d.net account. This is useful if the ssh key in question is not managed by Terraform or you need to utilize any of the keys data.
+Get information on a ssh key. This data source provides the name, created_at, public_key and uuid as configured on your i3D.net account. This is useful if the ssh key in question is not managed by Terraform or you need to utilize any of the keys data.
 
 An error is triggered if the provided ssh key name does not exist.
 
