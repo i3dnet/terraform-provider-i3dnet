@@ -93,7 +93,7 @@ You should get the similar output to validate override is in effect:
 │ Warning: Provider development overrides are in effect
 │ 
 │ The following provider development overrides are set in the CLI configuration:
-│  - i3D-net/i3dnet in /Users/<Username>/go/bin
+│  - i3d-net/i3dnet in /Users/<Username>/go/bin
 │ 
 │ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become incompatible with published releases.
 ╵
