@@ -1,6 +1,6 @@
 # i3D.net Terraform Provider
 
-The `i3D.net Terraform Provider` allows you to manage [i3D.net](https://www.i3d.net/) resources using Terraform.
+The **i3D.net Terraform Provider** allows you to manage [i3D.net](https://www.i3d.net/) resources using Terraform.
 
 - Documentation: https://registry.terraform.io/providers/i3D-net/i3dnet/latest/docs
 
