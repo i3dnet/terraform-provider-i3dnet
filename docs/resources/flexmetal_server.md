@@ -66,13 +66,13 @@ resource "i3dnet_flexmetal_server" "my-partitioned-server" {
   post_install_script = "#!/bin/bash\necho \"Hi TerraFlex there!\" > /root/output.txt"
 }
 
-# Create a Talos OS 1.7.7 server
+# Create a Talos OS 1.9.0 server
 resource "i3dnet_flexmetal_server" "my-talos" {
-  name          = "MyTalosServer"
+  name          = "Talos Omni 1.9.0"
   location      = "EU: Rotterdam"
   instance_type = "bm7.std.8"
   os = {
-    slug = "talos-omni-177"
+    slug = "talos-omni-190"
     kernel_params = [
       {
         key   = "siderolink.api"
