@@ -34,7 +34,7 @@ Terraform searches for the `.terraformrc` file in your home directory and applie
 Windows users follow instructions
 from [here](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-provider#prepare-terraform-for-local-provider-install).
 
-Instructions for MAC/Linux:
+### Instructions for MAC/Linux:
 
 First, find the `GOBIN` path where Go installs your binaries. Your path may vary depending on how your Go environment
 variables are configured.
@@ -67,8 +67,6 @@ If you have not yet compiled the plugin, you can do that now. From the project r
 ```sh
 go install
 ```
-
-
 
 You should get the similar output to validate override is in effect:
 
