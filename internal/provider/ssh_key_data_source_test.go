@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -44,16 +45,18 @@ func createTestSSHKey(t *testing.T) {
 		t.Fatalf("error creating API Client: %s", err)
 	}
 
-	key, err := apiclient.CreateSSHKey(one_api.CreateSSHKeyReq{
-		Name:      "TestApiKey",
-		PublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net",
-	})
+	key, err := apiclient.CreateSSHKey(
+		context.Background(),
+		one_api.CreateSSHKeyReq{
+			Name:      "TestApiKey",
+			PublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net",
+		})
 	if err != nil {
 		t.Fatalf("error creating test SSH Key: %s", err)
 	}
 
 	t.Cleanup(func() {
-		err = apiclient.DeleteSSHKey(key.Uuid)
+		err = apiclient.DeleteSSHKey(context.Background(), key.Uuid)
 		if err != nil {
 			t.Fatalf("error deleting SSH Key: %s", err)
 		}

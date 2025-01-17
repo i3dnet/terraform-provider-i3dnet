@@ -2,6 +2,7 @@ package one_api
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,8 +42,11 @@ func NewClient(apiKey string, rawBaseURL string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) callAPI(method, endpoint, path string, body []byte) (io.ReadCloser, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
+func (c *Client) callAPI(ctx context.Context, method, endpoint, path string, body []byte) (io.ReadCloser, error) {
+	client := &http.Client{
+		Transport: &loggingRoundTripper{next: http.DefaultTransport, ctx: ctx},
+		Timeout:   10 * time.Second,
+	}
 
 	apiURL := c.baseURL
 	if endpoint != "" {
@@ -52,7 +56,7 @@ func (c *Client) callAPI(method, endpoint, path string, body []byte) (io.ReadClo
 		apiURL = apiURL.JoinPath(path)
 	}
 
-	req, err := http.NewRequest(method, apiURL.String(), bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, method, apiURL.String(), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
