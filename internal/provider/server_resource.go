@@ -60,7 +60,8 @@ func (r *serverResource) Metadata(ctx context.Context, req resource.MetadataRequ
 func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	generatedSchema := resource_flexmetal_server.FlexmetalServerResourceSchema(ctx)
 
-	generatedSchema.MarkdownDescription = "FlexMetal servers are physical servers that can be requested and released at will."
+	generatedSchema.MarkdownDescription = "FlexMetal servers are physical servers that can be requested and released at will.\n\n" +
+		"A How to Guide is available at this URL : https://www.i3d.net/docs/one/Compute/FlexMetal/api/"
 
 	// make post_install_script, os.kernel_params and os.partitions as optional:true and computed:false
 	// because they are not included in the GET response body
@@ -87,7 +88,11 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		Attributes: map[string]schema.Attribute{
 			"kernel_params": kernelParams,
 			"partitions":    partitions,
-			"slug":          osAttributes["slug"],
+			"slug": schema.StringAttribute{
+				Required:            true,
+				Description:         "Identifier of the OS. Available operating systems can be obtained from [/v3/operatingsystem](https://www.i3d.net/docs/api/v3/all#/OperatingSystem/getOperatingsystems). Use the `slug` field from the response.",
+				MarkdownDescription: "Identifier of the OS. Available operating systems can be obtained from [/v3/operatingsystem](https://www.i3d.net/docs/api/v3/all#/OperatingSystem/getOperatingsystems). Use the `slug` field from the response.",
+			},
 		},
 		CustomType:          generatedOSAttribute.CustomType,
 		Required:            generatedOSAttribute.Required,
@@ -99,8 +104,20 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 	generatedSchema.Attributes["ssh_key"] = schema.ListAttribute{
 		ElementType:         types.StringType,
 		Optional:            true,
-		Description:         generatedSchema.Attributes["ssh_key"].GetDescription(),
-		MarkdownDescription: generatedSchema.Attributes["ssh_key"].GetMarkdownDescription(),
+		Description:         "A list of SSH keys. You can either supply SSH key UUIDs from stored objects in [/v3/sshKey](https://www.i3d.net/docs/api/v3/all#/SSHKey/getSshKeys) or provide public keys directly. SSH keys are installed for the root user.",
+		MarkdownDescription: "A list of SSH keys. You can either supply SSH key UUIDs from stored objects in [/v3/sshKey](https://www.i3d.net/docs/api/v3/all#/SSHKey/getSshKeys) or provide public keys directly. SSH keys are installed for the root user.",
+	}
+
+	// Add extra info to docs
+	generatedSchema.Attributes["instance_type"] = schema.StringAttribute{
+		Required:            true,
+		Description:         "Server instance type. Available instance types can be obtained from [/v3/flexMetal/location/{locationId}}/instanceTypes](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocationInstanceTypes). Use the `name` field from the response.",
+		MarkdownDescription: "Server instance type. Available instance types can be obtained from [/v3/flexMetal/location/{locationId}}/instanceTypes](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocationInstanceTypes). Use the `name` field from the response.",
+	}
+	generatedSchema.Attributes["location"] = schema.StringAttribute{
+		Required:            true,
+		Description:         "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
+		MarkdownDescription: "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
 	}
 
 	resp.Schema = generatedSchema
