@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// loggingRoundTripper logs One API request and response if TF_LOG=INFO
+// loggingRoundTripper logs One API request and response if TF_LOG=DEBUG
 // see: https://developer.hashicorp.com/terraform/plugin/log/writing
 type loggingRoundTripper struct {
 	next http.RoundTripper
@@ -25,7 +25,7 @@ func (l *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		return nil, fmt.Errorf("error dumping request: %w", err)
 	}
 
-	tflog.Info(l.ctx, "sending api request", map[string]interface{}{"body": string(reqBody), "method": req.Method})
+	tflog.Debug(l.ctx, "sending api request", map[string]interface{}{"body": string(reqBody), "method": req.Method})
 
 	resp, err := l.next.RoundTrip(req)
 	if err != nil {
@@ -37,7 +37,7 @@ func (l *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		return nil, fmt.Errorf("error dumping response: %w", err)
 	}
 
-	tflog.Info(l.ctx, "getting api response", map[string]interface{}{"body": string(respBody), "duration": time.Since(start)})
+	tflog.Debug(l.ctx, "getting api response", map[string]interface{}{"body": string(respBody), "duration": time.Since(start)})
 
 	return resp, nil
 }

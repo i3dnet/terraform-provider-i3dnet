@@ -120,6 +120,19 @@ You can now customize `internal/provider/server_resource.go` to add the good log
 Documentation
 for [generate command](https://developer.hashicorp.com/terraform/plugin/code-generation/framework-generator#generate-command).
 
+## Debugging and Logging
+
+If you'd like to see more detailed logs for debugging, you can set the `TF_LOG` environment variable to `DEBUG` or
+`TRACE`.
+
+``` console
+export TF_LOG=DEBUG
+export TF_LOG=TRACE
+```
+
+After setting the log level, you can run `terraform plan` or `terraform apply` again to see more detailed output. Find
+out more [here](https://developer.hashicorp.com/terraform/internals/debugging).
+
 ## Running acceptance tests
 
 Rebuild the provider before running acceptance tests.
@@ -144,6 +157,14 @@ environment variable. For example, the following command will run `TestAccSSHKey
 ```shell
 TESTARGS='-run=TestAccSSHKeyResource' task testacc
 ```
+
+Run only Flexmetal Server Resource test:
+
+```shell
+TESTARGS='-run=TestAccFlexmetalServerResource' task testacc
+```
+
+Note: Creating servers is a long-running operation.
 
 Run all acceptance tests:
 
