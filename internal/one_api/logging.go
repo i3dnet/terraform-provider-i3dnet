@@ -25,7 +25,7 @@ func (l *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		return nil, fmt.Errorf("error dumping request: %w", err)
 	}
 
-	tflog.Debug(l.ctx, "sending api request", map[string]interface{}{"body": string(reqBody), "method": req.Method})
+	tflog.Debug(l.ctx, "Sending api request", map[string]interface{}{"body": string(reqBody), "method": req.Method})
 
 	resp, err := l.next.RoundTrip(req)
 	if err != nil {
@@ -37,7 +37,7 @@ func (l *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		return nil, fmt.Errorf("error dumping response: %w", err)
 	}
 
-	tflog.Debug(l.ctx, "getting api response", map[string]interface{}{"body": string(respBody), "duration": time.Since(start)})
+	tflog.Debug(l.ctx, "Getting api response", map[string]interface{}{"body": string(respBody), "duration": time.Since(start)})
 
 	return resp, nil
 }

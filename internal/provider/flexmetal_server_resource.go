@@ -132,61 +132,55 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	kernelParams := []map[string]string{}
+	var kernelParams []one_api.KernelParam
 	for _, kernelParam := range data.Os.KernelParams.Elements() {
 		kernelParam1 := kernelParam.(resource_flexmetal_server.KernelParamsValue)
-		kernelParams = append(kernelParams, map[string]string{
-			"key":   kernelParam1.Key.ValueString(),
-			"value": kernelParam1.Value.ValueString(),
+		kernelParams = append(kernelParams, one_api.KernelParam{
+			Key:   kernelParam1.Key.ValueString(),
+			Value: kernelParam1.Value.ValueString(),
 		})
 	}
-	tags := []string{}
+	var tags []string
 	for _, tag := range data.Tags.Elements() {
 		tags = append(tags, strings.Replace(tag.String(), "\"", "", -1))
 	}
 
-	sskKeys := []string{}
-
+	var sskKeys []string
 	for _, sshKey := range data.SshKey.Elements() {
 		sskKeys = append(sskKeys, strings.Replace(sshKey.String(), "\"", "", -1))
 	}
 
-	type partitionReq struct {
-		Target     string `json:"target"`
-		Filesystem string `json:"filesystem"`
-		Size       int64  `json:"size"`
-	}
-
-	var partitions []partitionReq
+	var partitions []one_api.Partition
 	for _, v := range data.Os.Partitions.Elements() {
 		part := v.(resource_flexmetal_server.PartitionsValue)
 
-		partitions = append(partitions, partitionReq{
+		partitions = append(partitions, one_api.Partition{
 			Target:     part.Target.ValueString(),
 			Filesystem: part.Filesystem.ValueString(),
 			Size:       part.Size.ValueInt64(),
 		})
 	}
 
-	// Build the body for the API call
-	postData := map[string]any{
-		"name":         data.Name.ValueString(),
-		"location":     data.Location.ValueString(),
-		"instanceType": data.InstanceType.ValueString(),
-		"os": map[string]any{
-			"slug":         data.Os.Slug.ValueString(),
-			"kernelParams": kernelParams,
-			"partitions":   partitions,
+	createServerReq := one_api.CreateServerReq{
+		Name:         data.Name.ValueString(),
+		Location:     data.Location.ValueString(),
+		InstanceType: data.InstanceType.ValueString(),
+		OS: one_api.OS{
+			Slug:         data.Os.Slug.ValueString(),
+			KernelParams: kernelParams,
+			Partitions:   partitions,
 		},
-		"tags":              tags,
-		"sshKey":            sskKeys,
-		"postInstallScript": data.PostInstallScript.ValueString(),
+		Tags:              tags,
+		SSHkey:            sskKeys,
+		PostInstallScript: data.PostInstallScript.ValueString(),
 	}
-	postBody, _ := json.Marshal(postData)
 
-	respBody, diags := r.client.CallFlexMetalAPI("POST", "servers", postBody)
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
+	respBody, err := r.client.CreateServer(ctx, createServerReq)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating server",
+			"Could not create server, unexpected error: "+err.Error(),
+		)
 		return
 	}
 
@@ -200,11 +194,15 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	// Waiting for the server to be ready
 	for data.Status.ValueString() != "delivered" && data.Status.ValueString() != "failed" {
-		respBody, diags = r.client.CallFlexMetalAPI("GET", fmt.Sprintf("servers/%s", data.Uuid.ValueString()), nil)
-		if diags.HasError() {
-			resp.Diagnostics.Append(diags...)
+		respBody, err = r.client.GetServer(ctx, data.Uuid.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error reading API response",
+				"Could not read API response: "+err.Error(),
+			)
 			return
 		}
+
 		resp.Diagnostics.Append(ParseResponseBody(ctx, respBody, &data)...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -235,9 +233,12 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	respBody, diags := r.client.CallFlexMetalAPI("GET", fmt.Sprintf("servers/%s", data.Uuid.ValueString()), nil)
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
+	respBody, err := r.client.GetServer(ctx, data.Uuid.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading server",
+			"Could not read server by id "+data.Uuid.ValueString()+": "+err.Error(),
+		)
 		return
 	}
 
@@ -274,13 +275,14 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	respBody, diags := r.client.CallFlexMetalAPI("DELETE", fmt.Sprintf("servers/%s", data.Uuid.ValueString()), nil)
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
+	respBody, err := r.client.DeleteServer(ctx, data.Uuid.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error deleting server",
+			"Could not delete server by id: "+err.Error(),
+		)
 		return
 	}
-
-	// Delete API call logic
 
 	resp.Diagnostics.Append(ParseResponseBody(ctx, respBody, &data)...)
 	if resp.Diagnostics.HasError() {
