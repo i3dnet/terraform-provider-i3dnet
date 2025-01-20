@@ -138,7 +138,7 @@ out more [here](https://developer.hashicorp.com/terraform/internals/debugging).
 Rebuild the provider before running acceptance tests.
 
 Acceptance tests run against a real working environment. To run them you must have these environment variables set:
-`I3D_API_KEY`, `I3D_BASE_URL` and `TF_ACC`.
+`I3D_API_KEY`, `I3D_BASE_URL` and `TF_ACC`. For a full list of environment variable used by our provider check `.env.dist`.
 
 You can omit `I3D_BASE_URL` in which case the default `https://api.i3d.net` production URL is used.
 
