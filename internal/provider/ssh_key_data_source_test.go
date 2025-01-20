@@ -11,6 +11,8 @@ import (
 )
 
 func TestAccSSHKeyDataSource(t *testing.T) {
+	t.Parallel()
+
 	createTestSSHKey(t)
 
 	resource.Test(t, resource.TestCase{
