@@ -96,7 +96,7 @@ func (d *sshKeyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	// Read API call logic
-	sshKeys, err := d.client.ListSSHKeys()
+	sshKeys, err := d.client.ListSSHKeys(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read i3D.net ssh keys",

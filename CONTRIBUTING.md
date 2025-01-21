@@ -120,12 +120,25 @@ You can now customize `internal/provider/server_resource.go` to add the good log
 Documentation
 for [generate command](https://developer.hashicorp.com/terraform/plugin/code-generation/framework-generator#generate-command).
 
+## Debugging and Logging
+
+If you'd like to see more detailed logs for debugging, you can set the `TF_LOG` environment variable to `DEBUG` or
+`TRACE`.
+
+``` console
+export TF_LOG=DEBUG
+export TF_LOG=TRACE
+```
+
+After setting the log level, you can run `terraform plan` or `terraform apply` again to see more detailed output. Find
+out more [here](https://developer.hashicorp.com/terraform/internals/debugging).
+
 ## Running acceptance tests
 
 Rebuild the provider before running acceptance tests.
 
 Acceptance tests run against a real working environment. To run them you must have these environment variables set:
-`I3D_API_KEY`, `I3D_BASE_URL` and `TF_ACC`.
+`I3D_API_KEY`, `I3D_BASE_URL` and `TF_ACC`. For a full list of environment variable used by our provider check `.env.dist`.
 
 You can omit `I3D_BASE_URL` in which case the default `https://api.i3d.net` production URL is used.
 
@@ -144,6 +157,14 @@ environment variable. For example, the following command will run `TestAccSSHKey
 ```shell
 TESTARGS='-run=TestAccSSHKeyResource' task testacc
 ```
+
+Run only Flexmetal Server Resource test:
+
+```shell
+TESTARGS='-run=TestAccFlexmetalServerResource' task testacc
+```
+
+Note: Creating servers is a long-running operation.
 
 Run all acceptance tests:
 

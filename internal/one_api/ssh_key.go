@@ -1,10 +1,13 @@
 package one_api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 )
+
+const sshKeyEndpoint = "sshKey"
 
 type CreateSSHKeyReq struct {
 	Name      string `json:"name"`
@@ -18,13 +21,13 @@ type SSHKey struct {
 	CreatedAt int64  `json:"createdAt"`
 }
 
-func (c *Client) CreateSSHKey(req CreateSSHKeyReq) (*SSHKey, error) {
+func (c *Client) CreateSSHKey(ctx context.Context, req CreateSSHKeyReq) (*SSHKey, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.callAPI(http.MethodPost, "sshKey", "", body)
+	resp, err := c.callAPI(ctx, http.MethodPost, sshKeyEndpoint, "", body)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling create ssh key api: %w", err)
 	}
@@ -43,8 +46,8 @@ func (c *Client) CreateSSHKey(req CreateSSHKeyReq) (*SSHKey, error) {
 	return &sshKeyResp[0], nil
 }
 
-func (c *Client) GetSSHKey(id string) (*SSHKey, error) {
-	resp, err := c.callAPI(http.MethodGet, "sshKey", id, nil)
+func (c *Client) GetSSHKey(ctx context.Context, id string) (*SSHKey, error) {
+	resp, err := c.callAPI(ctx, http.MethodGet, sshKeyEndpoint, id, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling get ssh key api: %w", err)
 	}
@@ -63,8 +66,8 @@ func (c *Client) GetSSHKey(id string) (*SSHKey, error) {
 	return &sshKeyResp[0], nil
 }
 
-func (c *Client) ListSSHKeys() ([]SSHKey, error) {
-	resp, err := c.callAPI(http.MethodGet, "sshKey", "", nil)
+func (c *Client) ListSSHKeys(ctx context.Context) ([]SSHKey, error) {
+	resp, err := c.callAPI(ctx, http.MethodGet, sshKeyEndpoint, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling list ssh key api: %w", err)
 	}
@@ -83,8 +86,8 @@ func (c *Client) ListSSHKeys() ([]SSHKey, error) {
 	return sshKeyResp, nil
 }
 
-func (c *Client) DeleteSSHKey(id string) error {
-	resp, err := c.callAPI(http.MethodDelete, "sshKey", id, nil)
+func (c *Client) DeleteSSHKey(ctx context.Context, id string) error {
+	resp, err := c.callAPI(ctx, http.MethodDelete, sshKeyEndpoint, id, nil)
 	if err != nil {
 		return fmt.Errorf("error calling delete ssh key API: %w", err)
 	}

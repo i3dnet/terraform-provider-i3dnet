@@ -105,7 +105,7 @@ func (r *sshKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	// Create new SSH key
-	sshResp, err := r.client.CreateSSHKey(reqBody)
+	sshResp, err := r.client.CreateSSHKey(ctx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating ssh key",
@@ -140,7 +140,7 @@ func (r *sshKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 
 	// Read API call logic
-	sshResp, err := r.client.GetSSHKey(data.Uuid.ValueString())
+	sshResp, err := r.client.GetSSHKey(ctx, data.Uuid.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading ssh key",
@@ -191,7 +191,7 @@ func (r *sshKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	err := r.client.DeleteSSHKey(data.Uuid.ValueString())
+	err := r.client.DeleteSSHKey(ctx, data.Uuid.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting SSHKey",
