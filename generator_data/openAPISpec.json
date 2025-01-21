@@ -1419,6 +1419,40 @@
                 }
             }
         },
+        "/v3/user/getUserRemoteInfo": {
+            "get": {
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Get user remote information",
+                "operationId": "getUserGetUserRemoteInfos",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserRemoteInformation"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v3/newsletter/optin": {
             "post": {
                 "tags": [
@@ -8664,9 +8698,96 @@
                         }
                     }
                 }
+            },
+            "post": {
+                "tags": [
+                    "FlexMetalTags"
+                ],
+                "summary": "Create a FlexMetal tag",
+                "operationId": "createFlexMetalTag",
+                "requestBody": {
+                    "description": "Tag creation request model",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FlexMetalTagCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The new tag name",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalTagCreateResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/v3/flexMetal/tags/{tag}": {
+            "get": {
+                "tags": [
+                    "FlexMetalTags"
+                ],
+                "summary": "Get a tag by name",
+                "operationId": "getFlexMetalTag",
+                "responses": {
+                    "200": {
+                        "description": "List of tags",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalTag"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Resource not found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "FlexMetalTags"
@@ -8734,6 +8855,104 @@
                     },
                     "422": {
                         "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexMetal/quota/usage": {
+            "get": {
+                "tags": [
+                    "FlexMetalQuota"
+                ],
+                "summary": "Get your FlexMetal quota and current usage numbers",
+                "operationId": "getFlexMetalQuotaUsages",
+                "responses": {
+                    "200": {
+                        "description": "List of quota & current usage numbers",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalServerQuotaUsage"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexMetal/usage": {
+            "get": {
+                "tags": [
+                    "FlexMetalUsage"
+                ],
+                "summary": "Retrieve a list of FlexMetal server usages",
+                "operationId": "getFlexMetalUsages",
+                "parameters": [
+                    {
+                        "name": "startDate",
+                        "in": "query",
+                        "description": "Must be a valid date string. E.g. YYYY-MM-DD.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "endDate",
+                        "in": "query",
+                        "description": "Must be a valid date string. E.g. YYYY-MM-DD.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalUsage"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "405": {
+                        "description": "Method Not Allowed"
+                    },
+                    "422": {
+                        "description": "Unprocessable Content"
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -12185,6 +12404,55 @@
                 },
                 "additionalProperties": false
             },
+            "FlexMetalQuotaUsage": {
+                "type": "object",
+                "required": [
+                    "instanceType",
+                    "quotaType",
+                    "contractId",
+                    "quota",
+                    "usage"
+                ],
+                "properties": {
+                    "instanceType": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexMetalInstanceTypePartial"
+                            }
+                        ],
+                        "description": "Instance type",
+                        "readOnly": true
+                    },
+                    "quotaType": {
+                        "type": "string",
+                        "format": "",
+                        "example": "onDemand",
+                        "description": "The type of quota. Can be \"onDemand\" or \"commit\".",
+                        "readOnly": true
+                    },
+                    "contractId": {
+                        "type": "string",
+                        "format": "",
+                        "example": "JD-NB2UU6VX732",
+                        "description": "The contract identifier of commited resources. Empty for generic quota."
+                    },
+                    "quota": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 5,
+                        "description": "The assigned quota number of server resources, for this location and instance type.",
+                        "readOnly": true
+                    },
+                    "usage": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 3,
+                        "description": "The current usage of server resources, for this location and instance type.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
             "FlexMetalServer": {
                 "type": "object",
                 "required": [
@@ -12313,6 +12581,33 @@
                 },
                 "additionalProperties": false
             },
+            "FlexMetalServerQuotaUsage": {
+                "type": "object",
+                "required": [
+                    "location",
+                    "quotaUsage"
+                ],
+                "properties": {
+                    "location": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexMetalLocationPartial"
+                            }
+                        ],
+                        "description": "Data center location",
+                        "readOnly": true
+                    },
+                    "quotaUsage": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexMetalQuotaUsage"
+                        },
+                        "description": "Quota and usage for a resource type",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
             "FlexMetalServerRequest": {
                 "type": "object",
                 "required": [
@@ -12415,6 +12710,38 @@
                 "additionalProperties": false,
                 "description": "A Flex Metal tag"
             },
+            "FlexMetalTagCreateRequest": {
+                "type": "object",
+                "required": [
+                    "tag"
+                ],
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "format": "",
+                        "example": "new-tag",
+                        "description": "The new tag name. It must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
+                    }
+                },
+                "additionalProperties": false,
+                "description": "Request object for creating a new Flex Metal tag"
+            },
+            "FlexMetalTagCreateResponse": {
+                "type": "object",
+                "required": [
+                    "tag"
+                ],
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "format": "",
+                        "example": "new-tag",
+                        "description": "The new tag name. It must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
+                    }
+                },
+                "additionalProperties": false,
+                "description": "Response object for creating a new Flex Metal tag"
+            },
             "FlexMetalTagRenameRequest": {
                 "type": "object",
                 "required": [
@@ -12494,6 +12821,53 @@
                 },
                 "additionalProperties": false,
                 "description": "A Flex Metal tag"
+            },
+            "FlexMetalUsage": {
+                "type": "object",
+                "required": [
+                    "server",
+                    "startedAt",
+                    "endedAt",
+                    "totalHours",
+                    "totalMinutes",
+                    "bandwidthIn"
+                ],
+                "properties": {
+                    "server": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexMetalServer"
+                            }
+                        ],
+                        "description": "FlexMetal server."
+                    },
+                    "startedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Usage tracking starts."
+                    },
+                    "endedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Usage tracking ends."
+                    },
+                    "totalHours": {
+                        "type": "integer",
+                        "format": "integer",
+                        "description": "Total hours of usage."
+                    },
+                    "totalMinutes": {
+                        "type": "integer",
+                        "format": "integer",
+                        "description": "Total minutes of usage."
+                    },
+                    "bandwidthIn": {
+                        "type": "integer",
+                        "format": "integer",
+                        "description": "Total bandwidth out."
+                    }
+                },
+                "additionalProperties": false
             },
             "GeometryModel": {
                 "type": "object",
@@ -16564,6 +16938,46 @@
                 },
                 "additionalProperties": false
             },
+            "UserRemoteInformation": {
+                "type": "object",
+                "required": [
+                    "ipAddressFromServerVariable",
+                    "ipAddressFromRequest",
+                    "xForwardFor",
+                    "xForwardHost",
+                    "userAgent"
+                ],
+                "properties": {
+                    "ipAddressFromServerVariable": {
+                        "type": "string",
+                        "format": "",
+                        "description": "The ip address for which you wish to fetch the data"
+                    },
+                    "ipAddressFromRequest": {
+                        "type": "string",
+                        "format": "",
+                        "description": "The ip address for which you wish to fetch the data"
+                    },
+                    "xForwardFor": {
+                        "type": "string",
+                        "format": "",
+                        "description": "The xForwardFor for which you wish to fetch the data",
+                        "readOnly": true
+                    },
+                    "xForwardHost": {
+                        "type": "string",
+                        "format": "",
+                        "description": "The xForwardHost for which you wish to fetch the data",
+                        "readOnly": true
+                    },
+                    "userAgent": {
+                        "type": "string",
+                        "format": "",
+                        "description": "The user agent for which you wish to fetch the data"
+                    }
+                },
+                "additionalProperties": false
+            },
             "WifiCredential": {
                 "type": "object",
                 "required": [
@@ -16705,6 +17119,10 @@
             "description": "Email confirmation"
         },
         {
+            "name": "FlexMetalQuota",
+            "description": "Manage and view your FlexMetal Quota and Usage"
+        },
+        {
             "name": "FlexMetalServer",
             "description": "FlexMetal servers are physical servers that can be requested and released at will.",
             "externalDocs": {
@@ -16714,6 +17132,10 @@
         {
             "name": "FlexMetalTags",
             "description": "FlexMetal tags can be assigned to FlexMetal servers to administratively group them together and use them for filtering."
+        },
+        {
+            "name": "FlexMetalUsage",
+            "description": "Fetch FlexMetal server(s) usage."
         },
         {
             "name": "Health",

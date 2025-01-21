@@ -97,7 +97,7 @@ Generator (see this [doc](https://developer.hashicorp.com/terraform/plugin/code-
 How to generate the resources & the config:
 
 1. Download the OpenAPI Spec (https://www.i3d.net/docs/api/v3/getjson) and overwrite the
-   `./generator_data/openAPISpec.json`.
+   `./generator_data/openAPISpec.json`. Make sure to replace `\/` with `/`. 
 2. Create/modify the `./generator_data/GeneratorConfig.yaml`
 3. Generate the `./generator_data/provider_code_spec.json` file:
 
