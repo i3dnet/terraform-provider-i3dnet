@@ -5,13 +5,12 @@ package resource_tag
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -49,7 +48,7 @@ func TagResourceSchema(ctx context.Context) schema.Schema {
 						AttrTypes: ResourcesValue{}.AttributeTypes(ctx),
 					},
 				},
-				Computed:            true,
+				Required:            true,
 				Description:         "A list of resources that use this tag",
 				MarkdownDescription: "A list of resources that use this tag",
 			},

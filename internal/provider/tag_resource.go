@@ -3,19 +3,23 @@ package provider
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"terraform-provider-i3dnet/internal/one_api"
 	"terraform-provider-i3dnet/internal/provider/resource_tag"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 var _ resource.Resource = (*tagResource)(nil)
 var _ resource.ResourceWithConfigure = (*tagResource)(nil)
+var _ resource.ResourceWithImportState = (*tagResource)(nil)
 
 func NewTagResource() resource.Resource {
 	return &tagResource{}
@@ -23,6 +27,10 @@ func NewTagResource() resource.Resource {
 
 type tagResource struct {
 	client *one_api.Client
+}
+
+func (r *tagResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 func (r *tagResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -50,11 +58,69 @@ func (r *tagResource) Metadata(ctx context.Context, req resource.MetadataRequest
 }
 
 func (r *tagResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = resource_tag.TagResourceSchema(ctx)
+	generatedSchema := resource_tag.TagResourceSchema(ctx)
+
+	// override to add id used in update
+	overrideSchema := map[string]schema.Attribute{
+		// add id for import
+		"id": schema.StringAttribute{
+			Computed: true,
+		},
+		// replace tag with name
+		"name": generatedSchema.Attributes["tag"],
+		// make resources computed instead of required
+		"resources": schema.SingleNestedAttribute{
+			Attributes: map[string]schema.Attribute{
+				"count": schema.Int64Attribute{
+					Required:            true,
+					Description:         "The total number of resources that use this tag",
+					MarkdownDescription: "The total number of resources that use this tag",
+				},
+				"flex_metal_servers": schema.SingleNestedAttribute{
+					Attributes: map[string]schema.Attribute{
+						"count": schema.Int64Attribute{
+							Required:            true,
+							Description:         "The amount of resources of this type that use this tag.",
+							MarkdownDescription: "The amount of resources of this type that use this tag.",
+						},
+					},
+					CustomType: resource_tag.FlexMetalServersType{
+						ObjectType: types.ObjectType{
+							AttrTypes: resource_tag.FlexMetalServersValue{}.AttributeTypes(ctx),
+						},
+					},
+					Required:            true,
+					Description:         "A summary of tag usage for the FlexMetalServer resource type",
+					MarkdownDescription: "A summary of tag usage for the FlexMetalServer resource type",
+				},
+			},
+			CustomType: resource_tag.ResourcesType{
+				ObjectType: types.ObjectType{
+					AttrTypes: resource_tag.ResourcesValue{}.AttributeTypes(ctx),
+				},
+			},
+			Required:            false,
+			Computed:            true,
+			Description:         generatedSchema.Attributes["resources"].GetDescription(),
+			MarkdownDescription: generatedSchema.Attributes["resources"].GetMarkdownDescription(),
+		},
+	}
+
+	maps.Insert(generatedSchema.Attributes, maps.All(overrideSchema))
+	// tag is replaced by name, so we no longer need it in the schema
+	delete(generatedSchema.Attributes, "tag")
+
+	resp.Schema = generatedSchema
+}
+
+type TagModel struct {
+	Resources resource_tag.ResourcesValue `tfsdk:"resources"`
+	Name      types.String                `tfsdk:"name"`
+	ID        types.String                `tfsdk:"id"`
 }
 
 func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data resource_tag.TagModel
+	var data TagModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -63,7 +129,7 @@ func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 
 	// Create API call logic
-	tagResp, err := r.client.CreateTag(ctx, data.Tag.ValueString())
+	tagResp, err := r.client.CreateTag(ctx, data.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating tag",
@@ -81,7 +147,7 @@ func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func tagRespToPlan(ctx context.Context, tagResp *one_api.Tag, data *resource_tag.TagModel) diag.Diagnostics {
+func tagRespToPlan(ctx context.Context, tagResp *one_api.Tag, data *TagModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	flexmetalServers, flexDiags := flexmetalServers(tagResp.Resources.FlexMetalServers.Count)
 
@@ -91,7 +157,8 @@ func tagRespToPlan(ctx context.Context, tagResp *one_api.Tag, data *resource_tag
 		return diags
 	}
 
-	data.Tag = types.StringValue(tagResp.Tag)
+	data.Name = types.StringValue(tagResp.Tag)
+	data.ID = types.StringValue(tagResp.Tag) // id is same as tag name
 	data.Resources = resource_tag.NewResourcesValueMust(
 		resource_tag.ResourcesValue{}.AttributeTypes(ctx),
 		map[string]attr.Value{
@@ -114,7 +181,7 @@ func flexmetalServers(serversCount int64) (basetypes.ObjectValue, diag.Diagnosti
 }
 
 func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_tag.TagModel
+	var data TagModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -124,7 +191,7 @@ func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	}
 
 	// Read API call logic
-	tagResp, err := r.client.GetTag(ctx, data.Tag.ValueString())
+	tagResp, err := r.client.GetTag(ctx, data.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error getting tag",
@@ -140,7 +207,7 @@ func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 }
 
 func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan, state resource_tag.TagModel
+	var plan, state TagModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -150,7 +217,7 @@ func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	// name attribute was changed
-	oldName, newName := state.Tag.ValueString(), plan.Tag.ValueString()
+	oldName, newName := state.Name.ValueString(), plan.Name.ValueString()
 
 	tagResp, err := r.client.UpdateTag(ctx, oldName, newName)
 	if err != nil {
@@ -168,7 +235,7 @@ func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, re
 }
 
 func (r *tagResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_tag.TagModel
+	var data TagModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -178,7 +245,7 @@ func (r *tagResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	}
 
 	// Delete API call logic
-	err := r.client.DeleteTag(ctx, data.Tag.ValueString())
+	err := r.client.DeleteTag(ctx, data.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting Tag",
