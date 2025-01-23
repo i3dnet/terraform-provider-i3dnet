@@ -6503,6 +6503,36 @@
                 }
             }
         },
+        "/v3/account/whitelist/check": {
+            "post": {
+                "tags": [
+                    "AccountIPWhitelist"
+                ],
+                "summary": "Check user whitelist",
+                "operationId": "createAccountWhitelistCheck",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v3/account/files": {
             "get": {
                 "tags": [
@@ -8710,7 +8740,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/FlexMetalTagCreateRequest"
+                                "$ref": "#/components/schemas/FlexMetalTag"
                             }
                         }
                     },
@@ -8718,13 +8748,13 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "The new tag name",
+                        "description": "The new tag",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/FlexMetalTagCreateResponse"
+                                        "$ref": "#/components/schemas/FlexMetalTag"
                                     }
                                 }
                             }
@@ -8788,6 +8818,61 @@
                     }
                 }
             },
+            "put": {
+                "tags": [
+                    "FlexMetalTags"
+                ],
+                "summary": "Rename a FlexMetal tag",
+                "operationId": "updateFlexMetalTag",
+                "requestBody": {
+                    "description": "Tag model",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FlexMetalTag"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The updated tag model",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexMetalTag"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Resource not found"
+                    },
+                    "409": {
+                        "description": "New tag name already exists"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "FlexMetalTags"
@@ -8803,58 +8888,6 @@
                     },
                     "404": {
                         "description": "Resource not found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "tags": [
-                    "FlexMetalTags"
-                ],
-                "summary": "Rename a FlexMetal tag",
-                "operationId": "updateFlexMetalTag",
-                "requestBody": {
-                    "description": "Tag rename request model",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/FlexMetalTagRenameRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "The updated tag name",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/FlexMetalTagRenameResponse"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Invalid credentials"
-                    },
-                    "404": {
-                        "description": "Resource not found"
-                    },
-                    "422": {
-                        "description": "Unprocessable content"
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -12704,82 +12737,12 @@
                                 "$ref": "#/components/schemas/FlexMetalTagSummary"
                             }
                         ],
-                        "description": "A list of resources that use this tag"
+                        "description": "A list of resources that use this tag",
+                        "readOnly": true
                     }
                 },
                 "additionalProperties": false,
                 "description": "A Flex Metal tag"
-            },
-            "FlexMetalTagCreateRequest": {
-                "type": "object",
-                "required": [
-                    "tag"
-                ],
-                "properties": {
-                    "tag": {
-                        "type": "string",
-                        "format": "",
-                        "example": "new-tag",
-                        "description": "The new tag name. It must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
-                    }
-                },
-                "additionalProperties": false,
-                "description": "Request object for creating a new Flex Metal tag"
-            },
-            "FlexMetalTagCreateResponse": {
-                "type": "object",
-                "required": [
-                    "tag"
-                ],
-                "properties": {
-                    "tag": {
-                        "type": "string",
-                        "format": "",
-                        "example": "new-tag",
-                        "description": "The new tag name. It must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
-                    }
-                },
-                "additionalProperties": false,
-                "description": "Response object for creating a new Flex Metal tag"
-            },
-            "FlexMetalTagRenameRequest": {
-                "type": "object",
-                "required": [
-                    "tag"
-                ],
-                "properties": {
-                    "tag": {
-                        "type": "string",
-                        "format": "",
-                        "example": "new-tag",
-                        "description": "The new tag name. It must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
-                    }
-                },
-                "additionalProperties": false,
-                "description": "Request object for renaming an existing Flex Metal tag"
-            },
-            "FlexMetalTagRenameResponse": {
-                "type": "object",
-                "required": [
-                    "oldTag",
-                    "newTag"
-                ],
-                "properties": {
-                    "oldTag": {
-                        "type": "string",
-                        "format": "",
-                        "example": "old-tag",
-                        "description": "The old tag name."
-                    },
-                    "newTag": {
-                        "type": "string",
-                        "format": "",
-                        "example": "new-tag",
-                        "description": "The new tag name. It must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
-                    }
-                },
-                "additionalProperties": false,
-                "description": "Response object for renaming an existing Flex Metal tag"
             },
             "FlexMetalTagResourceUsage": {
                 "type": "object",
