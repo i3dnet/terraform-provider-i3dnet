@@ -60,6 +60,8 @@ func (r *tagResource) Metadata(ctx context.Context, req resource.MetadataRequest
 func (r *tagResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	generatedSchema := resource_tag.TagResourceSchema(ctx)
 
+	resources := generatedSchema.Attributes["resources"].(schema.SingleNestedAttribute)
+
 	// override to add id used in update
 	overrideSchema := map[string]schema.Attribute{
 		// add id for import
@@ -71,38 +73,13 @@ func (r *tagResource) Schema(ctx context.Context, req resource.SchemaRequest, re
 		// make resources computed instead of required
 		"resources": schema.SingleNestedAttribute{
 			Attributes: map[string]schema.Attribute{
-				"count": schema.Int64Attribute{
-					Required:            true,
-					Description:         "The total number of resources that use this tag",
-					MarkdownDescription: "The total number of resources that use this tag",
-				},
-				"flex_metal_servers": schema.SingleNestedAttribute{
-					Attributes: map[string]schema.Attribute{
-						"count": schema.Int64Attribute{
-							Required:            true,
-							Description:         "The amount of resources of this type that use this tag.",
-							MarkdownDescription: "The amount of resources of this type that use this tag.",
-						},
-					},
-					CustomType: resource_tag.FlexMetalServersType{
-						ObjectType: types.ObjectType{
-							AttrTypes: resource_tag.FlexMetalServersValue{}.AttributeTypes(ctx),
-						},
-					},
-					Required:            true,
-					Description:         "A summary of tag usage for the FlexMetalServer resource type",
-					MarkdownDescription: "A summary of tag usage for the FlexMetalServer resource type",
-				},
+				"count":              resources.Attributes["count"],
+				"flex_metal_servers": resources.Attributes["flex_metal_servers"],
 			},
-			CustomType: resource_tag.ResourcesType{
-				ObjectType: types.ObjectType{
-					AttrTypes: resource_tag.ResourcesValue{}.AttributeTypes(ctx),
-				},
-			},
-			Required:            false,
+			CustomType:          resources.CustomType,
 			Computed:            true,
-			Description:         generatedSchema.Attributes["resources"].GetDescription(),
-			MarkdownDescription: generatedSchema.Attributes["resources"].GetMarkdownDescription(),
+			Description:         resources.GetDescription(),
+			MarkdownDescription: resources.GetMarkdownDescription(),
 		},
 	}
 
@@ -191,7 +168,7 @@ func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	}
 
 	// Read API call logic
-	tagResp, err := r.client.GetTag(ctx, data.Name.ValueString())
+	tagResp, err := r.client.GetTag(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error getting tag",
