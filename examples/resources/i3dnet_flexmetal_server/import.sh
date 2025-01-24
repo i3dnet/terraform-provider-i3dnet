@@ -1,0 +1,1 @@
+terraform import i3dnet_flexmetal_server.my-server uuid

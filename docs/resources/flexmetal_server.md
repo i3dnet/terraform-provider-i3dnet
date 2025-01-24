@@ -154,3 +154,11 @@ Required:
 Read-Only:
 
 - `ip_address` (String) Server IP address.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+terraform import i3dnet_flexmetal_server.my-server uuid
+```
