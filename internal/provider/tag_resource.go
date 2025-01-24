@@ -60,6 +60,10 @@ func (r *tagResource) Metadata(ctx context.Context, req resource.MetadataRequest
 func (r *tagResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	generatedSchema := resource_tag.TagResourceSchema(ctx)
 
+	generatedSchema.MarkdownDescription = "Provides an i3D.net Tag resource. " +
+		"A Tag is a label that can be assigned to FlexMetal servers to administratively group them together and use them for filtering. " +
+		"Tags created with this resource can be referenced in your `i3dnet_flexmetal_server` configuration via their ID or name."
+
 	resources := generatedSchema.Attributes["resources"].(schema.SingleNestedAttribute)
 
 	// override to add id used in update

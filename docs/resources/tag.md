@@ -3,19 +3,31 @@
 page_title: "i3dnet_tag Resource - i3dnet"
 subcategory: ""
 description: |-
-  
+  Provides an i3D.net Tag resource. A Tag is a label that can be assigned to FlexMetal servers to administratively group them together and use them for filtering. Tags created with this resource can be referenced in your i3dnet_flexmetal_server configuration via their ID or name.
 ---
 
 # i3dnet_tag (Resource)
 
-
+Provides an i3D.net Tag resource. A Tag is a label that can be assigned to FlexMetal servers to administratively group them together and use them for filtering. Tags created with this resource can be referenced in your `i3dnet_flexmetal_server` configuration via their ID or name.
 
 ## Example Usage
 
 ```terraform
-# Create a new tag
+# Create a new Tag
 resource "i3dnet_tag" "foo" {
   name = "foo"
+}
+
+# Create a new Server with the foo tag
+resource "i3dnet_flexmetal_server" "my-server" {
+  name          = "TerraFlex-Server"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "ubuntu-2404-lts"
+  }
+  ssh_key = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIER64HsjCSspx/JMhHELr8LgYwW/PdFrfj7Kr6UM76WS andrei.boar@i3d.net"]
+  tags    = [i3dnet_tag.foo.id]
 }
 ```
 
