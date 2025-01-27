@@ -38,5 +38,5 @@ resource "i3dnet_ssh_key" "my-key" {
 Import is supported using the following syntax:
 
 ```shell
-terraform import 3165678a-eeae-42f6-a521-9d7c0f9eb878
+terraform import i3dnet_ssh_key.my-key uuid
 ```
