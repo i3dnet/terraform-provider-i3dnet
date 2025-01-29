@@ -100,3 +100,38 @@ func (c *Client) GetTag(ctx context.Context, name string) (*Tag, error) {
 
 	return &tagResp[0], nil
 }
+
+func (c *Client) ListTags(ctx context.Context, name string) ([]Tag, error) {
+	resp, err := c.callAPI(ctx, http.MethodGet, tagEndpoint, "", nil)
+	if err != nil {
+		return nil, fmt.Errorf("error on calling list tags api: %w", err)
+	}
+	defer resp.Close()
+
+	var tagResp []Tag
+	dec := json.NewDecoder(resp)
+	if err := dec.Decode(&tagResp); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if len(tagResp) == 0 {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	if name != "" {
+		tagResp = filterByName(name, tagResp)
+	}
+
+	return tagResp, nil
+}
+
+func filterByName(name string, tags []Tag) []Tag {
+	var filtered []Tag
+	for _, v := range tags {
+		if v.Tag != name {
+			continue
+		}
+		filtered = append(filtered, v)
+	}
+	return filtered
+}

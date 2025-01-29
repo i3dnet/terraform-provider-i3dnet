@@ -34,3 +34,8 @@ resources:
     delete:
       path: /v3/flexMetal/tags/{tag}
       method: DELETE
+data_sources:
+  tags:
+    read:
+      path: /v3/flexMetal/tags
+      method: GET
