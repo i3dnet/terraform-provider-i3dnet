@@ -11,8 +11,6 @@ import (
 )
 
 func TestAccTagDataSource(t *testing.T) {
-	t.Parallel()
-
 	createTestTags(t, "testTag", "secondTag")
 
 	resource.Test(t, resource.TestCase{
