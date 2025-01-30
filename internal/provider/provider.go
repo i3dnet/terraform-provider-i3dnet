@@ -120,6 +120,7 @@ func (p *i3dnetProvider) Metadata(ctx context.Context, req provider.MetadataRequ
 func (p *i3dnetProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewSshKeyDataSource,
+		NewTagsDataSource,
 	}
 }
 
