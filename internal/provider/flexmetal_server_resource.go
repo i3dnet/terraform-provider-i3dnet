@@ -184,6 +184,13 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	serverRespToPlan(createServerResp, &data)
 
+	// Add resource to TF state earlier to prevent dangling servers
+	// Example: timeout reached, but server is delivered later on
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Get the actual time
 	startTime := time.Now()
 
