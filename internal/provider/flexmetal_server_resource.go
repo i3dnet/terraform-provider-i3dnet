@@ -199,7 +199,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 
 		serverRespToPlan(getServerResp, &data)
-		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...) // todo do we need to append to state all time?
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
