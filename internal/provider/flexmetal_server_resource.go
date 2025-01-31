@@ -3,20 +3,17 @@ package provider
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
 	"terraform-provider-i3dnet/internal/one_api"
+	"terraform-provider-i3dnet/internal/provider/modifiers"
 	"terraform-provider-i3dnet/internal/provider/resource_flexmetal_server"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
@@ -121,31 +118,10 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		MarkdownDescription: "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
 	}
 
-	// Replace resource if any attribute changes
-	applyRequireReplace(generatedSchema)
+	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "name", "location", "post_install_script", "ssh_key", "os"})
+	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at"})
 
 	resp.Schema = generatedSchema
-}
-
-// applyRequireReplace applies a RequiresReplace plan modifier to attributes that cannot be updated in-place
-func applyRequireReplace(s schema.Schema) {
-	attributesRequireReplace := []string{"instance_type", "name", "location", "post_install_script", "ssh_key", "os"}
-	for key, attribute := range s.Attributes {
-		if !slices.Contains(attributesRequireReplace, key) {
-			continue
-		}
-		switch v := attribute.(type) {
-		case schema.StringAttribute:
-			v.PlanModifiers = append(v.PlanModifiers, stringplanmodifier.RequiresReplace())
-			s.Attributes[key] = v
-		case schema.ListAttribute:
-			v.PlanModifiers = append(v.PlanModifiers, listplanmodifier.RequiresReplace())
-			s.Attributes[key] = v
-		case schema.SingleNestedAttribute:
-			v.PlanModifiers = append(v.PlanModifiers, objectplanmodifier.RequiresReplace())
-			s.Attributes[key] = v
-		}
-	}
 }
 
 func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -209,7 +185,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	serverRespToPlan(createServerResp, &data)
+	serverRespToPlan(ctx, createServerResp, &data)
 
 	// Add resource to TF state earlier to prevent dangling servers
 	// Example: timeout reached, but server is delivered later on
@@ -232,7 +208,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 			return
 		}
 
-		serverRespToPlan(getServerResp, &data)
+		serverRespToPlan(ctx, getServerResp, &data)
 		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -253,7 +229,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func serverRespToPlan(serverResp *one_api.Server, data *resource_flexmetal_server.FlexmetalServerModel) {
+func serverRespToPlan(ctx context.Context, serverResp *one_api.Server, data *resource_flexmetal_server.FlexmetalServerModel) {
 	data.Uuid = types.StringValue(serverResp.Uuid)
 	data.CreatedAt = types.Int64Value(serverResp.CreatedAt)
 	data.ReleasedAt = types.Int64Value(serverResp.ReleasedAt)
@@ -308,7 +284,7 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	serverRespToPlan(getServerResp, &data)
+	serverRespToPlan(ctx, getServerResp, &data)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
