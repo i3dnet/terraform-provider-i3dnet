@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -117,6 +118,8 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		Description:         "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
 		MarkdownDescription: "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
 	}
+
+	modifiers.UpdateComputed(generatedSchema, []string{"tags"}, false)
 
 	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "name", "location", "post_install_script", "ssh_key", "os"})
 	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at"})
@@ -255,7 +258,6 @@ func serverRespToPlan(ctx context.Context, serverResp *one_api.Server, data *res
 		)
 	}
 
-	data.Tags = basetypes.NewListNull(types.StringType)
 	if len(serverResp.Tags) > 0 {
 		var values []attr.Value
 		for _, tag := range serverResp.Tags {
@@ -291,17 +293,74 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 }
 
 func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data resource_flexmetal_server.FlexmetalServerModel
+	var plan, state resource_flexmetal_server.FlexmetalServerModel
 
-	// Read Terraform plan data into the model
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Save updated data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	var planTags []string
+	for _, v := range plan.Tags.Elements() {
+		planTags = append(planTags, v.(types.String).ValueString())
+	}
+
+	var stateTags []string
+	for _, v := range state.Tags.Elements() {
+		stateTags = append(stateTags, v.(types.String).ValueString())
+	}
+
+	var newTags []string
+	for _, v := range planTags {
+		if !slices.Contains(stateTags, v) {
+			newTags = append(newTags, v)
+		}
+	}
+
+	var removedTags []string
+	for _, v := range stateTags {
+		if !slices.Contains(planTags, v) {
+			removedTags = append(removedTags, v)
+		}
+	}
+
+	for _, tag := range newTags {
+		_, err := r.client.AddTagToServer(ctx, plan.Uuid.ValueString(), tag)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error adding tag to server",
+				"Could not add tag to server, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	}
+
+	for _, tag := range removedTags {
+		_, err := r.client.DeleteTagFromServer(ctx, plan.Uuid.ValueString(), tag)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error deleting tag from server",
+				"Could not delete tag from server, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	}
+
+	s, err := r.client.GetServer(ctx, plan.Uuid.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error getting server",
+			"Could not get server, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	serverRespToPlan(ctx, s, &plan)
+
+	// Save updated plan into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

@@ -125,3 +125,43 @@ func (c *Client) DeleteServer(ctx context.Context, id string) (*Server, error) {
 
 	return &serverResp[0], nil
 }
+
+func (c *Client) AddTagToServer(ctx context.Context, serverID, tag string) (*Server, error) {
+	resp, err := c.callAPI(ctx, http.MethodPost, flexMetalEndpoint, fmt.Sprintf("servers/%s/tag/%s", serverID, tag), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error calling delete flexmetal server API: %w", err)
+	}
+	defer resp.Close()
+
+	var serverResp []Server
+	dec := json.NewDecoder(resp)
+	if err := dec.Decode(&serverResp); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if len(serverResp) == 0 {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	return &serverResp[0], nil
+}
+
+func (c *Client) DeleteTagFromServer(ctx context.Context, serverID, tag string) (*Server, error) {
+	resp, err := c.callAPI(ctx, http.MethodDelete, flexMetalEndpoint, fmt.Sprintf("servers/%s/tag/%s", serverID, tag), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error calling delete flexmetal server API: %w", err)
+	}
+	defer resp.Close()
+
+	var serverResp []Server
+	dec := json.NewDecoder(resp)
+	if err := dec.Decode(&serverResp); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if len(serverResp) == 0 {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	return &serverResp[0], nil
+}
