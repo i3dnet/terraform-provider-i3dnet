@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -12,10 +13,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 var timeOut = 30 * time.Minute
@@ -118,7 +121,31 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		MarkdownDescription: "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
 	}
 
+	// Replace resource if any attribute changes
+	applyRequireReplace(generatedSchema)
+
 	resp.Schema = generatedSchema
+}
+
+// applyRequireReplace applies a RequiresReplace plan modifier to attributes that cannot be updated in-place
+func applyRequireReplace(s schema.Schema) {
+	attributesRequireReplace := []string{"instance_type", "name", "location", "post_install_script", "ssh_key", "os"}
+	for key, attribute := range s.Attributes {
+		if !slices.Contains(attributesRequireReplace, key) {
+			continue
+		}
+		switch v := attribute.(type) {
+		case schema.StringAttribute:
+			v.PlanModifiers = append(v.PlanModifiers, stringplanmodifier.RequiresReplace())
+			s.Attributes[key] = v
+		case schema.ListAttribute:
+			v.PlanModifiers = append(v.PlanModifiers, listplanmodifier.RequiresReplace())
+			s.Attributes[key] = v
+		case schema.SingleNestedAttribute:
+			v.PlanModifiers = append(v.PlanModifiers, objectplanmodifier.RequiresReplace())
+			s.Attributes[key] = v
+		}
+	}
 }
 
 func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
