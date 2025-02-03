@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -11,24 +12,26 @@ import (
 )
 
 func TestAccTagDataSource(t *testing.T) {
-	createTestTags(t, "testTag", "secondTag")
+	firstTag := randomTagName("testTag")
+
+	createTestTags(t, firstTag, randomTagName("secondTag"))
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Read testing
 			{
-				Config: providerConfig(t) + `
+				Config: providerConfig(t) + fmt.Sprintf(`
 data "i3dnet_tags" "fooTag" {
-  name = "testTag"
+  name = "%s"
 }
-`,
+`, firstTag),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// Verify attributes
-					resource.TestCheckResourceAttr("data.i3dnet_tags.fooTag", "name", "testTag"),
+					resource.TestCheckResourceAttr("data.i3dnet_tags.fooTag", "name", firstTag),
 
 					resource.TestCheckResourceAttr("data.i3dnet_tags.fooTag", "tags.#", "1"),
-					resource.TestCheckResourceAttr("data.i3dnet_tags.fooTag", "tags.0.tag", "testTag"),
+					resource.TestCheckResourceAttr("data.i3dnet_tags.fooTag", "tags.0.tag", firstTag),
 					resource.TestCheckResourceAttr("data.i3dnet_tags.fooTag", "tags.0.resources.count", "0"),
 					resource.TestCheckResourceAttr("data.i3dnet_tags.fooTag", "tags.0.resources.flex_metal_servers.count", "0"),
 				),
