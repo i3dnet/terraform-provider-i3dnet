@@ -2,22 +2,21 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"terraform-provider-i3dnet/internal/one_api"
+	"terraform-provider-i3dnet/internal/provider/modifiers"
 	"terraform-provider-i3dnet/internal/provider/resource_flexmetal_server"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 var timeOut = 30 * time.Minute
@@ -120,6 +119,11 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		MarkdownDescription: "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
 	}
 
+	modifiers.UpdateComputed(generatedSchema, []string{"tags"}, false)
+
+	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "name", "location", "post_install_script", "ssh_key", "os"})
+	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at"})
+
 	resp.Schema = generatedSchema
 }
 
@@ -175,7 +179,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		PostInstallScript: data.PostInstallScript.ValueString(),
 	}
 
-	respBody, err := r.client.CreateServer(ctx, createServerReq)
+	createServerResp, err := r.client.CreateServer(ctx, createServerReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating server",
@@ -184,7 +188,11 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	resp.Diagnostics.Append(ParseResponseBody(ctx, respBody, &data)...)
+	serverRespToPlan(ctx, createServerResp, &data)
+
+	// Add resource to TF state earlier to prevent dangling servers
+	// Example: timeout reached, but server is delivered later on
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -194,7 +202,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	// Waiting for the server to be ready
 	for data.Status.ValueString() != "delivered" && data.Status.ValueString() != "failed" {
-		respBody, err = r.client.GetServer(ctx, data.Uuid.ValueString())
+		getServerResp, err := r.client.GetServer(ctx, data.Uuid.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error reading API response",
@@ -203,7 +211,8 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 			return
 		}
 
-		resp.Diagnostics.Append(ParseResponseBody(ctx, respBody, &data)...)
+		serverRespToPlan(ctx, getServerResp, &data)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -223,6 +232,41 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+func serverRespToPlan(ctx context.Context, serverResp *one_api.Server, data *resource_flexmetal_server.FlexmetalServerModel) {
+	data.Uuid = types.StringValue(serverResp.Uuid)
+	data.CreatedAt = types.Int64Value(serverResp.CreatedAt)
+	data.ReleasedAt = types.Int64Value(serverResp.ReleasedAt)
+	data.DeliveredAt = types.Int64Value(serverResp.DeliveredAt)
+	data.Status = types.StringValue(serverResp.Status)
+	data.StatusMessage = types.StringValue(serverResp.StatusMessage)
+
+	if len(serverResp.IpAddresses) > 0 {
+		var values []attr.Value
+		for _, ip := range serverResp.IpAddresses {
+			ipAddressValue := resource_flexmetal_server.NewIpAddressesValueMust(
+				map[string]attr.Type{
+					"ip_address": basetypes.StringType{},
+				},
+				map[string]attr.Value{
+					"ip_address": basetypes.NewStringValue(ip.IpAddress),
+				})
+			values = append(values, ipAddressValue)
+		}
+		data.IpAddresses = basetypes.NewListValueMust(
+			resource_flexmetal_server.IpAddressesValue{}.Type(context.Background()),
+			values,
+		)
+	}
+
+	if len(serverResp.Tags) > 0 {
+		var values []attr.Value
+		for _, tag := range serverResp.Tags {
+			values = append(values, types.StringValue(tag))
+		}
+		data.Tags = basetypes.NewListValueMust(types.StringType, values)
+	}
+}
+
 func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data resource_flexmetal_server.FlexmetalServerModel
 
@@ -233,7 +277,7 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	respBody, err := r.client.GetServer(ctx, data.Uuid.ValueString())
+	getServerResp, err := r.client.GetServer(ctx, data.Uuid.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading server",
@@ -242,27 +286,81 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	resp.Diagnostics.Append(ParseResponseBody(ctx, respBody, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	serverRespToPlan(ctx, getServerResp, &data)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data resource_flexmetal_server.FlexmetalServerModel
+	var plan, state resource_flexmetal_server.FlexmetalServerModel
 
-	// Read Terraform plan data into the model
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Save updated data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	var planTags []string
+	for _, v := range plan.Tags.Elements() {
+		planTags = append(planTags, v.(types.String).ValueString())
+	}
+
+	var stateTags []string
+	for _, v := range state.Tags.Elements() {
+		stateTags = append(stateTags, v.(types.String).ValueString())
+	}
+
+	var newTags []string
+	for _, v := range planTags {
+		if !slices.Contains(stateTags, v) {
+			newTags = append(newTags, v)
+		}
+	}
+
+	var removedTags []string
+	for _, v := range stateTags {
+		if !slices.Contains(planTags, v) {
+			removedTags = append(removedTags, v)
+		}
+	}
+
+	for _, tag := range newTags {
+		_, err := r.client.AddTagToServer(ctx, plan.Uuid.ValueString(), tag)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error adding tag to server",
+				"Could not add tag to server, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	}
+
+	for _, tag := range removedTags {
+		_, err := r.client.DeleteTagFromServer(ctx, plan.Uuid.ValueString(), tag)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error deleting tag from server",
+				"Could not delete tag from server, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	}
+
+	s, err := r.client.GetServer(ctx, plan.Uuid.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error getting server",
+			"Could not get server, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	serverRespToPlan(ctx, s, &plan)
+
+	// Save updated plan into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -284,12 +382,7 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	resp.Diagnostics.Append(ParseResponseBody(ctx, respBody, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if data.Status.ValueString() != "releasing" {
+	if respBody.Status != "releasing" {
 		resp.Diagnostics.AddError("Server deletion failed", fmt.Sprintf("Status message: %s", data.StatusMessage.ValueString()))
 		return
 	}
@@ -298,73 +391,4 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 func (r *serverResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("uuid"), req, resp)
-}
-
-// ParseResponseBody is a helper function to parse the response body from the FlexMetal API
-func ParseResponseBody(ctx context.Context, responseBody []byte, server *resource_flexmetal_server.FlexmetalServerModel) diag.Diagnostics {
-	var diags diag.Diagnostics
-	// parse the response body
-	unmarshalledData := []map[string]any{}
-
-	err := json.Unmarshal(responseBody, &unmarshalledData)
-	if err != nil {
-		diags.AddError("API Response Error", fmt.Sprintf("Failed to parse response body: %s, body content: %s", err, responseBody))
-		return diags
-	}
-
-	for _, answer := range unmarshalledData {
-		server.Uuid = basetypes.NewStringValue(answer["uuid"].(string))
-		server.Status = basetypes.NewStringValue(answer["status"].(string))
-		server.StatusMessage = basetypes.NewStringValue(answer["statusMessage"].(string))
-		// wipe the list
-		server.IpAddresses = basetypes.NewListUnknown(resource_flexmetal_server.IpAddressesType{})
-		if answer["ipAddresses"] != nil {
-			for _, ip := range answer["ipAddresses"].([]interface{}) {
-
-				ipAddress := resource_flexmetal_server.NewIpAddressesValueMust(
-					map[string]attr.Type{
-						"ip_address": basetypes.StringType{},
-					},
-					map[string]attr.Value{
-						"ip_address": basetypes.NewStringValue(ip.(map[string]any)["ipAddress"].(string)),
-					})
-				values := append(server.IpAddresses.Elements(), ipAddress)
-				server.IpAddresses = basetypes.NewListValueMust(
-					ipAddress.Type(context.Background()),
-					values,
-				)
-
-			}
-		}
-		server.Tags = basetypes.NewListNull(basetypes.StringType{})
-		if answer["tags"] != nil {
-			values := []attr.Value{}
-			for _, tag := range answer["tags"].([]interface{}) {
-				values = append(values, basetypes.NewStringValue(tag.(string)))
-			}
-			values = append(server.Tags.Elements(), values...)
-			server.Tags = basetypes.NewListValueMust(
-				basetypes.StringType{},
-				values,
-			)
-		}
-		if answer["createdAt"] != nil {
-			server.CreatedAt = basetypes.NewInt64Value(int64(answer["createdAt"].(float64)))
-		} else {
-			server.CreatedAt = basetypes.NewInt64Value(0)
-		}
-		if answer["deliveredAt"] != nil {
-			server.DeliveredAt = basetypes.NewInt64Value(int64(answer["deliveredAt"].(float64)))
-		} else {
-			server.DeliveredAt = basetypes.NewInt64Value(0)
-		}
-		if answer["releasedAt"] != nil {
-			server.ReleasedAt = basetypes.NewInt64Value(int64(answer["releasedAt"].(float64)))
-		} else {
-			server.ReleasedAt = basetypes.NewInt64Value(0)
-		}
-
-	}
-
-	return diags
 }
