@@ -383,7 +383,7 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 
 	if respBody.Status != "releasing" {
-		resp.Diagnostics.AddError("Server deletion failed", fmt.Sprintf("Status message: %s", data.StatusMessage.ValueString()))
+		resp.Diagnostics.AddError("Server deletion failed", fmt.Sprintf("Status message: %s", respBody.StatusMessage))
 		return
 	}
 }
