@@ -240,6 +240,10 @@ func serverRespToPlan(ctx context.Context, serverResp *one_api.Server, data *res
 	data.Status = types.StringValue(serverResp.Status)
 	data.StatusMessage = types.StringValue(serverResp.StatusMessage)
 
+	data.IpAddresses = basetypes.NewListValueMust(
+		resource_flexmetal_server.IpAddressesValue{}.Type(context.Background()),
+		[]attr.Value{},
+	)
 	if len(serverResp.IpAddresses) > 0 {
 		var values []attr.Value
 		for _, ip := range serverResp.IpAddresses {
