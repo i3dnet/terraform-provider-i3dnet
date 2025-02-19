@@ -70,3 +70,39 @@ resource "i3dnet_flexmetal_server" "my-talos" {
     ]
   }
 }
+
+# Create a Talos OS 1.9.0 server under contract `CONTRACT-123`
+resource "i3dnet_flexmetal_server" "my-talos" {
+  name          = "MyTalosServer"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "talos-omni-190"
+    kernel_params = [
+      {
+        key   = "siderolink.api"
+        value = "https://siderolink.api/?jointoken=secret"
+      }
+    ]
+  }
+  contract_id = "CONTRACT-123"
+}
+
+# Create a Talos OS 1.9.0 server under contract `CONTRACT-123`
+# You can add overflow = true to create server even the location is at commited capacity
+resource "i3dnet_flexmetal_server" "my-talos" {
+  name          = "MyTalosServer"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "talos-omni-190"
+    kernel_params = [
+      {
+        key   = "siderolink.api"
+        value = "https://siderolink.api/?jointoken=secret"
+      }
+    ]
+  }
+  contract_id = "CONTRACT-123"
+  overflow    = true
+}
