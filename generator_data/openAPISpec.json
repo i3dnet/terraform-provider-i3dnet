@@ -12500,7 +12500,8 @@
                     "tags",
                     "createdAt",
                     "deliveredAt",
-                    "releasedAt"
+                    "releasedAt",
+                    "contractId"
                 ],
                 "properties": {
                     "uuid": {
@@ -12593,6 +12594,13 @@
                         "type": "integer",
                         "format": "integer",
                         "description": "Server release timestamp.",
+                        "readOnly": true
+                    },
+                    "contractId": {
+                        "type": "string",
+                        "format": "",
+                        "example": "MY-CONTRACT-123",
+                        "description": "Represents client contractId.",
                         "readOnly": true
                     }
                 },
@@ -12699,6 +12707,17 @@
                             "example": "my-tag"
                         },
                         "description": "A list of tags. There is a maximum of 60 tags per server. Each tag must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$"
+                    },
+                    "contractId": {
+                        "type": "string",
+                        "format": "",
+                        "example": "MY-CONTRACT-123",
+                        "description": "Represents client contractId. Format is ^[A-Z0-9_\\-.]{0,240}$"
+                    },
+                    "overflow": {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "If true, the server will be created even if the location is at commited capacity. Default is false."
                     }
                 },
                 "additionalProperties": false,

@@ -16,6 +16,12 @@ func UpdateComputed(s schema.Schema, attributes []string, value bool) {
 		case schema.ListAttribute:
 			v.Computed = value
 			s.Attributes[key] = v
+		case schema.StringAttribute:
+			v.Computed = value
+			s.Attributes[key] = v
+		case schema.BoolAttribute:
+			v.Computed = value
+			s.Attributes[key] = v
 		}
 	}
 }

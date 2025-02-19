@@ -66,6 +66,13 @@
 			"schema": {
 				"attributes": [
 					{
+						"name": "contract_id",
+						"string": {
+							"computed_optional_required": "computed_optional",
+							"description": "Represents client contractId. Format is ^[A-Z0-9_\\-.]{0,240}$"
+						}
+					},
+					{
 						"name": "instance_type",
 						"string": {
 							"computed_optional_required": "required",
@@ -157,6 +164,13 @@
 								}
 							],
 							"description": "Server operating system."
+						}
+					},
+					{
+						"name": "overflow",
+						"bool": {
+							"computed_optional_required": "computed_optional",
+							"description": "If true, the server will be created even if the location is at commited capacity. Default is false."
 						}
 					},
 					{

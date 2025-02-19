@@ -17,6 +17,8 @@ type CreateServerReq struct {
 	Tags              []string `json:"tags"`
 	SSHkey            []string `json:"sshKey,omitempty"`
 	PostInstallScript string   `json:"postInstallScript"`
+	ContractID        string   `json:"contractId,omitempty"`
+	Overflow          bool     `json:"overflow"`
 }
 
 type OS struct {
