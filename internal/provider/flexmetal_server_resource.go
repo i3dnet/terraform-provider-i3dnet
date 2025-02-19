@@ -124,7 +124,7 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 	modifiers.UpdateComputed(generatedSchema, []string{"tags", "overflow", "contract_id"}, false)
 
 	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "name", "location", "post_install_script", "ssh_key", "os"})
-	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at"})
+	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at", "overflow"})
 
 	resp.Schema = generatedSchema
 }
@@ -243,6 +243,10 @@ func serverRespToPlan(ctx context.Context, serverResp *one_api.Server, data *res
 	data.DeliveredAt = types.Int64Value(serverResp.DeliveredAt)
 	data.Status = types.StringValue(serverResp.Status)
 	data.StatusMessage = types.StringValue(serverResp.StatusMessage)
+
+	if serverResp.ContractID != "" {
+		data.ContractId = types.StringValue(serverResp.ContractID)
+	}
 
 	data.IpAddresses = basetypes.NewListValueMust(
 		resource_flexmetal_server.IpAddressesValue{}.Type(context.Background()),
