@@ -39,3 +39,7 @@ data_sources:
     read:
       path: /v3/flexMetal/tags
       method: GET
+  locations:
+    read:
+      path: /v3/flexMetal/location
+      method: GET
