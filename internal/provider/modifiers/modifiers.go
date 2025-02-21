@@ -3,6 +3,7 @@ package modifiers
 import (
 	"slices"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
@@ -50,6 +51,9 @@ func ApplyUseStateForUnknown(s schema.Schema, attributes []string) {
 			s.Attributes[key] = v
 		case schema.ListNestedAttribute:
 			v.PlanModifiers = append(v.PlanModifiers, listplanmodifier.UseStateForUnknown())
+			s.Attributes[key] = v
+		case schema.BoolAttribute:
+			v.PlanModifiers = append(v.PlanModifiers, boolplanmodifier.UseStateForUnknown())
 			s.Attributes[key] = v
 		}
 	}

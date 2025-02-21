@@ -5,12 +5,13 @@ package resource_flexmetal_server
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -18,6 +19,12 @@ import (
 func FlexmetalServerResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"contract_id": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Description:         "Represents client contractId. Format is ^[A-Z0-9_\\-.]{0,240}$",
+				MarkdownDescription: "Represents client contractId. Format is ^[A-Z0-9_\\-.]{0,240}$",
+			},
 			"created_at": schema.Int64Attribute{
 				Computed:            true,
 				Description:         "Server creation timestamp.",
@@ -134,6 +141,12 @@ func FlexmetalServerResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Server operating system.",
 				MarkdownDescription: "Server operating system.",
 			},
+			"overflow": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Description:         "If true, the server will be created even if the location is at commited capacity. Default is false.",
+				MarkdownDescription: "If true, the server will be created even if the location is at commited capacity. Default is false.",
+			},
 			"post_install_script": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
@@ -178,6 +191,7 @@ func FlexmetalServerResourceSchema(ctx context.Context) schema.Schema {
 }
 
 type FlexmetalServerModel struct {
+	ContractId        types.String `tfsdk:"contract_id"`
 	CreatedAt         types.Int64  `tfsdk:"created_at"`
 	DeliveredAt       types.Int64  `tfsdk:"delivered_at"`
 	InstanceType      types.String `tfsdk:"instance_type"`
@@ -185,6 +199,7 @@ type FlexmetalServerModel struct {
 	Location          types.String `tfsdk:"location"`
 	Name              types.String `tfsdk:"name"`
 	Os                OsValue      `tfsdk:"os"`
+	Overflow          types.Bool   `tfsdk:"overflow"`
 	PostInstallScript types.String `tfsdk:"post_install_script"`
 	ReleasedAt        types.Int64  `tfsdk:"released_at"`
 	SshKey            types.List   `tfsdk:"ssh_key"`

@@ -17,6 +17,8 @@ type CreateServerReq struct {
 	Tags              []string `json:"tags"`
 	SSHkey            []string `json:"sshKey,omitempty"`
 	PostInstallScript string   `json:"postInstallScript"`
+	ContractID        string   `json:"contractId,omitempty"`
+	Overflow          bool     `json:"overflow"`
 }
 
 type OS struct {
@@ -59,6 +61,7 @@ type Server struct {
 	CreatedAt   int64    `json:"createdAt"`
 	DeliveredAt int64    `json:"deliveredAt"`
 	ReleasedAt  int64    `json:"releasedAt"`
+	ContractID  string   `json:"contractId"`
 }
 
 func (c *Client) CreateServer(ctx context.Context, req CreateServerReq) (*Server, error) {

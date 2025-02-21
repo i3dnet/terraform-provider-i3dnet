@@ -17,9 +17,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-var timeOut = 30 * time.Minute
+var waitForReadyTimeout = 30 * time.Minute
+var waitForReleasedTimeout = 5 * time.Minute
 
 var _ resource.Resource = (*serverResource)(nil)
 var _ resource.ResourceWithConfigure = (*serverResource)(nil)
@@ -119,10 +121,10 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		MarkdownDescription: "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
 	}
 
-	modifiers.UpdateComputed(generatedSchema, []string{"tags"}, false)
+	modifiers.UpdateComputed(generatedSchema, []string{"tags", "overflow", "contract_id"}, false)
 
 	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "name", "location", "post_install_script", "ssh_key", "os"})
-	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at"})
+	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at", "overflow"})
 
 	resp.Schema = generatedSchema
 }
@@ -177,6 +179,8 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		Tags:              tags,
 		SSHkey:            sskKeys,
 		PostInstallScript: data.PostInstallScript.ValueString(),
+		ContractID:        data.ContractId.ValueString(),
+		Overflow:          data.Overflow.ValueBool(),
 	}
 
 	createServerResp, err := r.client.CreateServer(ctx, createServerReq)
@@ -216,7 +220,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		if time.Since(startTime) > timeOut {
+		if time.Since(startTime) > waitForReadyTimeout {
 			resp.Diagnostics.AddError("Server creation timeout", "Server creation timeout")
 			return
 		}
@@ -239,6 +243,10 @@ func serverRespToPlan(ctx context.Context, serverResp *one_api.Server, data *res
 	data.DeliveredAt = types.Int64Value(serverResp.DeliveredAt)
 	data.Status = types.StringValue(serverResp.Status)
 	data.StatusMessage = types.StringValue(serverResp.StatusMessage)
+
+	if serverResp.ContractID != "" {
+		data.ContractId = types.StringValue(serverResp.ContractID)
+	}
 
 	data.IpAddresses = basetypes.NewListValueMust(
 		resource_flexmetal_server.IpAddressesValue{}.Type(context.Background()),
@@ -377,7 +385,7 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	respBody, err := r.client.DeleteServer(ctx, data.Uuid.ValueString())
+	_, err := r.client.DeleteServer(ctx, data.Uuid.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting server",
@@ -386,9 +394,39 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	if respBody.Status != "releasing" {
-		resp.Diagnostics.AddError("Server deletion failed", fmt.Sprintf("Status message: %s", respBody.StatusMessage))
+	err, lastStatus := r.waitForStatus(ctx, data.Uuid.ValueString(), "released", waitForReleasedTimeout, 1*time.Second)
+	if err != nil {
+		resp.Diagnostics.AddError("Server deletion failed", fmt.Sprintf("Last status: %q", lastStatus))
 		return
+	}
+}
+
+// waitForStatus performs a GET server request every interval until desiredStatus is reached or timeout
+// it returns an error and last known status
+func (r *serverResource) waitForStatus(ctx context.Context, serverID string, desiredStatus string, timeout, interval time.Duration) (err error, lastStatus string) {
+	deadline := time.After(timeout)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err(), lastStatus
+		case <-deadline:
+			return fmt.Errorf("timeout reached while waiting for release"), lastStatus
+		case <-ticker.C:
+			srv, err := r.client.GetServer(ctx, serverID)
+			if err != nil {
+				tflog.Error(ctx, "error getting server by id", map[string]interface{}{"id": serverID})
+				continue
+			}
+
+			lastStatus = srv.Status
+			if lastStatus == desiredStatus {
+				tflog.Info(ctx, "server is released")
+				return nil, desiredStatus
+			}
+		}
 	}
 }
 

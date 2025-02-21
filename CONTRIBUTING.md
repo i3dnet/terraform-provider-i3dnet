@@ -97,9 +97,30 @@ Generator (see this [doc](https://developer.hashicorp.com/terraform/plugin/code-
 How to generate the resources & the config:
 
 1. Download the OpenAPI Spec (https://www.i3d.net/docs/api/v3/getjson) and overwrite the
-   `./generator_data/openAPISpec.json`. Make sure to replace `\/` with `/`. 
-2. Create/modify the `./generator_data/GeneratorConfig.yaml`
-3. Generate the `./generator_data/provider_code_spec.json` file:
+   `./generator_data/openAPISpec.json`. Make sure to replace `\/` with `/`.
+2. In the `openApiSpec.json`, under  `paths > /v3/flexMetal/servers > post > responses > 200` change to:
+
+```json
+{
+  "description": "OK",
+  "content": {
+    "application/json": {
+      "schema": {
+        "$ref": "#/components/schemas/FlexMetalServer"
+      }
+    }
+  }
+}
+```
+
+This change is required because the generation tool will not properly create the `i3dnet_flexmetal_server` resource due
+to the fact that we don't have a RESTFUL API. To be more specific, following fields are lost during mapping process:
+created_at, delivered_at, ip_addresses, released_at, status, status_message.
+Checkout [how resources are mapped](https://github.com/hashicorp/terraform-plugin-codegen-openapi/blob/main/DESIGN.md)
+if interested.
+
+3. Create/modify the `./generator_data/GeneratorConfig.yaml`
+4. Generate the `./generator_data/provider_code_spec.json` file:
 
   ```bash
    tfplugingen-openapi generate \
@@ -138,7 +159,8 @@ out more [here](https://developer.hashicorp.com/terraform/internals/debugging).
 Rebuild the provider before running acceptance tests.
 
 Acceptance tests run against a real working environment. To run them you must have these environment variables set:
-`I3D_API_KEY`, `I3D_BASE_URL` and `TF_ACC`. For a full list of environment variable used by our provider check `.env.dist`.
+`I3D_API_KEY`, `I3D_BASE_URL` and `TF_ACC`. For a full list of environment variable used by our provider check
+`.env.dist`.
 
 You can omit `I3D_BASE_URL` in which case the default `https://api.i3d.net` production URL is used.
 

@@ -16,7 +16,7 @@ resource "i3dnet_flexmetal_server" "my-server" {
   post_install_script = "#!/bin/bash\necho \"Hi TerraFlex there!\" > /root/output.txt"
 }
 
-# Create a partitioned Flexmetal Server
+# Create a partitioned Flexmetal Server On-Demand
 resource "i3dnet_flexmetal_server" "my-partitioned-server" {
   name          = "TerraFlex-Server"
   location      = "EU: Rotterdam"
@@ -51,7 +51,7 @@ resource "i3dnet_flexmetal_server" "my-partitioned-server" {
   post_install_script = "#!/bin/bash\necho \"Hi TerraFlex there!\" > /root/output.txt"
 }
 
-# Create a Talos OS 1.9.0 server
+# Create a Talos OS 1.9.0 server On-Demand
 resource "i3dnet_flexmetal_server" "my-talos" {
   name          = "talosHostName"
   location      = "EU: Rotterdam"
@@ -69,4 +69,40 @@ resource "i3dnet_flexmetal_server" "my-talos" {
       }
     ]
   }
+}
+
+# Create a Talos OS 1.9.0 server under committed capacity contract `CONTRACT-123`
+resource "i3dnet_flexmetal_server" "my-talos" {
+  name          = "MyTalosServer"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "talos-omni-190"
+    kernel_params = [
+      {
+        key   = "siderolink.api"
+        value = "https://siderolink.api/?jointoken=secret"
+      }
+    ]
+  }
+  contract_id = "CONTRACT-123"
+}
+
+# Create a Talos OS 1.9.0 server under committed capacity contract `CONTRACT-123`
+# You can add overflow = true to request server On-Demand if committed capacity is full
+resource "i3dnet_flexmetal_server" "my-talos" {
+  name          = "MyTalosServer"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "talos-omni-190"
+    kernel_params = [
+      {
+        key   = "siderolink.api"
+        value = "https://siderolink.api/?jointoken=secret"
+      }
+    ]
+  }
+  contract_id = "CONTRACT-123"
+  overflow    = true
 }
