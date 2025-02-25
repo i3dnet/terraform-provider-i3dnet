@@ -1,6 +1,72 @@
 {
 	"datasources": [
 		{
+			"name": "locations",
+			"schema": {
+				"attributes": [
+					{
+						"name": "locations",
+						"set_nested": {
+							"computed_optional_required": "computed",
+							"nested_object": {
+								"attributes": [
+									{
+										"name": "country_id",
+										"int64": {
+											"computed_optional_required": "computed",
+											"description": "Country ID of the location"
+										}
+									},
+									{
+										"name": "country_name",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "Country name of the Location"
+										}
+									},
+									{
+										"name": "country_short_name",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "Country short name of the Location"
+										}
+									},
+									{
+										"name": "display_name",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "Display name of the location"
+										}
+									},
+									{
+										"name": "id",
+										"int64": {
+											"computed_optional_required": "computed",
+											"description": "ID of the location"
+										}
+									},
+									{
+										"name": "name",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "Name of the location"
+										}
+									},
+									{
+										"name": "short_name",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "Short name of the location"
+										}
+									}
+								]
+							}
+						}
+					}
+				]
+			}
+		},
+		{
 			"name": "tags",
 			"schema": {
 				"attributes": [

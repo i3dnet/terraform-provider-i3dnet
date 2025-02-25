@@ -121,6 +121,7 @@ func (p *i3dnetProvider) DataSources(ctx context.Context) []func() datasource.Da
 	return []func() datasource.DataSource{
 		NewSshKeyDataSource,
 		NewTagsDataSource,
+		NewLocationsDataSource,
 	}
 }
 
