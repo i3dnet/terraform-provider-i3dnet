@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -38,7 +37,7 @@ func NewClient(apiKey string, rawBaseURL string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) callAPI(ctx context.Context, method, endpoint, path string, body []byte) (io.ReadCloser, error) {
+func (c *Client) callAPI(ctx context.Context, method, endpoint, path string, body []byte) (*http.Response, error) {
 	client := &http.Client{
 		Transport: &loggingRoundTripper{next: http.DefaultTransport, ctx: ctx},
 		Timeout:   10 * time.Second,
@@ -65,9 +64,5 @@ func (c *Client) callAPI(ctx context.Context, method, endpoint, path string, bod
 		return nil, fmt.Errorf("failed to do HTTP request: %w", err)
 	}
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("wrong status code received: %d", resp.StatusCode)
-	}
-
-	return resp.Body, nil
+	return resp, nil
 }

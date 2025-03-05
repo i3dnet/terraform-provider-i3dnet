@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 const flexMetalEndpoint = "flexMetal"
@@ -64,7 +66,23 @@ type Server struct {
 	ContractID  string   `json:"contractId"`
 }
 
-func (c *Client) CreateServer(ctx context.Context, req CreateServerReq) (*Server, error) {
+type ErrorResponse struct {
+	ErrorCode    int    `json:"errorCode"`
+	ErrorMessage string `json:"errorMessage"`
+	Errors       []struct {
+		Property string `json:"property"`
+		Message  string `json:"message"`
+	} `json:"errors"`
+}
+
+// ServerResponse can contain Server in case of a 200 response
+// or an ErrorResponse
+type ServerResponse struct {
+	ErrorResponse *ErrorResponse
+	Server        *Server
+}
+
+func (c *Client) CreateServer(ctx context.Context, req CreateServerReq) (*ServerResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling request: %w", err)
@@ -74,10 +92,16 @@ func (c *Client) CreateServer(ctx context.Context, req CreateServerReq) (*Server
 	if err != nil {
 		return nil, fmt.Errorf("error on calling create flexmetal server api: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response ServerResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var serverResp []Server
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&serverResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
@@ -86,18 +110,27 @@ func (c *Client) CreateServer(ctx context.Context, req CreateServerReq) (*Server
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &serverResp[0], nil
+	response.Server = &serverResp[0]
+
+	return &response, nil
 }
 
-func (c *Client) GetServer(ctx context.Context, id string) (*Server, error) {
+func (c *Client) GetServer(ctx context.Context, id string) (*ServerResponse, error) {
 	resp, err := c.callAPI(ctx, http.MethodGet, flexMetalEndpoint, fmt.Sprintf("servers/%s", id), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling get flexmetal server api: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response ServerResponse
+
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var serverResp []Server
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&serverResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
@@ -106,18 +139,27 @@ func (c *Client) GetServer(ctx context.Context, id string) (*Server, error) {
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &serverResp[0], nil
+	response.Server = &serverResp[0]
+
+	return &response, nil
 }
 
-func (c *Client) DeleteServer(ctx context.Context, id string) (*Server, error) {
+func (c *Client) DeleteServer(ctx context.Context, id string) (*ServerResponse, error) {
 	resp, err := c.callAPI(ctx, http.MethodDelete, flexMetalEndpoint, fmt.Sprintf("servers/%s", id), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error calling delete flexmetal server API: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response ServerResponse
+
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var serverResp []Server
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&serverResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
@@ -126,18 +168,26 @@ func (c *Client) DeleteServer(ctx context.Context, id string) (*Server, error) {
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &serverResp[0], nil
+	response.Server = &serverResp[0]
+
+	return &response, nil
 }
 
-func (c *Client) AddTagToServer(ctx context.Context, serverID, tag string) (*Server, error) {
+func (c *Client) AddTagToServer(ctx context.Context, serverID, tag string) (*ServerResponse, error) {
 	resp, err := c.callAPI(ctx, http.MethodPost, flexMetalEndpoint, fmt.Sprintf("servers/%s/tag/%s", serverID, tag), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error calling delete flexmetal server API: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response ServerResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var serverResp []Server
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&serverResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
@@ -146,18 +196,26 @@ func (c *Client) AddTagToServer(ctx context.Context, serverID, tag string) (*Ser
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &serverResp[0], nil
+	response.Server = &serverResp[0]
+
+	return &response, nil
 }
 
-func (c *Client) DeleteTagFromServer(ctx context.Context, serverID, tag string) (*Server, error) {
+func (c *Client) DeleteTagFromServer(ctx context.Context, serverID, tag string) (*ServerResponse, error) {
 	resp, err := c.callAPI(ctx, http.MethodDelete, flexMetalEndpoint, fmt.Sprintf("servers/%s/tag/%s", serverID, tag), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error calling delete flexmetal server API: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response ServerResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var serverResp []Server
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&serverResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
@@ -166,5 +224,18 @@ func (c *Client) DeleteTagFromServer(ctx context.Context, serverID, tag string) 
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &serverResp[0], nil
+	response.Server = &serverResp[0]
+
+	return &response, nil
+}
+
+func decodeErrResponse(ctx context.Context, resp *http.Response) *ErrorResponse {
+	var errResponse ErrorResponse
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&errResponse); err != nil {
+		tflog.Error(ctx, fmt.Sprintf("could not unmarshal resp %v", err))
+		return nil
+	}
+
+	return &errResponse
 }
