@@ -24,10 +24,10 @@ func (c *Client) ListLocations(ctx context.Context) ([]Location, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error on calling list locations api: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
 
 	var locationsResp []Location
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&locationsResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}

@@ -114,12 +114,17 @@ func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, re
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating tag",
-			"Could not create tag, unexpected error: "+err.Error(),
+			"Unexpected error: "+err.Error(),
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(tagRespToPlan(ctx, tagResp, &data)...)
+	if tagResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error creating tag", tagResp.ErrorResponse, &resp.Diagnostics)
+		return
+	}
+
+	resp.Diagnostics.Append(tagRespToPlan(ctx, tagResp.Tag, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -175,13 +180,18 @@ func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	tagResp, err := r.client.GetTag(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error getting tag",
-			"Could not create tag, unexpected error: "+err.Error(),
+			"Error reading tag",
+			"Unexpected error: "+err.Error(),
 		)
 		return
 	}
 
-	tagRespToPlan(ctx, tagResp, &data)
+	if tagResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error reading tag", tagResp.ErrorResponse, &resp.Diagnostics)
+		return
+	}
+
+	tagRespToPlan(ctx, tagResp.Tag, &data)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -209,7 +219,12 @@ func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
-	tagRespToPlan(ctx, tagResp, &plan)
+	if tagResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error updating tag", tagResp.ErrorResponse, &resp.Diagnostics)
+		return
+	}
+
+	tagRespToPlan(ctx, tagResp.Tag, &plan)
 
 	// Save updated plan into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)

@@ -19,7 +19,14 @@ type Tag struct {
 
 const tagEndpoint = "flexMetal/tags"
 
-func (c *Client) CreateTag(ctx context.Context, name string) (*Tag, error) {
+// TagResponse can contain Tag in case of a 200 response
+// or an ErrorResponse
+type TagResponse struct {
+	ErrorResponse *ErrorResponse
+	Tag           *Tag
+}
+
+func (c *Client) CreateTag(ctx context.Context, name string) (*TagResponse, error) {
 	req := Tag{Tag: name}
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -30,10 +37,16 @@ func (c *Client) CreateTag(ctx context.Context, name string) (*Tag, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error on calling create tag api: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response TagResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var tagResp []Tag
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&tagResp); err != nil {
 		return nil, fmt.Errorf("could not decode response: %w", err)
 	}
@@ -42,10 +55,11 @@ func (c *Client) CreateTag(ctx context.Context, name string) (*Tag, error) {
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &tagResp[0], nil
+	response.Tag = &tagResp[0]
+	return &response, nil
 }
 
-func (c *Client) UpdateTag(ctx context.Context, oldName, newName string) (*Tag, error) {
+func (c *Client) UpdateTag(ctx context.Context, oldName, newName string) (*TagResponse, error) {
 	req := Tag{Tag: newName}
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -56,10 +70,16 @@ func (c *Client) UpdateTag(ctx context.Context, oldName, newName string) (*Tag, 
 	if err != nil {
 		return nil, fmt.Errorf("error calling update tag API: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response TagResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var tagResp []Tag
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&tagResp); err != nil {
 		return nil, fmt.Errorf("could not decode response: %w", err)
 	}
@@ -68,7 +88,8 @@ func (c *Client) UpdateTag(ctx context.Context, oldName, newName string) (*Tag, 
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &tagResp[0], nil
+	response.Tag = &tagResp[0]
+	return &response, nil
 }
 
 func (c *Client) DeleteTag(ctx context.Context, name string) error {
@@ -76,20 +97,26 @@ func (c *Client) DeleteTag(ctx context.Context, name string) error {
 	if err != nil {
 		return fmt.Errorf("error calling delete tag API: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
 
 	return nil
 }
 
-func (c *Client) GetTag(ctx context.Context, name string) (*Tag, error) {
+func (c *Client) GetTag(ctx context.Context, name string) (*TagResponse, error) {
 	resp, err := c.callAPI(ctx, http.MethodGet, tagEndpoint, name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error calling delete tag API: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response TagResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var tagResp []Tag
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&tagResp); err != nil {
 		return nil, fmt.Errorf("could not decode response: %w", err)
 	}
@@ -98,7 +125,8 @@ func (c *Client) GetTag(ctx context.Context, name string) (*Tag, error) {
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &tagResp[0], nil
+	response.Tag = &tagResp[0]
+	return &response, nil
 }
 
 func (c *Client) ListTags(ctx context.Context, name string) ([]Tag, error) {
@@ -106,10 +134,10 @@ func (c *Client) ListTags(ctx context.Context, name string) ([]Tag, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error on calling list tags api: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
 
 	var tagResp []Tag
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&tagResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}

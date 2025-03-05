@@ -47,7 +47,7 @@ func createTestSSHKey(t *testing.T) {
 		t.Fatalf("error creating API Client: %s", err)
 	}
 
-	key, err := apiclient.CreateSSHKey(
+	response, err := apiclient.CreateSSHKey(
 		context.Background(),
 		one_api.CreateSSHKeyReq{
 			Name:      "TestApiKey",
@@ -58,7 +58,7 @@ func createTestSSHKey(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		err = apiclient.DeleteSSHKey(context.Background(), key.Uuid)
+		err = apiclient.DeleteSSHKey(context.Background(), response.SSHKey.Uuid)
 		if err != nil {
 			t.Fatalf("error deleting SSH Key: %s", err)
 		}

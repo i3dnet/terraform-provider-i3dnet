@@ -107,19 +107,21 @@ func (r *sshKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	// Create new SSH key
 	sshResp, err := r.client.CreateSSHKey(ctx, reqBody)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error creating ssh key",
-			"Could not create ssh key, unexpected error: "+err.Error(),
-		)
+		resp.Diagnostics.AddError("Error creating ssh key", "Unexpected error: "+err.Error())
+		return
+	}
+
+	if sshResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error creating ssh key", sshResp.ErrorResponse, &resp.Diagnostics)
 		return
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.PublicKey = types.StringValue(sshResp.PublicKey)
-	plan.Name = types.StringValue(sshResp.Name)
-	plan.CreatedAt = types.Int64Value(sshResp.CreatedAt)
-	plan.Uuid = types.StringValue(sshResp.Uuid)
-	plan.ID = types.StringValue(sshResp.Uuid)
+	plan.PublicKey = types.StringValue(sshResp.SSHKey.PublicKey)
+	plan.Name = types.StringValue(sshResp.SSHKey.Name)
+	plan.CreatedAt = types.Int64Value(sshResp.SSHKey.CreatedAt)
+	plan.Uuid = types.StringValue(sshResp.SSHKey.Uuid)
+	plan.ID = types.StringValue(sshResp.SSHKey.Uuid)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -149,11 +151,16 @@ func (r *sshKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	data.PublicKey = types.StringValue(sshResp.PublicKey)
-	data.Name = types.StringValue(sshResp.Name)
-	data.CreatedAt = types.Int64Value(sshResp.CreatedAt)
-	data.Uuid = types.StringValue(sshResp.Uuid)
-	data.ID = types.StringValue(sshResp.Uuid)
+	if sshResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error reading ssh key", sshResp.ErrorResponse, &resp.Diagnostics)
+		return
+	}
+
+	data.PublicKey = types.StringValue(sshResp.SSHKey.PublicKey)
+	data.Name = types.StringValue(sshResp.SSHKey.Name)
+	data.CreatedAt = types.Int64Value(sshResp.SSHKey.CreatedAt)
+	data.Uuid = types.StringValue(sshResp.SSHKey.Uuid)
+	data.ID = types.StringValue(sshResp.SSHKey.Uuid)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -195,7 +202,7 @@ func (r *sshKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting SSHKey",
-			"Could not delete ssh key, unexpected error: "+err.Error(),
+			"Unexpected error: "+err.Error(),
 		)
 		return
 	}

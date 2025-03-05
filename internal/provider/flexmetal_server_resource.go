@@ -183,16 +183,17 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		Overflow:          data.Overflow.ValueBool(),
 	}
 
-	createServerResp, err := r.client.CreateServer(ctx, createServerReq)
+	serverResp, err := r.client.CreateServer(ctx, createServerReq)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error creating server",
-			"Could not create server, unexpected error: "+err.Error(),
-		)
+		resp.Diagnostics.AddError("Error creating server", "Unexpected error: "+err.Error())
+		return
+	}
+	if serverResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error creating server", serverResp.ErrorResponse, &resp.Diagnostics)
 		return
 	}
 
-	serverRespToPlan(ctx, createServerResp, &data)
+	serverRespToPlan(ctx, serverResp.Server, &data)
 
 	// Add resource to TF state earlier to prevent dangling servers
 	// Example: timeout reached, but server is delivered later on
@@ -215,7 +216,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 			return
 		}
 
-		serverRespToPlan(ctx, getServerResp, &data)
+		serverRespToPlan(ctx, getServerResp.Server, &data)
 		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -236,25 +237,25 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func serverRespToPlan(ctx context.Context, serverResp *one_api.Server, data *resource_flexmetal_server.FlexmetalServerModel) {
-	data.Uuid = types.StringValue(serverResp.Uuid)
-	data.CreatedAt = types.Int64Value(serverResp.CreatedAt)
-	data.ReleasedAt = types.Int64Value(serverResp.ReleasedAt)
-	data.DeliveredAt = types.Int64Value(serverResp.DeliveredAt)
-	data.Status = types.StringValue(serverResp.Status)
-	data.StatusMessage = types.StringValue(serverResp.StatusMessage)
+func serverRespToPlan(ctx context.Context, server *one_api.Server, data *resource_flexmetal_server.FlexmetalServerModel) {
+	data.Uuid = types.StringValue(server.Uuid)
+	data.CreatedAt = types.Int64Value(server.CreatedAt)
+	data.ReleasedAt = types.Int64Value(server.ReleasedAt)
+	data.DeliveredAt = types.Int64Value(server.DeliveredAt)
+	data.Status = types.StringValue(server.Status)
+	data.StatusMessage = types.StringValue(server.StatusMessage)
 
-	if serverResp.ContractID != "" {
-		data.ContractId = types.StringValue(serverResp.ContractID)
+	if server.ContractID != "" {
+		data.ContractId = types.StringValue(server.ContractID)
 	}
 
 	data.IpAddresses = basetypes.NewListValueMust(
 		resource_flexmetal_server.IpAddressesValue{}.Type(context.Background()),
 		[]attr.Value{},
 	)
-	if len(serverResp.IpAddresses) > 0 {
+	if len(server.IpAddresses) > 0 {
 		var values []attr.Value
-		for _, ip := range serverResp.IpAddresses {
+		for _, ip := range server.IpAddresses {
 			ipAddressValue := resource_flexmetal_server.NewIpAddressesValueMust(
 				map[string]attr.Type{
 					"ip_address": basetypes.StringType{},
@@ -270,9 +271,9 @@ func serverRespToPlan(ctx context.Context, serverResp *one_api.Server, data *res
 		)
 	}
 
-	if len(serverResp.Tags) > 0 {
+	if len(server.Tags) > 0 {
 		var values []attr.Value
-		for _, tag := range serverResp.Tags {
+		for _, tag := range server.Tags {
 			values = append(values, types.StringValue(tag))
 		}
 		data.Tags = basetypes.NewListValueMust(types.StringType, values)
@@ -289,7 +290,7 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	getServerResp, err := r.client.GetServer(ctx, data.Uuid.ValueString())
+	serverResp, err := r.client.GetServer(ctx, data.Uuid.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading server",
@@ -298,7 +299,12 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	serverRespToPlan(ctx, getServerResp, &data)
+	if serverResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error reading server", serverResp.ErrorResponse, &resp.Diagnostics)
+		return
+	}
+
+	serverRespToPlan(ctx, serverResp.Server, &data)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -339,23 +345,31 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	for _, tag := range newTags {
-		_, err := r.client.AddTagToServer(ctx, plan.Uuid.ValueString(), tag)
+		serverResp, err := r.client.AddTagToServer(ctx, plan.Uuid.ValueString(), tag)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error adding tag to server",
-				"Could not add tag to server, unexpected error: "+err.Error(),
+				"Unexpected error: "+err.Error(),
 			)
+			return
+		}
+		if serverResp.ErrorResponse != nil {
+			AddErrorResponseToDiags("Error adding tag to server", serverResp.ErrorResponse, &resp.Diagnostics)
 			return
 		}
 	}
 
 	for _, tag := range removedTags {
-		_, err := r.client.DeleteTagFromServer(ctx, plan.Uuid.ValueString(), tag)
+		serverResp, err := r.client.DeleteTagFromServer(ctx, plan.Uuid.ValueString(), tag)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error deleting tag from server",
 				"Could not delete tag from server, unexpected error: "+err.Error(),
 			)
+			return
+		}
+		if serverResp.ErrorResponse != nil {
+			AddErrorResponseToDiags("Error deleting tag from server", serverResp.ErrorResponse, &resp.Diagnostics)
 			return
 		}
 	}
@@ -369,7 +383,12 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	serverRespToPlan(ctx, s, &plan)
+	if s.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error reading server", s.ErrorResponse, &resp.Diagnostics)
+		return
+	}
+
+	serverRespToPlan(ctx, s.Server, &plan)
 
 	// Save updated plan into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -385,12 +404,17 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	_, err := r.client.DeleteServer(ctx, data.Uuid.ValueString())
+	serverResp, err := r.client.DeleteServer(ctx, data.Uuid.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting server",
 			"Could not delete server by id: "+err.Error(),
 		)
+		return
+	}
+
+	if serverResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error deleting server", serverResp.ErrorResponse, &resp.Diagnostics)
 		return
 	}
 
@@ -421,7 +445,7 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 				continue
 			}
 
-			lastStatus = srv.Status
+			lastStatus = srv.Server.Status
 			if lastStatus == desiredStatus {
 				tflog.Info(ctx, "server is released")
 				return nil, desiredStatus

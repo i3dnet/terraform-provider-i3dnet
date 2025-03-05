@@ -21,20 +21,32 @@ type SSHKey struct {
 	CreatedAt int64  `json:"createdAt"`
 }
 
-func (c *Client) CreateSSHKey(ctx context.Context, req CreateSSHKeyReq) (*SSHKey, error) {
+// SSHKeyResponse contains a SSHKey in case of a 200 response
+// or an ErrorResponse
+type SSHKeyResponse struct {
+	ErrorResponse *ErrorResponse
+	SSHKey        *SSHKey
+}
+
+func (c *Client) CreateSSHKey(ctx context.Context, req CreateSSHKeyReq) (*SSHKeyResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-
 	resp, err := c.callAPI(ctx, http.MethodPost, sshKeyEndpoint, "", body)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling create ssh key api: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response SSHKeyResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var sshKeyResp []SSHKey
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&sshKeyResp); err != nil {
 		return nil, fmt.Errorf("could not decode response: %w", err)
 	}
@@ -43,18 +55,25 @@ func (c *Client) CreateSSHKey(ctx context.Context, req CreateSSHKeyReq) (*SSHKey
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &sshKeyResp[0], nil
+	response.SSHKey = &sshKeyResp[0]
+	return &response, nil
 }
 
-func (c *Client) GetSSHKey(ctx context.Context, id string) (*SSHKey, error) {
+func (c *Client) GetSSHKey(ctx context.Context, id string) (*SSHKeyResponse, error) {
 	resp, err := c.callAPI(ctx, http.MethodGet, sshKeyEndpoint, id, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling get ssh key api: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
+
+	var response SSHKeyResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		return &response, nil
+	}
 
 	var sshKeyResp []SSHKey
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&sshKeyResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
@@ -63,7 +82,8 @@ func (c *Client) GetSSHKey(ctx context.Context, id string) (*SSHKey, error) {
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	return &sshKeyResp[0], nil
+	response.SSHKey = &sshKeyResp[0]
+	return &response, nil
 }
 
 func (c *Client) ListSSHKeys(ctx context.Context) ([]SSHKey, error) {
@@ -71,10 +91,10 @@ func (c *Client) ListSSHKeys(ctx context.Context) ([]SSHKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error on calling list ssh key api: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
 
 	var sshKeyResp []SSHKey
-	dec := json.NewDecoder(resp)
+	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&sshKeyResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
@@ -91,7 +111,7 @@ func (c *Client) DeleteSSHKey(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("error calling delete ssh key API: %w", err)
 	}
-	defer resp.Close()
+	defer resp.Body.Close()
 
 	return nil
 }
