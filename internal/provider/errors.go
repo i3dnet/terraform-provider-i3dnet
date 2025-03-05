@@ -12,7 +12,7 @@ import (
 )
 
 func AddErrorResponseToDiags(message string, resp *one_api.ErrorResponse, diags *diag.Diagnostics) {
-	summary := fmt.Sprintf("%s", message)
+	summary := message
 	var details string
 
 	if len(resp.Errors) == 0 { // for duplicated tags, the error is not in resp.Errors but resp.ErrorMessage
