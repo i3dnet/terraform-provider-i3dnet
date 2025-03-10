@@ -202,36 +202,29 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	// Get the actual time
-	startTime := time.Now()
-
-	// Waiting for the server to be ready
-	for data.Status.ValueString() != "delivered" && data.Status.ValueString() != "failed" {
-		getServerResp, err := r.client.GetServer(ctx, data.Uuid.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Error reading API response",
-				"Could not read API response: "+err.Error(),
-			)
-			return
-		}
-
-		serverRespToPlan(ctx, getServerResp.Server, &data)
-		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if time.Since(startTime) > waitForReadyTimeout {
-			resp.Diagnostics.AddError("Server creation timeout", "Server creation timeout")
-			return
-		}
-		time.Sleep(10 * time.Second)
+	err, lastStatus := r.waitForStatus(ctx, data.Uuid.ValueString(), []string{"delivered", "failed"}, waitForReadyTimeout, 1*time.Second)
+	if err != nil {
+		resp.Diagnostics.AddError("Error waiting for server to be ready", fmt.Sprintf("Error: %v\nLast status: %s", err, lastStatus))
+		return
 	}
 
-	if data.Status.ValueString() == "failed" {
+	if lastStatus == "failed" {
 		resp.Diagnostics.AddError("Server creation failed", fmt.Sprintf("Status message: %s", data.StatusMessage.ValueString()))
 		return
 	}
+
+	// server is delivered, get its details to save them to state
+	getServerResp, err := r.client.GetServer(ctx, data.Uuid.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Error getting server", "Unexpected error: "+err.Error())
+		return
+	}
+	if getServerResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error getting server", serverResp.ErrorResponse, &resp.Diagnostics)
+		return
+	}
+
+	serverRespToPlan(ctx, getServerResp.Server, &data)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -418,16 +411,16 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	err, lastStatus := r.waitForStatus(ctx, data.Uuid.ValueString(), "released", waitForReleasedTimeout, 1*time.Second)
+	err, lastStatus := r.waitForStatus(ctx, data.Uuid.ValueString(), []string{"released"}, waitForReleasedTimeout, 1*time.Second)
 	if err != nil {
 		resp.Diagnostics.AddError("Server deletion failed", fmt.Sprintf("Last status: %q", lastStatus))
 		return
 	}
 }
 
-// waitForStatus performs a GET server request every interval until desiredStatus is reached or timeout
+// waitForStatus performs a GET server request every interval until server status reaches desiredStatuses or timeouts
 // it returns an error and last known status
-func (r *serverResource) waitForStatus(ctx context.Context, serverID string, desiredStatus string, timeout, interval time.Duration) (err error, lastStatus string) {
+func (r *serverResource) waitForStatus(ctx context.Context, serverID string, desiredStatuses []string, timeout, interval time.Duration) (err error, lastStatus string) {
 	deadline := time.After(timeout)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -437,18 +430,23 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 		case <-ctx.Done():
 			return ctx.Err(), lastStatus
 		case <-deadline:
-			return fmt.Errorf("timeout reached while waiting for release"), lastStatus
+			return fmt.Errorf("timeout reached while waiting for server to reach one of the statuses: %#v", strings.Join(desiredStatuses, ", ")), lastStatus
 		case <-ticker.C:
-			srv, err := r.client.GetServer(ctx, serverID)
+			serverResponse, err := r.client.GetServer(ctx, serverID)
 			if err != nil {
 				tflog.Error(ctx, "error getting server by id", map[string]interface{}{"id": serverID})
 				continue
 			}
 
-			lastStatus = srv.Server.Status
-			if lastStatus == desiredStatus {
-				tflog.Info(ctx, "server is released")
-				return nil, desiredStatus
+			if serverResponse.ErrorResponse != nil {
+				tflog.Error(ctx, "error response on get server", map[string]interface{}{"errorMsg": serverResponse.ErrorResponse.ErrorMessage})
+				continue
+			}
+
+			lastStatus = serverResponse.Server.Status
+			if slices.Contains(desiredStatuses, lastStatus) {
+				tflog.Info(ctx, fmt.Sprintf("server reached desired status: %s", lastStatus))
+				return nil, lastStatus
 			}
 		}
 	}
