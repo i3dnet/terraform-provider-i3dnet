@@ -418,7 +418,7 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 }
 
-// waitForStatus performs a GET server request every interval until status reaches desiredStatus or timeout
+// waitForStatus performs a GET server request every interval until server status reaches desiredStatuses or timeouts
 // it returns an error and last known status
 func (r *serverResource) waitForStatus(ctx context.Context, serverID string, desiredStatuses []string, timeout, interval time.Duration) (err error, lastStatus string) {
 	deadline := time.After(timeout)
