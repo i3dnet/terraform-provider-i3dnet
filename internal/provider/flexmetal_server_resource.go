@@ -430,7 +430,7 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 		case <-ctx.Done():
 			return ctx.Err(), lastStatus
 		case <-deadline:
-			return fmt.Errorf("timeout reached while waiting for server to reach one of the statuses: %#v", strings.Join(desiredStatuses, ", ")), lastStatus
+			return fmt.Errorf("timeout reached while waiting for server status"), lastStatus
 		case <-ticker.C:
 			serverResponse, err := r.client.GetServer(ctx, serverID)
 			if err != nil {
