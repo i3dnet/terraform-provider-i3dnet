@@ -216,6 +216,11 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 			return
 		}
 
+		if serverResp.ErrorResponse != nil {
+			AddErrorResponseToDiags("Error getting server", serverResp.ErrorResponse, &resp.Diagnostics)
+			return
+		}
+
 		serverRespToPlan(ctx, getServerResp.Server, &data)
 		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		if resp.Diagnostics.HasError() {
@@ -439,13 +444,18 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 		case <-deadline:
 			return fmt.Errorf("timeout reached while waiting for release"), lastStatus
 		case <-ticker.C:
-			srv, err := r.client.GetServer(ctx, serverID)
+			serverResponse, err := r.client.GetServer(ctx, serverID)
 			if err != nil {
 				tflog.Error(ctx, "error getting server by id", map[string]interface{}{"id": serverID})
 				continue
 			}
 
-			lastStatus = srv.Server.Status
+			if serverResponse.ErrorResponse != nil {
+				tflog.Error(ctx, "error response on get server", map[string]interface{}{"errorMsg": serverResponse.ErrorResponse.ErrorMessage})
+				continue
+			}
+
+			lastStatus = serverResponse.Server.Status
 			if lastStatus == desiredStatus {
 				tflog.Info(ctx, "server is released")
 				return nil, desiredStatus
