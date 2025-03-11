@@ -209,19 +209,26 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	err, lastStatus := r.waitForStatus(ctx, data.Uuid.ValueString(), []string{"delivered", "failed"}, waitForReadyTimeout, 1*time.Second)
+	serverID := data.Uuid.ValueString()
+	err, lastStatus := r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, waitForReadyTimeout, 1*time.Second)
 	if err != nil {
-		resp.Diagnostics.AddError("Error waiting for server to be ready", fmt.Sprintf("Error: %v\nLast status: %s", err, lastStatus))
+		resp.Diagnostics.AddError(
+			"Error waiting for server to be ready",
+			fmt.Sprintf("Error: %v\nLast status: %s\nServer id: %s", err, lastStatus, serverID),
+		)
 		return
 	}
 
 	if lastStatus == "failed" {
-		resp.Diagnostics.AddError("Server creation failed", fmt.Sprintf("Status message: %s", data.StatusMessage.ValueString()))
+		resp.Diagnostics.AddError(
+			"Server creation failed",
+			fmt.Sprintf("Status message: %s\nServer id: %s", data.StatusMessage.ValueString(), serverID),
+		)
 		return
 	}
 
 	// server is delivered, get its details to save them to state
-	getServerResp, err := r.client.GetServer(ctx, data.Uuid.ValueString())
+	getServerResp, err := r.client.GetServer(ctx, serverID)
 	if err != nil {
 		resp.Diagnostics.AddError("Error getting server", "Unexpected error: "+err.Error())
 		return
@@ -232,7 +239,10 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	if len(getServerResp.Server.IpAddresses) == 0 {
-		resp.Diagnostics.AddError("Server creation failed", fmt.Sprintf("Server %s has no ipAddresses attached", getServerResp.Server.Uuid))
+		resp.Diagnostics.AddError(
+			"Server creation failed",
+			fmt.Sprintf("Server has no ipAddresses attached.\nServer id: %s", getServerResp.Server.Uuid),
+		)
 		return
 	}
 
