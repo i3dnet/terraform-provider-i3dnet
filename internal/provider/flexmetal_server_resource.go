@@ -224,6 +224,11 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	if len(getServerResp.Server.IpAddresses) == 0 {
+		resp.Diagnostics.AddError("Server creation failed", fmt.Sprintf("Server %s has no ipAddresses attached", getServerResp.Server.Uuid))
+		return
+	}
+
 	serverRespToPlan(ctx, getServerResp.Server, &data)
 
 	// Save data into Terraform state
