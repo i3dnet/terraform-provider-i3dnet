@@ -110,6 +110,10 @@ func (c *Client) CreateServer(ctx context.Context, req CreateServerReq) (*Server
 
 	response.Server = &serverResp[0]
 
+	if len(response.Server.IpAddresses) == 0 {
+		return nil, fmt.Errorf("server %s has no ipAddresses attached", response.Server.Uuid)
+	}
+
 	return &response, nil
 }
 
