@@ -41,7 +41,7 @@ func (c *Client) CreateTag(ctx context.Context, name string) (*TagResponse, erro
 
 	var response TagResponse
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 
@@ -74,7 +74,7 @@ func (c *Client) UpdateTag(ctx context.Context, oldName, newName string) (*TagRe
 
 	var response TagResponse
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 
@@ -111,7 +111,7 @@ func (c *Client) GetTag(ctx context.Context, name string) (*TagResponse, error) 
 
 	var response TagResponse
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 

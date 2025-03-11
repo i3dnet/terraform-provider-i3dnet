@@ -185,7 +185,14 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	serverResp, err := r.client.CreateServer(ctx, createServerReq)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating server", "Unexpected error: "+err.Error())
+		resp.Diagnostics.AddError(
+			"Error creating server",
+			fmt.Sprintf("Unexpected error: %v for server name: %s location: %s instance type: %s", err,
+				data.Name.ValueString(),
+				data.Location.ValueString(),
+				data.InstanceType.ValueString(),
+			),
+		)
 		return
 	}
 	if serverResp.ErrorResponse != nil {
@@ -202,25 +209,40 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	err, lastStatus := r.waitForStatus(ctx, data.Uuid.ValueString(), []string{"delivered", "failed"}, waitForReadyTimeout, 1*time.Second)
+	serverID := data.Uuid.ValueString()
+	err, lastStatus := r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, waitForReadyTimeout, 1*time.Second)
 	if err != nil {
-		resp.Diagnostics.AddError("Error waiting for server to be ready", fmt.Sprintf("Error: %v\nLast status: %s", err, lastStatus))
+		resp.Diagnostics.AddError(
+			"Error waiting for server to be ready",
+			fmt.Sprintf("Error: %v\nLast status: %s\nServer id: %s", err, lastStatus, serverID),
+		)
 		return
 	}
 
 	if lastStatus == "failed" {
-		resp.Diagnostics.AddError("Server creation failed", fmt.Sprintf("Status message: %s", data.StatusMessage.ValueString()))
+		resp.Diagnostics.AddError(
+			"Server creation failed",
+			fmt.Sprintf("Status message: %s\nServer id: %s", data.StatusMessage.ValueString(), serverID),
+		)
 		return
 	}
 
 	// server is delivered, get its details to save them to state
-	getServerResp, err := r.client.GetServer(ctx, data.Uuid.ValueString())
+	getServerResp, err := r.client.GetServer(ctx, serverID)
 	if err != nil {
 		resp.Diagnostics.AddError("Error getting server", "Unexpected error: "+err.Error())
 		return
 	}
 	if getServerResp.ErrorResponse != nil {
 		AddErrorResponseToDiags("Error getting server", serverResp.ErrorResponse, &resp.Diagnostics)
+		return
+	}
+
+	if len(getServerResp.Server.IpAddresses) == 0 {
+		resp.Diagnostics.AddError(
+			"Server creation failed",
+			fmt.Sprintf("Server has no ipAddresses attached.\nServer id: %s", getServerResp.Server.Uuid),
+		)
 		return
 	}
 
