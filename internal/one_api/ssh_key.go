@@ -41,7 +41,7 @@ func (c *Client) CreateSSHKey(ctx context.Context, req CreateSSHKeyReq) (*SSHKey
 
 	var response SSHKeyResponse
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 
@@ -68,7 +68,7 @@ func (c *Client) GetSSHKey(ctx context.Context, id string) (*SSHKeyResponse, err
 
 	var response SSHKeyResponse
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 

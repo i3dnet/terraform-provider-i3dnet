@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 const flexMetalEndpoint = "flexMetal"
@@ -96,7 +94,7 @@ func (c *Client) CreateServer(ctx context.Context, req CreateServerReq) (*Server
 
 	var response ServerResponse
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 
@@ -125,7 +123,7 @@ func (c *Client) GetServer(ctx context.Context, id string) (*ServerResponse, err
 	var response ServerResponse
 
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 
@@ -154,7 +152,7 @@ func (c *Client) DeleteServer(ctx context.Context, id string) (*ServerResponse, 
 	var response ServerResponse
 
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 
@@ -182,7 +180,7 @@ func (c *Client) AddTagToServer(ctx context.Context, serverID, tag string) (*Ser
 
 	var response ServerResponse
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 
@@ -210,7 +208,7 @@ func (c *Client) DeleteTagFromServer(ctx context.Context, serverID, tag string) 
 
 	var response ServerResponse
 	if resp.StatusCode >= 400 {
-		response.ErrorResponse = decodeErrResponse(ctx, resp)
+		response.ErrorResponse = decodeErrResponse(resp)
 		return &response, nil
 	}
 
@@ -229,12 +227,14 @@ func (c *Client) DeleteTagFromServer(ctx context.Context, serverID, tag string) 
 	return &response, nil
 }
 
-func decodeErrResponse(ctx context.Context, resp *http.Response) *ErrorResponse {
+func decodeErrResponse(resp *http.Response) *ErrorResponse {
 	var errResponse ErrorResponse
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&errResponse); err != nil {
-		tflog.Error(ctx, fmt.Sprintf("could not unmarshal resp %v", err))
-		return nil
+		// if we cannot decode, it means response format is different, so we compute custom ErrorResponse with status code
+		errResponse = ErrorResponse{
+			ErrorMessage: fmt.Sprintf("Received %d status code.", resp.StatusCode),
+		}
 	}
 
 	return &errResponse
