@@ -185,7 +185,14 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	serverResp, err := r.client.CreateServer(ctx, createServerReq)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating server", "Unexpected error: "+err.Error())
+		resp.Diagnostics.AddError(
+			"Error creating server",
+			fmt.Sprintf("Unexpected error: %v for server name: %s location: %s instance type: %s", err,
+				data.Name.ValueString(),
+				data.Location.ValueString(),
+				data.InstanceType.ValueString(),
+			),
+		)
 		return
 	}
 	if serverResp.ErrorResponse != nil {
