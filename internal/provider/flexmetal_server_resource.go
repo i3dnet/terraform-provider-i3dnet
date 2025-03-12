@@ -210,7 +210,13 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	serverID := data.Uuid.ValueString()
-	err, lastStatus := r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, waitForReadyTimeout, 1*time.Second)
+	statusMessage := data.StatusMessage.ValueString()
+	lastStatus := data.Status.ValueString()
+
+	err = r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, waitForReadyTimeout, 1*time.Second, func(s *one_api.Server) {
+		statusMessage = s.StatusMessage
+		lastStatus = s.Status
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error waiting for server to be ready",
@@ -222,7 +228,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	if lastStatus == "failed" {
 		resp.Diagnostics.AddError(
 			"Server creation failed",
-			fmt.Sprintf("Status message: %s\nServer id: %s", data.StatusMessage.ValueString(), serverID),
+			fmt.Sprintf("Status message: %s\nServer id: %s", statusMessage, serverID),
 		)
 		return
 	}
@@ -433,7 +439,10 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	err, lastStatus := r.waitForStatus(ctx, data.Uuid.ValueString(), []string{"released"}, waitForReleasedTimeout, 1*time.Second)
+	lastStatus := data.Status.ValueString()
+	err = r.waitForStatus(ctx, data.Uuid.ValueString(), []string{"released"}, waitForReleasedTimeout, 1*time.Second, func(s *one_api.Server) {
+		lastStatus = s.Status
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Server deletion failed", fmt.Sprintf("Last status: %q", lastStatus))
 		return
@@ -442,7 +451,7 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 // waitForStatus performs a GET server request every interval until server status reaches desiredStatuses or timeouts
 // it returns an error and last known status
-func (r *serverResource) waitForStatus(ctx context.Context, serverID string, desiredStatuses []string, timeout, interval time.Duration) (err error, lastStatus string) {
+func (r *serverResource) waitForStatus(ctx context.Context, serverID string, desiredStatuses []string, timeout, interval time.Duration, onServerResponse func(s *one_api.Server)) (err error) {
 	deadline := time.After(timeout)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -450,9 +459,9 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err(), lastStatus
+			return ctx.Err()
 		case <-deadline:
-			return fmt.Errorf("timeout reached while waiting for server status"), lastStatus
+			return fmt.Errorf("timeout reached while waiting for server status")
 		case <-ticker.C:
 			serverResponse, err := r.client.GetServer(ctx, serverID)
 			if err != nil {
@@ -465,10 +474,13 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 				continue
 			}
 
-			lastStatus = serverResponse.Server.Status
-			if slices.Contains(desiredStatuses, lastStatus) {
-				tflog.Info(ctx, fmt.Sprintf("server reached desired status: %s", lastStatus))
-				return nil, lastStatus
+			if serverResponse.Server != nil && onServerResponse != nil {
+				onServerResponse(serverResponse.Server)
+			}
+
+			if slices.Contains(desiredStatuses, serverResponse.Server.Status) {
+				tflog.Info(ctx, fmt.Sprintf("server reached desired status: %s", serverResponse.Server.Status))
+				return nil
 			}
 		}
 	}
