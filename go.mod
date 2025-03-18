@@ -1,6 +1,9 @@
 module terraform-provider-i3dnet
 
-go 1.23
+go 1.23.0
+
+toolchain go1.23.5
+
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.14.1
 	github.com/hashicorp/terraform-plugin-go v0.26.0

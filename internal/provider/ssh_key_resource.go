@@ -9,9 +9,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
-
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var (
@@ -171,21 +170,55 @@ func (r *sshKeyResource) ImportState(ctx context.Context, req resource.ImportSta
 }
 
 func (r *sshKeyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data SshKeyModel
+	var state, plan SshKeyModel
 
-	// Not implemented: We don't have an UPDATE endpoint for ssh keys
-
-	// Read Terraform plan data into the model
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Update API call logic
+	// Currently there is no API endpoint to update by id, so we re-create a new ssh key
 
-	// Save updated data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	// Delete old key
+	err := r.client.DeleteSSHKey(ctx, state.ID.String())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Could not replace SSHKey",
+			"Unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	// Create new SSH key
+	reqBody := one_api.CreateSSHKeyReq{
+		Name:      plan.Name.ValueString(),
+		PublicKey: plan.PublicKey.ValueString(),
+	}
+
+	sshResp, err := r.client.CreateSSHKey(ctx, reqBody)
+	if err != nil {
+		resp.Diagnostics.AddError("Error creating ssh key", "Unexpected error: "+err.Error())
+		return
+	}
+	if sshResp.ErrorResponse != nil {
+		AddErrorResponseToDiags("Error creating ssh key", sshResp.ErrorResponse, &resp.Diagnostics)
+		return
+	}
+
+	// Map response body to schema and populate Computed attribute values
+	plan.PublicKey = types.StringValue(sshResp.SSHKey.PublicKey)
+	plan.Name = types.StringValue(sshResp.SSHKey.Name)
+	plan.CreatedAt = types.Int64Value(sshResp.SSHKey.CreatedAt)
+	plan.Uuid = types.StringValue(sshResp.SSHKey.Uuid)
+	plan.ID = types.StringValue(sshResp.SSHKey.Uuid)
+
+	// Set state to fully populated data
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 func (r *sshKeyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
