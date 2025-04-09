@@ -32,17 +32,17 @@ func (d *locationsDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 
-	providerData, ok := req.ProviderData.(*ProviderData)
+	client, ok := req.ProviderData.(*one_api.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *ProviderData, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *one_api.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	d.client = providerData.Client
+	d.client = client
 }
 
 func (d *locationsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
