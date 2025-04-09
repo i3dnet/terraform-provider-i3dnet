@@ -63,4 +63,4 @@ resource "i3dnet_flexmetal_server" "my-server" {
 
 - `api_key` (String) API Key for i3D.net One API. May also be provided via `FLEXMETAL_API_KEY` environment variable.
 - `base_url` (String) API base URL. By default it's using `https://api.i3d.net` API URL
-- `timeout` (Number) Timeout in minutes for create server resource. Default is `45`
+- `timeout` (Number) Timeout for Create Server Resource in minutes. Default is 45 minutes.
