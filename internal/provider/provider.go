@@ -3,7 +3,9 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"os"
+	"time"
 
 	"terraform-provider-i3dnet/internal/one_api"
 
@@ -40,6 +42,10 @@ func (p *i3dnetProvider) Schema(ctx context.Context, req provider.SchemaRequest,
 				MarkdownDescription: "API base URL. By default it's using `https://api.i3d.net` API URL",
 				Optional:            true, // optional. if not specified it will use the prod api URL
 			},
+			"timeout": schema.Int32Attribute{
+				MarkdownDescription: "Timeout for Create Server Resource in minutes. Default is 45 minutes.",
+				Optional:            true,
+			},
 		},
 	}
 }
@@ -48,6 +54,11 @@ func (p *i3dnetProvider) Schema(ctx context.Context, req provider.SchemaRequest,
 type i3dnetProviderModel struct {
 	APIKey  types.String `tfsdk:"api_key"`
 	BaseURL types.String `tfsdk:"base_url"`
+	Timeout types.Int32  `tfsdk:"timeout"`
+}
+type ProviderData struct {
+	Client  *one_api.Client
+	Timeout time.Duration
 }
 
 const (
@@ -97,6 +108,22 @@ func (p *i3dnetProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		)
 	}
 
+	if !config.Timeout.IsNull() {
+		if config.Timeout.ValueInt32() < 0 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("timeout"),
+				"Invalid Timeout",
+				"The provider cannot create the API client as there is an invalid value for the timeout. "+
+					"The timeout must be a positive integer.",
+			)
+		} else {
+			tflog.Info(ctx, "using timeout from provider configuration")
+		}
+	} else {
+		config.Timeout = basetypes.NewInt32Value(45)
+		tflog.Info(ctx, "using default server resource timeout of 45 minutes")
+	}
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -110,7 +137,10 @@ func (p *i3dnetProvider) Configure(ctx context.Context, req provider.ConfigureRe
 
 	// Make the API client available during DataSource and Resource type Configure methods.
 	resp.DataSourceData = client
-	resp.ResourceData = client
+	resp.ResourceData = &ProviderData{
+		Client:  client,
+		Timeout: time.Duration(config.Timeout.ValueInt32()) * time.Minute,
+	}
 }
 
 func (p *i3dnetProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {

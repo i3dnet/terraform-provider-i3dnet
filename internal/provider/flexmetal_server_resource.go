@@ -20,7 +20,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-var waitForReadyTimeout = 30 * time.Minute
 var waitForReleasedTimeout = 5 * time.Minute
 
 var _ resource.Resource = (*serverResource)(nil)
@@ -31,7 +30,8 @@ func NewServerResource() resource.Resource {
 }
 
 type serverResource struct {
-	client *one_api.Client
+	client  *one_api.Client
+	timeout time.Duration
 }
 
 func (r *serverResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -41,17 +41,18 @@ func (r *serverResource) Configure(ctx context.Context, req resource.ConfigureRe
 		return
 	}
 
-	client, ok := req.ProviderData.(*one_api.Client)
+	providerData, ok := req.ProviderData.(*ProviderData)
 	if !ok {
 		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *api_utils.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			"Unexpected ProviderData Type",
+			fmt.Sprintf("Expected *ProviderData, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
-
 		return
 	}
 
-	r.client = client
+	r.client = providerData.Client
+	r.timeout = providerData.Timeout
+
 }
 
 func (r *serverResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -213,7 +214,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	statusMessage := data.StatusMessage.ValueString()
 	lastStatus := data.Status.ValueString()
 
-	err = r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, waitForReadyTimeout, 1*time.Second, func(s *one_api.Server) {
+	err = r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, r.timeout, 1*time.Second, func(s *one_api.Server) {
 		statusMessage = s.StatusMessage
 		lastStatus = s.Status
 	})
