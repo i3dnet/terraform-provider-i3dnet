@@ -438,7 +438,7 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 }
 
 func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_flexmetal_server.FlexmetalServerModel
+	var data FlexmetalServerModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
