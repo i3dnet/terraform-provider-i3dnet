@@ -192,8 +192,6 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		Overflow:          data.Overflow.ValueBool(),
 	}
 
-	var cancel context.CancelFunc
-
 	createTimeout, diags := data.Timeouts.Create(ctx, 45*time.Minute)
 
 	resp.Diagnostics.Append(diags...)
@@ -202,7 +200,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	ctx, cancel = context.WithTimeout(ctx, createTimeout)
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
 	serverResp, err := r.client.CreateServer(ctx, createServerReq)
