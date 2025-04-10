@@ -69,7 +69,7 @@ resource "i3dnet_flexmetal_server" "my-partitioned-server" {
   post_install_script = "#!/bin/bash\necho \"Hi TerraFlex there!\" > /root/output.txt"
 }
 
-# Create a Talos OS 1.9.0 server On-Demand
+# Create a Talos OS 1.9.0 server On-Demand with custom timeout for create resource of 30 minutes. Default timeout is 45 minutes.
 resource "i3dnet_flexmetal_server" "my-talos" {
   name          = "talosHostName"
   location      = "EU: Rotterdam"
@@ -86,6 +86,9 @@ resource "i3dnet_flexmetal_server" "my-talos" {
         value = "123456"
       }
     ]
+  }
+  timeouts = {
+    create = "30m" // duration is specified as Terraform string (e.g., "30m", "1h")
   }
 }
 
@@ -143,6 +146,7 @@ resource "i3dnet_flexmetal_server" "my-talos" {
 - `post_install_script` (String) Post install script. A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems.
 - `ssh_key` (List of String) A list of SSH keys. You can either supply SSH key UUIDs from stored objects in [/v3/sshKey](https://www.i3d.net/docs/api/v3/all#/SSHKey/getSshKeys) or provide public keys directly. SSH keys are installed for the root user.
 - `tags` (List of String) A list of tags. There is a maximum of 60 tags per server. Each tag must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
@@ -184,6 +188,14 @@ Required:
 - `size` (Number) The size of the partition, in MB. Use -1 to indicate usage of the remaining space on the disk.
 - `target` (String) Mount point for the partition
 
+
+
+<a id="nestedatt--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
 
 
 <a id="nestedatt--ip_addresses"></a>
