@@ -51,7 +51,7 @@ resource "i3dnet_flexmetal_server" "my-partitioned-server" {
   post_install_script = "#!/bin/bash\necho \"Hi TerraFlex there!\" > /root/output.txt"
 }
 
-# Create a Talos OS 1.9.0 server On-Demand
+# Create a Talos OS 1.9.0 server On-Demand with custom timeout for create resource of 30 minutes. Default timeout is 45 minutes.
 resource "i3dnet_flexmetal_server" "my-talos" {
   name          = "talosHostName"
   location      = "EU: Rotterdam"
@@ -68,6 +68,9 @@ resource "i3dnet_flexmetal_server" "my-talos" {
         value = "123456"
       }
     ]
+  }
+  timeouts = {
+    create = "30m" // duration is specified as Terraform string (e.g., "30m", "1h")
   }
 }
 

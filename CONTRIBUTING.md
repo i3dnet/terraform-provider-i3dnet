@@ -141,6 +141,16 @@ You can now customize `internal/provider/server_resource.go` to add the good log
 Documentation
 for [generate command](https://developer.hashicorp.com/terraform/plugin/code-generation/framework-generator#generate-command).
 
+## Running against local environment
+To use local environment you can pass `base_url` to the provider configuration
+```
+# Configure the Provider
+provider "i3dnet" {
+    api_key = "<YOUR-API-KEY>"
+    base_url = "http://localhost:8081"
+}
+```
+
 ## Debugging and Logging
 
 If you'd like to see more detailed logs for debugging, you can set the `TF_LOG` environment variable to `DEBUG` or

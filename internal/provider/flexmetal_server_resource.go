@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"slices"
 	"strings"
 	"time"
@@ -20,7 +21,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-var waitForReadyTimeout = 30 * time.Minute
 var waitForReleasedTimeout = 5 * time.Minute
 
 var _ resource.Resource = (*serverResource)(nil)
@@ -32,6 +32,11 @@ func NewServerResource() resource.Resource {
 
 type serverResource struct {
 	client *one_api.Client
+}
+
+type FlexmetalServerModel struct {
+	resource_flexmetal_server.FlexmetalServerModel
+	Timeouts timeouts.Value `tfsdk:"timeouts"`
 }
 
 func (r *serverResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -120,6 +125,10 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		Description:         "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
 		MarkdownDescription: "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
 	}
+	// Add timeouts to schema
+	generatedSchema.Attributes["timeouts"] = timeouts.Attributes(ctx, timeouts.Opts{
+		Create: true,
+	})
 
 	modifiers.UpdateComputed(generatedSchema, []string{"tags", "overflow", "contract_id"}, false)
 
@@ -130,7 +139,7 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 }
 
 func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data resource_flexmetal_server.FlexmetalServerModel
+	var data FlexmetalServerModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -183,6 +192,17 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		Overflow:          data.Overflow.ValueBool(),
 	}
 
+	createTimeout, diags := data.Timeouts.Create(ctx, 45*time.Minute)
+
+	resp.Diagnostics.Append(diags...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
 	serverResp, err := r.client.CreateServer(ctx, createServerReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -213,7 +233,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	statusMessage := data.StatusMessage.ValueString()
 	lastStatus := data.Status.ValueString()
 
-	err = r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, waitForReadyTimeout, 1*time.Second, func(s *one_api.Server) {
+	err = r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, createTimeout, 1*time.Second, func(s *one_api.Server) {
 		statusMessage = s.StatusMessage
 		lastStatus = s.Status
 	})
@@ -258,7 +278,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func serverRespToPlan(ctx context.Context, server *one_api.Server, data *resource_flexmetal_server.FlexmetalServerModel) {
+func serverRespToPlan(ctx context.Context, server *one_api.Server, data *FlexmetalServerModel) {
 	data.Uuid = types.StringValue(server.Uuid)
 	data.CreatedAt = types.Int64Value(server.CreatedAt)
 	data.ReleasedAt = types.Int64Value(server.ReleasedAt)
@@ -302,7 +322,7 @@ func serverRespToPlan(ctx context.Context, server *one_api.Server, data *resourc
 }
 
 func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_flexmetal_server.FlexmetalServerModel
+	var data FlexmetalServerModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -332,7 +352,7 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 }
 
 func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan, state resource_flexmetal_server.FlexmetalServerModel
+	var plan, state FlexmetalServerModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -416,7 +436,7 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 }
 
 func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_flexmetal_server.FlexmetalServerModel
+	var data FlexmetalServerModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
