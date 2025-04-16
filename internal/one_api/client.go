@@ -40,7 +40,7 @@ func NewClient(apiKey string, rawBaseURL string) (*Client, error) {
 func (c *Client) callAPI(ctx context.Context, method, endpoint, path string, body []byte) (*http.Response, error) {
 	client := &http.Client{
 		Transport: &loggingRoundTripper{next: http.DefaultTransport, ctx: ctx},
-		Timeout:   10 * time.Second,
+		Timeout:   90 * time.Second,
 	}
 
 	apiURL := c.baseURL
