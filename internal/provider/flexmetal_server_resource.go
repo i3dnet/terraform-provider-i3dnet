@@ -3,10 +3,11 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
 	"terraform-provider-i3dnet/internal/one_api"
 	"terraform-provider-i3dnet/internal/provider/modifiers"
@@ -260,7 +261,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	if getServerResp.ErrorResponse != nil {
-		AddErrorResponseToDiags("Error getting server", serverResp.ErrorResponse, &resp.Diagnostics)
+		AddErrorResponseToDiags("Error getting server", getServerResp.ErrorResponse, &resp.Diagnostics)
 		return
 	}
 
