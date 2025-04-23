@@ -234,7 +234,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	statusMessage := data.StatusMessage.ValueString()
 	lastStatus := data.Status.ValueString()
 
-	err = r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, createTimeout, 1*time.Second, func(s *one_api.Server) {
+	err = r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, createTimeout, 15*time.Second, func(s *one_api.Server) {
 		statusMessage = s.StatusMessage
 		lastStatus = s.Status
 	})
