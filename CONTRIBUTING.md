@@ -240,3 +240,14 @@ For more information check the Readme inside that directory. You can view the de
 This `Release` GitHub Action will release new versions of the provider whenever you tag a commit on the main branch.
 
 Terraform provider versions must follow the [Semantic Versioning](https://semver.org/) standard (vMAJOR.MINOR.PATCH).
+
+## Updating changelog and release pages
+To update changelog please use https://github.com/git-chglog/git-chglog tool. 
+```shell
+go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
+```
+Configuration of the tool is located in `.chglog/config.yml` file.
+It automatically generates the changelog from commit messages and tags.
+```shell
+git-chglog -o CHANGELOG.md
+```
