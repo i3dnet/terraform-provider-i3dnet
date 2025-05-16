@@ -2,6 +2,12 @@
 ## [Unreleased]
 
 
+<a name="1.6.1"></a>
+## [1.6.1] - 2025-05-16
+### Features
+- added changelog configuration and template
+
+
 <a name="v1.6.0"></a>
 ## [v1.6.0] - 2025-04-23
 ### Features
@@ -175,7 +181,8 @@
 - Add initial code for flexmetal provider
 
 
-[Unreleased]: https://github.com/i3D-net/terraform-provider-i3dnet/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/i3D-net/terraform-provider-i3dnet/compare/1.6.1...HEAD
+[1.6.1]: https://github.com/i3D-net/terraform-provider-i3dnet/compare/v1.6.0...1.6.1
 [v1.6.0]: https://github.com/i3D-net/terraform-provider-i3dnet/compare/v1.5.1...v1.6.0
 [v1.5.1]: https://github.com/i3D-net/terraform-provider-i3dnet/compare/v1.5.0...v1.5.1
 [v1.5.0]: https://github.com/i3D-net/terraform-provider-i3dnet/compare/v1.4.0...v1.5.0
