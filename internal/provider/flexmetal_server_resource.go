@@ -133,7 +133,7 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 
 	modifiers.UpdateComputed(generatedSchema, []string{"tags", "overflow", "contract_id"}, false)
 
-	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "name", "location", "post_install_script", "ssh_key", "os"})
+	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "name", "location", "post_install_script"})
 	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at", "overflow"})
 
 	resp.Schema = generatedSchema
@@ -362,6 +362,40 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
+	if !r.osDeepEqual(plan.Os, state.Os) {
+		response, err := r.client.ReinstallOs(ctx, plan.Uuid.ValueString(), plan.Os.Slug.ValueString())
+
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error updating server OS",
+				fmt.Sprintf("Unexpected error: %v", err),
+			)
+			return
+		}
+
+		var operationState string
+
+		err = r.waitForOperationFinish(ctx, response.Server.Uuid, []string{"finished", "failed"}, 20*time.Minute, 15*time.Second, func(c *one_api.Command) {
+			operationState = c.State
+		})
+
+		if operationState == "failed" {
+			resp.Diagnostics.AddError(
+				"Operating System reinstall failed",
+				fmt.Sprintf("Status: %s", operationState),
+			)
+			return
+		}
+
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error waiting for OS reinstall operation to finish",
+				fmt.Sprintf("Unexpected error: %v", err),
+			)
+			return
+		}
+	}
+
 	var planTags []string
 	for _, v := range plan.Tags.Elements() {
 		planTags = append(planTags, v.(types.String).ValueString())
@@ -507,7 +541,67 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 	}
 }
 
+// waitForOperationFinish performs a GET server request every interval until server status reaches desiredStatuses or timeouts
+// it returns an error and last known status
+func (r *serverResource) waitForOperationFinish(ctx context.Context, serverID string, desiredStatuses []string, timeout, interval time.Duration, onServerResponse func(s *one_api.Command)) (err error) {
+	deadline := time.After(timeout)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-deadline:
+			return fmt.Errorf("timeout reached while waiting for operation status")
+		case <-ticker.C:
+			operationStatus, err := r.client.GetOperationStatus(ctx, serverID)
+			if err != nil {
+				tflog.Error(ctx, "error getting server by id", map[string]interface{}{"id": serverID})
+				continue
+			}
+
+			if operationStatus.ErrorResponse != nil {
+				tflog.Error(ctx, "error response on get server", map[string]interface{}{"errorMsg": operationStatus.ErrorResponse.ErrorMessage})
+				continue
+			}
+
+			if operationStatus.Command != nil && onServerResponse != nil {
+				onServerResponse(operationStatus.Command)
+			}
+
+			if slices.Contains(desiredStatuses, operationStatus.Command.State) {
+				tflog.Info(ctx, fmt.Sprintf("server reached desired status: %s", operationStatus.Command.State))
+				return nil
+			}
+		}
+	}
+}
+
 func (r *serverResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("uuid"), req, resp)
+}
+
+func (r *serverResource) osDeepEqual(a, b resource_flexmetal_server.OsValue) bool {
+	if a.Slug != b.Slug {
+		return false
+	}
+	if len(a.KernelParams.Elements()) != len(b.KernelParams.Elements()) {
+		return false
+	}
+	for i := range a.KernelParams.Elements() {
+		if a.KernelParams.Elements()[i] != b.KernelParams.Elements()[i] {
+			return false
+		}
+	}
+	if len(a.Partitions.Elements()) != len(b.Partitions.Elements()) {
+		return false
+	}
+	for i := range a.Partitions.Elements() {
+		if a.Partitions.Elements()[i] != b.Partitions.Elements()[i] {
+			return false
+		}
+	}
+	return true
 }

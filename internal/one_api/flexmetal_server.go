@@ -80,6 +80,40 @@ type ServerResponse struct {
 	Server        *Server
 }
 
+type OperationStatus struct {
+	ErrorResponse *ErrorResponse
+	Commands      []Command `json:"commands"`
+	Paginator     Paginator `json:"paginator"`
+}
+
+type OperationStatusResponse struct {
+	ErrorResponse *ErrorResponse
+	Command       *Command
+}
+
+type Command struct {
+	UUID       string        `json:"uuid"`
+	ServerUUID string        `json:"server_uuid"`
+	Payload    []interface{} `json:"payload"`
+	State      string        `json:"state"`
+	CreatedAt  string        `json:"created_at"`
+	UpdatedAt  string        `json:"updated_at"`
+}
+
+type Paginator struct {
+	From         int     `json:"from"`
+	To           int     `json:"to"`
+	Total        int     `json:"total"`
+	CurrentPage  int     `json:"current_page"`
+	LastPage     int     `json:"last_page"`
+	FirstPageURL string  `json:"first_page_url"`
+	PrevPageURL  *string `json:"prev_page_url"`
+	NextPageURL  *string `json:"next_page_url"`
+	LastPageURL  string  `json:"last_page_url"`
+	Path         string  `json:"path"`
+	PerPage      int     `json:"per_page"`
+}
+
 func (c *Client) CreateServer(ctx context.Context, req CreateServerReq) (*ServerResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -167,6 +201,62 @@ func (c *Client) DeleteServer(ctx context.Context, id string) (*ServerResponse, 
 	}
 
 	response.Server = &serverResp[0]
+
+	return &response, nil
+}
+
+func (c *Client) ReinstallOs(ctx context.Context, serverID string, osSlug string) (*ServerResponse, error) {
+	resp, err := c.callAPI(ctx, http.MethodPatch, flexMetalEndpoint, fmt.Sprintf("servers/%s/reinstall/%s", serverID, osSlug), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error calling reinstall flexmetal server API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var response ServerResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(resp)
+		return &response, nil
+	}
+
+	var serverResp []Server
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&serverResp); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if len(serverResp) == 0 {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	response.Server = &serverResp[0]
+
+	return &response, nil
+}
+
+func (c *Client) GetOperationStatus(ctx context.Context, serverID string) (*OperationStatusResponse, error) {
+	resp, err := c.callAPI(ctx, http.MethodGet, flexMetalEndpoint, fmt.Sprintf("servers/%s/commands", serverID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error calling get flexmetal server operation API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var response OperationStatusResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(resp)
+		return &response, nil
+	}
+
+	var operationResp OperationStatus
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&operationResp); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if len(operationResp.Commands) == 0 {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	response.Command = &operationResp.Commands[0]
 
 	return &response, nil
 }
