@@ -14,7 +14,7 @@ If you wish to work on the provider, you'll first need:
 1. Clone the repository:
 
     ```sh
-    git clone https://github.com/i3D-net/terraform-provider-i3dnet
+    git clone https://github.com/i3dnet/terraform-provider-i3dnet
     cd terraform-provider-i3dnet
     ```
 
@@ -52,7 +52,7 @@ set, use the default path, `/Users/<Username>/go/bin`.
 provider_installation {
 
   dev_overrides {
-    "registry.terraform.io/i3D-net/i3dnet" = "/Users/<Username>/go/bin"
+    "registry.terraform.io/i3dnet/i3dnet" = "/Users/<Username>/go/bin"
   }
 
   # For all other providers, install them directly from their origin provider
@@ -74,7 +74,7 @@ You should get the similar output to validate override is in effect:
 │ Warning: Provider development overrides are in effect
 │ 
 │ The following provider development overrides are set in the CLI configuration:
-│  - i3d-net/i3dnet in /Users/<Username>/go/bin
+│  - i3dnet/i3dnet in /Users/<Username>/go/bin
 │ 
 │ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become incompatible with published releases.
 ╵
