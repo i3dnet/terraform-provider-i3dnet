@@ -23,7 +23,7 @@ To get the API Key [follow our API documentation](https://www.i3d.net/docs/one/o
 terraform {
   required_providers {
     i3dnet = {
-      source = "registry.terraform.io/i3D-net/i3dnet"
+      source = "registry.terraform.io/i3dnet/i3dnet"
     }
   }
 }

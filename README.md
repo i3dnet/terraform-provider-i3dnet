@@ -2,7 +2,7 @@
 
 The **i3D.net Terraform Provider** allows you to manage [i3D.net](https://www.i3d.net/) resources using Terraform.
 
-- Documentation: https://registry.terraform.io/providers/i3D-net/i3dnet/latest/docs
+- Documentation: https://registry.terraform.io/providers/i3dnet/i3dnet/latest/docs
 
 ## Requirements
 
@@ -35,7 +35,7 @@ Then commit the changes to `go.mod` and `go.sum`.
 
 ## Using the provider
 
-See the [i3D.net Provider documentation](https://registry.terraform.io/providers/i3D-net/i3dnet/latest/docs) to get
+See the [i3D.net Provider documentation](https://registry.terraform.io/providers/i3dnet/i3dnet/latest/docs) to get
 started using the i3D.net provider.
 
 ## Developing the Provider
