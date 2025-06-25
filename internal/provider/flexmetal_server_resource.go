@@ -353,7 +353,9 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 }
 
 func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+
 	var plan, state FlexmetalServerModel
+	tflog.Error(ctx, "OS changed, reinstalling OS", map[string]interface{}{"os": plan.Os})
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -363,7 +365,42 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	if !r.osDeepEqual(plan.Os, state.Os) {
-		response, err := r.client.ReinstallOs(ctx, plan.Uuid.ValueString(), plan.Os.Slug.ValueString())
+		tflog.Debug(ctx, "OS changed, reinstalling OS", map[string]interface{}{"os": plan.Os})
+		var kernelParams []one_api.KernelParam
+		for _, kernelParam := range plan.Os.KernelParams.Elements() {
+			kernelParam1 := kernelParam.(resource_flexmetal_server.KernelParamsValue)
+			kernelParams = append(kernelParams, one_api.KernelParam{
+				Key:   kernelParam1.Key.ValueString(),
+				Value: kernelParam1.Value.ValueString(),
+			})
+		}
+
+		var sskKeys []string
+		for _, sshKey := range plan.SshKey.Elements() {
+			sskKeys = append(sskKeys, strings.Replace(sshKey.String(), "\"", "", -1))
+		}
+
+		var partitions []one_api.Partition
+		for _, v := range plan.Os.Partitions.Elements() {
+			part := v.(resource_flexmetal_server.PartitionsValue)
+
+			partitions = append(partitions, one_api.Partition{
+				Target:     part.Target.ValueString(),
+				Filesystem: part.Filesystem.ValueString(),
+				Size:       part.Size.ValueInt64(),
+			})
+		}
+		patchReq := one_api.PatchServerReq{
+			Name: plan.Name.ValueString(),
+			Os: one_api.OS{
+				Slug:         plan.Os.Slug.ValueString(),
+				KernelParams: kernelParams,
+				Partitions:   partitions,
+			},
+			SSHKey:            sskKeys,
+			PostInstallScript: plan.PostInstallScript.ValueString(),
+		}
+		response, err := r.client.ReinstallOs(ctx, plan.Uuid.ValueString(), patchReq)
 
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -374,8 +411,9 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 
 		var operationState string
-
+		tflog.Debug(ctx, "Updating server OS", map[string]interface{}{"id": response.Server.Uuid})
 		err = r.waitForOperationFinish(ctx, response.Server.Uuid, []string{"finished", "failed"}, 20*time.Minute, 15*time.Second, func(c *one_api.Command) {
+			tflog.Debug(ctx, "I am here waiting for OS reinstall operation to finish", map[string]interface{}{"id": response.Server.Uuid, "state": c.State})
 			operationState = c.State
 		})
 
@@ -557,7 +595,7 @@ func (r *serverResource) waitForOperationFinish(ctx context.Context, serverID st
 		case <-ticker.C:
 			operationStatus, err := r.client.GetOperationStatus(ctx, serverID)
 			if err != nil {
-				tflog.Error(ctx, "error getting server by id", map[string]interface{}{"id": serverID})
+				tflog.Error(ctx, "error getting operation state", map[string]interface{}{"err": err})
 				continue
 			}
 
