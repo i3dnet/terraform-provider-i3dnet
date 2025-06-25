@@ -410,8 +410,14 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 			return
 		}
 
+		if response.ErrorResponse != nil {
+			tflog.Debug(ctx, "Error updating server OS", map[string]interface{}{"err": response.ErrorResponse})
+			AddErrorResponseToDiags("Error updating server OS", response.ErrorResponse, &resp.Diagnostics)
+			return
+		}
+
 		var operationState string
-		tflog.Debug(ctx, "Updating server OS", map[string]interface{}{"id": response.Server.Uuid})
+		tflog.Debug(ctx, fmt.Sprintf("Updating server OS %v", response.Server))
 		err = r.waitForOperationFinish(ctx, response.Server.Uuid, []string{"finished", "failed"}, 20*time.Minute, 15*time.Second, func(c *one_api.Command) {
 			tflog.Debug(ctx, "I am here waiting for OS reinstall operation to finish", map[string]interface{}{"id": response.Server.Uuid, "state": c.State})
 			operationState = c.State

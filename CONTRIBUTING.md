@@ -177,7 +177,7 @@ You can omit `I3D_BASE_URL` in which case the default `https://api.i3d.net` prod
 Then, you can run them using this command:
 
 ```shell
-I3D_API_KEY=yourapiKey I3D_BASE_URL=targetBaseURL TF_ACC=1 go test -count=1 -v ./...
+I3D_API_KEY=O2cVS7dX6Qur1ZcO422P I3D_BASE_URL=http://localhost:8081 TF_ACC=1 go test -count=1 -v ./...
 ```
 
 You can also run tests using [Task](https://taskfile.dev/). Make sure you have all your variables set in the `.env`

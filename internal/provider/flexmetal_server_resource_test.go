@@ -90,7 +90,6 @@ resource "i3dnet_flexmetal_server" "my-talos-update" {
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos-update", "status", "delivered"),
 				),
 			},
-			// Krok 2: Aktualizacja serwera - zmiana wartości kernel_params
 			{
 				Config: providerConfig(t) + `
 resource "i3dnet_flexmetal_server" "my-talos-update" {
