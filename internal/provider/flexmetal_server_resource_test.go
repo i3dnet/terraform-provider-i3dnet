@@ -56,3 +56,69 @@ resource "i3dnet_flexmetal_server" "my-talos" {
 		},
 	})
 }
+
+func TestAccFlexmetalServerResource_Update(t *testing.T) {
+	t.Parallel()
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: providerConfig(t) + `
+resource "i3dnet_flexmetal_server" "my-talos-update" {
+  name          = "talosUpdateTest"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "talos-omni-190"
+    kernel_params = [
+      {
+        key   = "siderolink.api"
+        value = "https://siderolink.api/?jointoken=secret"
+      },
+      {
+        key   = "talos.customparam"
+        value = "123456"
+      }
+    ]
+  }
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos-update", "os.slug", "talos-omni-190"),
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos-update", "os.kernel_params.1.key", "talos.customparam"),
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos-update", "status", "delivered"),
+				),
+			},
+			// Krok 2: Aktualizacja serwera - zmiana wartości kernel_params
+			{
+				Config: providerConfig(t) + `
+resource "i3dnet_flexmetal_server" "my-talos-update" {
+  name          = "talosUpdateTest"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "talos-omni-195"
+    kernel_params = [
+      {
+        key   = "siderolink.api"
+        value = "https://siderolink.api/?jointoken=secret"
+      },
+      {
+        key   = "talos.customparam_changed"
+        value = "654321"
+      }
+    ]
+  }
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos-update", "os.slug", "talos-omni-195"),
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos-update", "os.kernel_params.1.key", "talos.customparam_changed"),
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos-update", "os.kernel_params.1.value", "654321"),
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos-update", "status", "delivered"),
+				),
+			},
+		},
+	})
+}
