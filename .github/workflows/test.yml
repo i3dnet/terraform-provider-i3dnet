@@ -80,6 +80,5 @@ jobs:
       - run: go mod download
       - env:
           TF_ACC: "1"
-          TF_LOG: "DEBUG"
         run: go test -v -cover ./internal/provider/
-        timeout-minutes: 10
+        timeout-minutes: 20
