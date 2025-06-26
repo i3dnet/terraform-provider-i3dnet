@@ -80,5 +80,6 @@ jobs:
       - run: go mod download
       - env:
           TF_ACC: "1"
+          ACCTEST_TIMEOUT: "20m"
         run: go test -v -cover ./internal/provider/
         timeout-minutes: 20
