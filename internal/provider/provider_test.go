@@ -17,7 +17,7 @@ var (
 	// CLI command executed to create a provider server to which the CLI can
 	// reattach.
 	testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServer, error){
-		"i3dnet": providerserver.NewProtocol6WithError(New()()),
+		"i3dnet": providerserver.NewProtocol6WithError(New()),
 	}
 )
 

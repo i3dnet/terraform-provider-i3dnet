@@ -33,7 +33,7 @@ func (c *Client) CreateSSHKey(ctx context.Context, req CreateSSHKeyReq) (*SSHKey
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.callAPI(ctx, http.MethodPost, sshKeyEndpoint, "", body)
+	resp, err := c.callAPI(ctx, http.MethodPost, sshKeyEndpoint, "", body, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling create ssh key api: %w", err)
 	}
@@ -60,7 +60,7 @@ func (c *Client) CreateSSHKey(ctx context.Context, req CreateSSHKeyReq) (*SSHKey
 }
 
 func (c *Client) GetSSHKey(ctx context.Context, id string) (*SSHKeyResponse, error) {
-	resp, err := c.callAPI(ctx, http.MethodGet, sshKeyEndpoint, id, nil)
+	resp, err := c.callAPI(ctx, http.MethodGet, sshKeyEndpoint, id, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling get ssh key api: %w", err)
 	}
@@ -87,7 +87,7 @@ func (c *Client) GetSSHKey(ctx context.Context, id string) (*SSHKeyResponse, err
 }
 
 func (c *Client) ListSSHKeys(ctx context.Context) ([]SSHKey, error) {
-	resp, err := c.callAPI(ctx, http.MethodGet, sshKeyEndpoint, "", nil)
+	resp, err := c.callAPI(ctx, http.MethodGet, sshKeyEndpoint, "", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling list ssh key api: %w", err)
 	}
@@ -107,7 +107,7 @@ func (c *Client) ListSSHKeys(ctx context.Context) ([]SSHKey, error) {
 }
 
 func (c *Client) DeleteSSHKey(ctx context.Context, id string) error {
-	resp, err := c.callAPI(ctx, http.MethodDelete, sshKeyEndpoint, id, nil)
+	resp, err := c.callAPI(ctx, http.MethodDelete, sshKeyEndpoint, id, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error calling delete ssh key API: %w", err)
 	}

@@ -14,7 +14,7 @@ func main() {
 		Address: "registry.terraform.io/i3dnet/i3dnet",
 	}
 
-	err := providerserver.Serve(context.Background(), provider.New(), opts)
+	err := providerserver.Serve(context.Background(), provider.New, opts)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
