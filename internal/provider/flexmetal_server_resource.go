@@ -363,7 +363,7 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	if !r.osDeepEqual(plan.Os, state.Os) {
+	if !r.osDeepEqual(plan.Os, state.Os) || !plan.SshKey.Equal(state.SshKey) || !plan.Name.Equal(state.Name) {
 		tflog.Debug(ctx, "OS changed, reinstalling OS", map[string]interface{}{"os": plan.Os})
 		var kernelParams []one_api.KernelParam
 		for _, kernelParam := range plan.Os.KernelParams.Elements() {
