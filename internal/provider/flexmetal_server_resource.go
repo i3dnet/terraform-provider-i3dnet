@@ -133,7 +133,7 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 
 	modifiers.UpdateComputed(generatedSchema, []string{"tags", "overflow", "contract_id"}, false)
 
-	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "name", "location", "post_install_script"})
+	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "location", "post_install_script"})
 	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at", "overflow"})
 
 	resp.Schema = generatedSchema
