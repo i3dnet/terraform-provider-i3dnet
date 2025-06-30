@@ -20,7 +20,7 @@ type Location struct {
 const locationsEndpoint = "flexMetal/location"
 
 func (c *Client) ListLocations(ctx context.Context) ([]Location, error) {
-	resp, err := c.callAPI(ctx, http.MethodGet, locationsEndpoint, "", nil)
+	resp, err := c.callAPI(ctx, http.MethodGet, locationsEndpoint, "", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling list locations api: %w", err)
 	}
