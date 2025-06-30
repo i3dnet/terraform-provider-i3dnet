@@ -518,8 +518,13 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// In the case that the server failed delivery earlier, and has a failed status in the state file,
+	// we can already return, because you cannot release a failed server - its status will just remain the same.
+	if data.Status.ValueString() == "failed" {
 		return
 	}
 
