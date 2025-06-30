@@ -1,8 +1,11 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+
+<a name="v1.7.0"></a>
+## [v1.7.0] - 2025-06-30
 ### Features
-- New flexmetal_server UPDATE behavior when OS parameters are changed in your Terraform configuration. In that case the OS will be re-installed on existing servers, instead of being destroyed and re-created.
+- New flexmetal_server UPDATE behavior when OS parameters are changed in your Terraform configuration. In that case the OS will be re-installed on existing servers, instead of the server resource being destroyed and re-created.
 
 ### Bug Fixes
 - When applying a plan that had a failed / tainted server in the state file, Terraform wants to delete it before recreating, but it would fail to delete it. Now a failed server will alwyas be destroyed instantly.
@@ -20,8 +23,9 @@
 <a name="v1.6.2"></a>
 ## [v1.6.2] - 2025-06-13
 
-<a name="1.6.1"></a>
-## [1.6.1] - 2025-05-16
+
+<a name="v1.6.1"></a>
+## [v1.6.1] - 2025-05-16
 ### Features
 - added changelog configuration and template
 
@@ -199,7 +203,8 @@
 - Add initial code for flexmetal provider
 
 
-[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.6.3...HEAD
+[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.7.0...HEAD
+[v1.7.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.6.3...v1.7.0
 [v1.6.3]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.6.2...v1.6.3
 [v1.6.2]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.6.1...v1.6.2
 [v1.6.1]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/1.6.1...v1.6.1
