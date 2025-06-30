@@ -18,10 +18,8 @@ import (
 
 var _ provider.Provider = (*i3dnetProvider)(nil)
 
-func New() func() provider.Provider {
-	return func() provider.Provider {
-		return &i3dnetProvider{}
-	}
+func New() provider.Provider {
+	return &i3dnetProvider{}
 }
 
 type i3dnetProvider struct{}

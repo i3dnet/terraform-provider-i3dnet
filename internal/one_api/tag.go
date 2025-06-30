@@ -33,7 +33,7 @@ func (c *Client) CreateTag(ctx context.Context, name string) (*TagResponse, erro
 		return nil, err
 	}
 
-	resp, err := c.callAPI(ctx, http.MethodPost, tagEndpoint, "", body)
+	resp, err := c.callAPI(ctx, http.MethodPost, tagEndpoint, "", body, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling create tag api: %w", err)
 	}
@@ -66,7 +66,7 @@ func (c *Client) UpdateTag(ctx context.Context, oldName, newName string) (*TagRe
 		return nil, err
 	}
 
-	resp, err := c.callAPI(ctx, http.MethodPut, tagEndpoint, oldName, body)
+	resp, err := c.callAPI(ctx, http.MethodPut, tagEndpoint, oldName, body, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error calling update tag API: %w", err)
 	}
@@ -93,7 +93,7 @@ func (c *Client) UpdateTag(ctx context.Context, oldName, newName string) (*TagRe
 }
 
 func (c *Client) DeleteTag(ctx context.Context, name string) error {
-	resp, err := c.callAPI(ctx, http.MethodDelete, tagEndpoint, name, nil)
+	resp, err := c.callAPI(ctx, http.MethodDelete, tagEndpoint, name, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error calling delete tag API: %w", err)
 	}
@@ -103,7 +103,7 @@ func (c *Client) DeleteTag(ctx context.Context, name string) error {
 }
 
 func (c *Client) GetTag(ctx context.Context, name string) (*TagResponse, error) {
-	resp, err := c.callAPI(ctx, http.MethodGet, tagEndpoint, name, nil)
+	resp, err := c.callAPI(ctx, http.MethodGet, tagEndpoint, name, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error calling delete tag API: %w", err)
 	}
@@ -130,7 +130,7 @@ func (c *Client) GetTag(ctx context.Context, name string) (*TagResponse, error) 
 }
 
 func (c *Client) ListTags(ctx context.Context, name string) ([]Tag, error) {
-	resp, err := c.callAPI(ctx, http.MethodGet, tagEndpoint, "", nil)
+	resp, err := c.callAPI(ctx, http.MethodGet, tagEndpoint, "", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on calling list tags api: %w", err)
 	}

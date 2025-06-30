@@ -133,7 +133,7 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 
 	modifiers.UpdateComputed(generatedSchema, []string{"tags", "overflow", "contract_id"}, false)
 
-	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "name", "location", "post_install_script", "ssh_key", "os"})
+	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "location", "post_install_script"})
 	modifiers.ApplyUseStateForUnknown(generatedSchema, []string{"uuid", "status", "status_message", "ip_addresses", "released_at", "created_at", "delivered_at", "overflow"})
 
 	resp.Schema = generatedSchema
@@ -353,6 +353,7 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 }
 
 func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+
 	var plan, state FlexmetalServerModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -360,6 +361,82 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	if !r.osDeepEqual(plan.Os, state.Os) || !plan.SshKey.Equal(state.SshKey) || !plan.Name.Equal(state.Name) {
+		tflog.Debug(ctx, "OS changed, reinstalling OS", map[string]interface{}{"os": plan.Os})
+		var kernelParams []one_api.KernelParam
+		for _, kernelParam := range plan.Os.KernelParams.Elements() {
+			kernelParam1 := kernelParam.(resource_flexmetal_server.KernelParamsValue)
+			kernelParams = append(kernelParams, one_api.KernelParam{
+				Key:   kernelParam1.Key.ValueString(),
+				Value: kernelParam1.Value.ValueString(),
+			})
+		}
+
+		var sskKeys []string
+		for _, sshKey := range plan.SshKey.Elements() {
+			sskKeys = append(sskKeys, strings.Replace(sshKey.String(), "\"", "", -1))
+		}
+
+		var partitions []one_api.Partition
+		for _, v := range plan.Os.Partitions.Elements() {
+			part := v.(resource_flexmetal_server.PartitionsValue)
+
+			partitions = append(partitions, one_api.Partition{
+				Target:     part.Target.ValueString(),
+				Filesystem: part.Filesystem.ValueString(),
+				Size:       part.Size.ValueInt64(),
+			})
+		}
+		patchReq := one_api.PatchServerReq{
+			Name: plan.Name.ValueString(),
+			Os: one_api.OS{
+				Slug:         plan.Os.Slug.ValueString(),
+				KernelParams: kernelParams,
+				Partitions:   partitions,
+			},
+			SSHKey:            sskKeys,
+			PostInstallScript: plan.PostInstallScript.ValueString(),
+		}
+		response, err := r.client.ReinstallOs(ctx, plan.Uuid.ValueString(), patchReq)
+
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error updating server OS",
+				fmt.Sprintf("Unexpected error: %v", err),
+			)
+			return
+		}
+
+		if response.ErrorResponse != nil {
+			tflog.Debug(ctx, "Error updating server OS", map[string]interface{}{"err": response.ErrorResponse})
+			AddErrorResponseToDiags("Error updating server OS", response.ErrorResponse, &resp.Diagnostics)
+			return
+		}
+
+		var operationState string
+		tflog.Debug(ctx, fmt.Sprintf("Updating server OS %v", response.Server))
+		err = r.waitForOperationFinish(ctx, response.Server.Uuid, []string{"finished", "failed"}, 20*time.Minute, 15*time.Second, func(c *one_api.Command) {
+			tflog.Debug(ctx, "I am here waiting for OS reinstall operation to finish", map[string]interface{}{"id": response.Server.Uuid, "state": c.State})
+			operationState = c.State
+		})
+
+		if operationState == "failed" {
+			resp.Diagnostics.AddError(
+				"Operating System reinstall failed",
+				fmt.Sprintf("Status: %s", operationState),
+			)
+			return
+		}
+
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error waiting for OS reinstall operation to finish",
+				fmt.Sprintf("Unexpected error: %v", err),
+			)
+			return
+		}
 	}
 
 	var planTags []string
@@ -441,8 +518,13 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// In the case that the server failed delivery earlier, and has a failed status in the state file,
+	// we can already return, because you cannot release a failed server - its status will just remain the same.
+	if data.Status.ValueString() == "failed" {
 		return
 	}
 
@@ -507,7 +589,67 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 	}
 }
 
+// waitForOperationFinish performs a GET server request every interval until server status reaches desiredStatuses or timeouts
+// it returns an error and last known status
+func (r *serverResource) waitForOperationFinish(ctx context.Context, serverID string, desiredStatuses []string, timeout, interval time.Duration, onServerResponse func(s *one_api.Command)) (err error) {
+	deadline := time.After(timeout)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-deadline:
+			return fmt.Errorf("timeout reached while waiting for operation status")
+		case <-ticker.C:
+			operationStatus, err := r.client.GetOperationStatus(ctx, serverID)
+			if err != nil {
+				tflog.Error(ctx, "error getting operation state", map[string]interface{}{"err": err})
+				continue
+			}
+
+			if operationStatus.ErrorResponse != nil {
+				tflog.Error(ctx, "error response on get server", map[string]interface{}{"errorMsg": operationStatus.ErrorResponse.ErrorMessage})
+				continue
+			}
+
+			if operationStatus.Command != nil && onServerResponse != nil {
+				onServerResponse(operationStatus.Command)
+			}
+
+			if slices.Contains(desiredStatuses, operationStatus.Command.State) {
+				tflog.Info(ctx, fmt.Sprintf("server reached desired status: %s", operationStatus.Command.State))
+				return nil
+			}
+		}
+	}
+}
+
 func (r *serverResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("uuid"), req, resp)
+}
+
+func (r *serverResource) osDeepEqual(a, b resource_flexmetal_server.OsValue) bool {
+	if a.Slug != b.Slug {
+		return false
+	}
+	if len(a.KernelParams.Elements()) != len(b.KernelParams.Elements()) {
+		return false
+	}
+	for i := range a.KernelParams.Elements() {
+		if a.KernelParams.Elements()[i] != b.KernelParams.Elements()[i] {
+			return false
+		}
+	}
+	if len(a.Partitions.Elements()) != len(b.Partitions.Elements()) {
+		return false
+	}
+	for i := range a.Partitions.Elements() {
+		if a.Partitions.Elements()[i] != b.Partitions.Elements()[i] {
+			return false
+		}
+	}
+	return true
 }
