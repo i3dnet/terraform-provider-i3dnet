@@ -23,11 +23,9 @@
 <a name="v1.6.2"></a>
 ## [v1.6.2] - 2025-06-13
 
+
 <a name="v1.6.1"></a>
 ## [v1.6.1] - 2025-05-16
-
-<a name="1.6.1"></a>
-## [1.6.1] - 2025-05-16
 ### Features
 - added changelog configuration and template
 
