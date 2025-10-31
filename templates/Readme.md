@@ -1,7 +1,6 @@
 # Templates
 
-This folder contains the template files used by [tfplugindocs](https://github.com/hashicorp/terraform-plugin-docs) to
-autogenerate our provider documentation.
+This folder contains the template files used by [tfplugindocs](https://github.com/hashicorp/terraform-plugin-docs) to autogenerate our provider documentation.
 
 ## How To Guide
 

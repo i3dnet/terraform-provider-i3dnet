@@ -12,10 +12,9 @@ The `i3dnet` provider is used to interact with the resources supported by i3D.ne
 
 Use the navigation to the left to read about the available resources.
 
--> **Note** FlexMetal is under active development and still in closed Alpha state. " +
-			"Please get in touch with the i3D.net sales team to learn more about the product state and roadmap or if you wish to be part of the closed Alpha program for FlexMetal.
+-> **Note** FlexMetal is under active development and still in closed Beta state. Please get in touch with the i3D.net sales team to learn more about the product state and roadmap or if you wish to be part of the closed Beta program for FlexMetal.
 
-To get the API Key [follow our API documentation](https://www.i3d.net/docs/one/odp/Platform-Overview/APIv3-Authentication/).
+To obtain your API Key [follow our API documentation](https://docs.i3d.net/compute/flexmetal/api#id-1.-api-token).
 
 ## Example Usage
 
