@@ -7,7 +7,7 @@ The **i3D.net Terraform Provider** allows you to manage [i3D.net](https://www.i3
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.23
+- [Go](https://golang.org/doc/install) >= 1.24
 
 ## Building The Provider
 
@@ -41,4 +41,3 @@ started using the i3D.net provider.
 ## Developing the Provider
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for information about contributing to this project.
-
