@@ -49,7 +49,8 @@ resource "i3dnet_flexmetal_server" "my-talos" {
 					resource.TestCheckResourceAttrSet("i3dnet_flexmetal_server.my-talos", "uuid"),
 					resource.TestCheckResourceAttrSet("i3dnet_flexmetal_server.my-talos", "created_at"),
 					resource.TestCheckResourceAttrSet("i3dnet_flexmetal_server.my-talos", "delivered_at"),
-					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "ip_addresses.#", "1"),
+					// IPv4 and IPv6 expected, so we expect 2 addresses.
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "ip_addresses.#", "2"),
 				),
 			},
 			{
