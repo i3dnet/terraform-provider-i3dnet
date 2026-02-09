@@ -83,7 +83,7 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 
 	osAttributes := generatedOSAttribute.GetAttributes()
 
-	ipxeScriptUrl := osAttributes["ipxe_script_url"].(schema.ListNestedAttribute)
+	ipxeScriptUrl := osAttributes["ipxe_script_url"].(schema.StringAttribute)
 	ipxeScriptUrl.Optional = true
 	ipxeScriptUrl.Computed = false
 
