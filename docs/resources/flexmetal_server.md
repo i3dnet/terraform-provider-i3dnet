@@ -178,6 +178,7 @@ Required:
 
 Optional:
 
+- `ipxe_script_url` (String) The URL to your custom iPXE boot menu file. Can and must be used in combination with OS slug custom-ipxe.
 - `kernel_params` (Attributes List) Kernel params for the PXE stage of the OS installation. Most operating systems do not require these, but e.g. Talos does. (see [below for nested schema](#nestedatt--os--kernel_params))
 - `partitions` (Attributes List) Custom partitions for the OS installation. If not provided, the default partitioning scheme will be used. (see [below for nested schema](#nestedatt--os--partitions))
 
