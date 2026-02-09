@@ -12389,6 +12389,12 @@
                             "$ref": "#/components/schemas/FlexMetalPartition"
                         },
                         "description": "Custom partitions for the OS installation. If not provided, the default partitioning scheme will be used."
+                    },
+                    "ipxeScriptUrl": {
+                        "type": "string",
+                        "format": "",
+                        "example": "https://example.org/custom-ipxe.cfg",
+                        "description": "The URL to your custom iPXE boot menu file. Can and must be used in combination with OS slug custom-ipxe."
                     }
                 },
                 "additionalProperties": false

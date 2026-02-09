@@ -165,6 +165,13 @@
 							"computed_optional_required": "required",
 							"attributes": [
 								{
+									"name": "ipxe_script_url",
+									"string": {
+										"computed_optional_required": "computed_optional",
+										"description": "The URL to your custom iPXE boot menu file. Can and must be used in combination with OS slug custom-ipxe."
+									}
+								},
+								{
 									"name": "kernel_params",
 									"list_nested": {
 										"computed_optional_required": "computed_optional",

@@ -96,7 +96,7 @@ Generator (see this [doc](https://developer.hashicorp.com/terraform/plugin/code-
 
 How to generate the resources & the config:
 
-1. Download the OpenAPI Spec (https://www.i3d.net/docs/api/v3/getjson) and overwrite the
+1. Download the OpenAPI Spec (https://customer.i3d.net/docs/api/v3/getjson) and overwrite the
    `./generator_data/openAPISpec.json`. Make sure to replace `\/` with `/`.
 2. In the `openApiSpec.json`, under  `paths > /v3/flexMetal/servers > post > responses > 200` change to:
 
@@ -136,7 +136,7 @@ if interested.
     --output internal/provider
     ```
 
-You can now customize `internal/provider/server_resource.go` to add the good logic.
+You can now customize `internal/provider/flemetal_server_resource.go` to add the good logic.
 
 Documentation
 for [generate command](https://developer.hashicorp.com/terraform/plugin/code-generation/framework-generator#generate-command).
