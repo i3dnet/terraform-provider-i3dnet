@@ -134,7 +134,7 @@ resource "i3dnet_flexmetal_server" "my-custom-ipxe" {
   location      = "EU: Rotterdam"
   instance_type = "bm7.std.8"
   os = {
-    slug = "custom-ipxe"
+    slug          = "custom-ipxe"
     ipxeScriptUrl = "https://example.org/custom-ipxe.cfg"
   }
 }
