@@ -68,7 +68,7 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 	generatedSchema := resource_flexmetal_server.FlexmetalServerResourceSchema(ctx)
 
 	generatedSchema.MarkdownDescription = "FlexMetal servers are physical servers that can be requested and released at will.\n\n" +
-		"A How to Guide is available at this URL : https://www.i3d.net/docs/one/Compute/FlexMetal/api/"
+		"A How to Guide is available at this URL : https://docs.i3d.net/compute/flexmetal/api"
 
 	// make post_install_script, os.kernel_params and os.partitions as optional:true and computed:false
 	// because they are not included in the GET response body
