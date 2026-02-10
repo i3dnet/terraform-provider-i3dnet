@@ -83,6 +83,10 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 
 	osAttributes := generatedOSAttribute.GetAttributes()
 
+	ipxeScriptUrl := osAttributes["ipxe_script_url"].(schema.StringAttribute)
+	ipxeScriptUrl.Optional = true
+	ipxeScriptUrl.Computed = false
+
 	kernelParams := osAttributes["kernel_params"].(schema.ListNestedAttribute)
 	kernelParams.Optional = true
 	kernelParams.Computed = false
@@ -93,8 +97,9 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 
 	generatedSchema.Attributes["os"] = schema.SingleNestedAttribute{
 		Attributes: map[string]schema.Attribute{
-			"kernel_params": kernelParams,
-			"partitions":    partitions,
+			"ipxe_script_url": ipxeScriptUrl,
+			"kernel_params":   kernelParams,
+			"partitions":      partitions,
 			"slug": schema.StringAttribute{
 				Required:            true,
 				Description:         "Identifier of the OS. Available operating systems can be obtained from [/v3/operatingsystem](https://www.i3d.net/docs/api/v3/all#/OperatingSystem/getOperatingsystems). Use the `slug` field from the response.",
@@ -182,9 +187,10 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		Location:     data.Location.ValueString(),
 		InstanceType: data.InstanceType.ValueString(),
 		OS: one_api.OS{
-			Slug:         data.Os.Slug.ValueString(),
-			KernelParams: kernelParams,
-			Partitions:   partitions,
+			Slug:          data.Os.Slug.ValueString(),
+			KernelParams:  kernelParams,
+			Partitions:    partitions,
+			IpxeScriptUrl: data.Os.IpxeScriptUrl.ValueString(),
 		},
 		Tags:              tags,
 		SSHkey:            sskKeys,
@@ -392,9 +398,10 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 		patchReq := one_api.PatchServerReq{
 			Name: plan.Name.ValueString(),
 			Os: one_api.OS{
-				Slug:         plan.Os.Slug.ValueString(),
-				KernelParams: kernelParams,
-				Partitions:   partitions,
+				Slug:          plan.Os.Slug.ValueString(),
+				KernelParams:  kernelParams,
+				Partitions:    partitions,
+				IpxeScriptUrl: plan.Os.IpxeScriptUrl.ValueString(),
 			},
 			SSHKey:            sskKeys,
 			PostInstallScript: plan.PostInstallScript.ValueString(),
@@ -633,6 +640,9 @@ func (r *serverResource) ImportState(ctx context.Context, req resource.ImportSta
 
 func (r *serverResource) osDeepEqual(a, b resource_flexmetal_server.OsValue) bool {
 	if a.Slug != b.Slug {
+		return false
+	}
+	if a.IpxeScriptUrl != b.IpxeScriptUrl {
 		return false
 	}
 	if len(a.KernelParams.Elements()) != len(b.KernelParams.Elements()) {

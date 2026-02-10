@@ -109,3 +109,14 @@ resource "i3dnet_flexmetal_server" "my-talos" {
   contract_id = "CONTRACT-123"
   overflow    = true
 }
+
+# Create a Custom iPXE server
+resource "i3dnet_flexmetal_server" "my-custom-ipxe" {
+  name          = "MyCustomIpxeServer"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug          = "custom-ipxe"
+    ipxeScriptUrl = "https://example.org/custom-ipxe.cfg"
+  }
+}

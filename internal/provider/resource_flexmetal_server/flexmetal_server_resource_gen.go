@@ -5,13 +5,12 @@ package resource_flexmetal_server
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -71,6 +70,12 @@ func FlexmetalServerResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"os": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
+					"ipxe_script_url": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "The URL to your custom iPXE boot menu file. Can and must be used in combination with OS slug custom-ipxe.",
+						MarkdownDescription: "The URL to your custom iPXE boot menu file. Can and must be used in combination with OS slug custom-ipxe.",
+					},
 					"kernel_params": schema.ListNestedAttribute{
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -558,6 +563,24 @@ func (t OsType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (
 
 	attributes := in.Attributes()
 
+	ipxeScriptUrlAttribute, ok := attributes["ipxe_script_url"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`ipxe_script_url is missing from object`)
+
+		return nil, diags
+	}
+
+	ipxeScriptUrlVal, ok := ipxeScriptUrlAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`ipxe_script_url expected to be basetypes.StringValue, was: %T`, ipxeScriptUrlAttribute))
+	}
+
 	kernelParamsAttribute, ok := attributes["kernel_params"]
 
 	if !ok {
@@ -617,10 +640,11 @@ func (t OsType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (
 	}
 
 	return OsValue{
-		KernelParams: kernelParamsVal,
-		Partitions:   partitionsVal,
-		Slug:         slugVal,
-		state:        attr.ValueStateKnown,
+		IpxeScriptUrl: ipxeScriptUrlVal,
+		KernelParams:  kernelParamsVal,
+		Partitions:    partitionsVal,
+		Slug:          slugVal,
+		state:         attr.ValueStateKnown,
 	}, diags
 }
 
@@ -687,6 +711,24 @@ func NewOsValue(attributeTypes map[string]attr.Type, attributes map[string]attr.
 		return NewOsValueUnknown(), diags
 	}
 
+	ipxeScriptUrlAttribute, ok := attributes["ipxe_script_url"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`ipxe_script_url is missing from object`)
+
+		return NewOsValueUnknown(), diags
+	}
+
+	ipxeScriptUrlVal, ok := ipxeScriptUrlAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`ipxe_script_url expected to be basetypes.StringValue, was: %T`, ipxeScriptUrlAttribute))
+	}
+
 	kernelParamsAttribute, ok := attributes["kernel_params"]
 
 	if !ok {
@@ -746,10 +788,11 @@ func NewOsValue(attributeTypes map[string]attr.Type, attributes map[string]attr.
 	}
 
 	return OsValue{
-		KernelParams: kernelParamsVal,
-		Partitions:   partitionsVal,
-		Slug:         slugVal,
-		state:        attr.ValueStateKnown,
+		IpxeScriptUrl: ipxeScriptUrlVal,
+		KernelParams:  kernelParamsVal,
+		Partitions:    partitionsVal,
+		Slug:          slugVal,
+		state:         attr.ValueStateKnown,
 	}, diags
 }
 
@@ -821,18 +864,20 @@ func (t OsType) ValueType(ctx context.Context) attr.Value {
 var _ basetypes.ObjectValuable = OsValue{}
 
 type OsValue struct {
-	KernelParams basetypes.ListValue   `tfsdk:"kernel_params"`
-	Partitions   basetypes.ListValue   `tfsdk:"partitions"`
-	Slug         basetypes.StringValue `tfsdk:"slug"`
-	state        attr.ValueState
+	IpxeScriptUrl basetypes.StringValue `tfsdk:"ipxe_script_url"`
+	KernelParams  basetypes.ListValue   `tfsdk:"kernel_params"`
+	Partitions    basetypes.ListValue   `tfsdk:"partitions"`
+	Slug          basetypes.StringValue `tfsdk:"slug"`
+	state         attr.ValueState
 }
 
 func (v OsValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	attrTypes := make(map[string]tftypes.Type, 3)
+	attrTypes := make(map[string]tftypes.Type, 4)
 
 	var val tftypes.Value
 	var err error
 
+	attrTypes["ipxe_script_url"] = basetypes.StringType{}.TerraformType(ctx)
 	attrTypes["kernel_params"] = basetypes.ListType{
 		ElemType: KernelParamsValue{}.Type(ctx),
 	}.TerraformType(ctx)
@@ -845,7 +890,15 @@ func (v OsValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
 
 	switch v.state {
 	case attr.ValueStateKnown:
-		vals := make(map[string]tftypes.Value, 3)
+		vals := make(map[string]tftypes.Value, 4)
+
+		val, err = v.IpxeScriptUrl.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["ipxe_script_url"] = val
 
 		val, err = v.KernelParams.ToTerraformValue(ctx)
 
@@ -959,6 +1012,7 @@ func (v OsValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag
 	}
 
 	attributeTypes := map[string]attr.Type{
+		"ipxe_script_url": basetypes.StringType{},
 		"kernel_params": basetypes.ListType{
 			ElemType: KernelParamsValue{}.Type(ctx),
 		},
@@ -979,9 +1033,10 @@ func (v OsValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag
 	objVal, diags := types.ObjectValue(
 		attributeTypes,
 		map[string]attr.Value{
-			"kernel_params": kernelParams,
-			"partitions":    partitions,
-			"slug":          v.Slug,
+			"ipxe_script_url": v.IpxeScriptUrl,
+			"kernel_params":   kernelParams,
+			"partitions":      partitions,
+			"slug":            v.Slug,
 		})
 
 	return objVal, diags
@@ -1000,6 +1055,10 @@ func (v OsValue) Equal(o attr.Value) bool {
 
 	if v.state != attr.ValueStateKnown {
 		return true
+	}
+
+	if !v.IpxeScriptUrl.Equal(other.IpxeScriptUrl) {
+		return false
 	}
 
 	if !v.KernelParams.Equal(other.KernelParams) {
@@ -1027,6 +1086,7 @@ func (v OsValue) Type(ctx context.Context) attr.Type {
 
 func (v OsValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 	return map[string]attr.Type{
+		"ipxe_script_url": basetypes.StringType{},
 		"kernel_params": basetypes.ListType{
 			ElemType: KernelParamsValue{}.Type(ctx),
 		},

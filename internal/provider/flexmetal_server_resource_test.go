@@ -20,7 +20,7 @@ resource "i3dnet_flexmetal_server" "my-talos" {
   location      = "EU: Rotterdam"
   instance_type = "bm7.std.8"
   os = {
-    slug = "talos-omni-190"
+    slug = "talos-omni-1116"
     kernel_params = [
       {
         key   = "siderolink.api"
@@ -39,7 +39,7 @@ resource "i3dnet_flexmetal_server" "my-talos" {
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "name", "talosHostNameAcceptanceTest"),
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "location", "EU: Rotterdam"),
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "instance_type", "bm7.std.8"),
-					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "os.slug", "talos-omni-190"),
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "os.slug", "talos-omni-1116"),
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "os.kernel_params.0.key", "siderolink.api"),
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "os.kernel_params.0.value", "https://siderolink.api/?jointoken=secret"),
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "os.kernel_params.1.key", "talos.customparam"),
@@ -60,7 +60,7 @@ resource "i3dnet_flexmetal_server" "my-talos" {
   location      = "EU: Rotterdam"
   instance_type = "bm7.std.8"
   os = {
-    slug = "talos-omni-195"
+    slug = "talos-omni-1123"
     kernel_params = [
       {
         key   = "siderolink.api"
@@ -75,10 +75,27 @@ resource "i3dnet_flexmetal_server" "my-talos" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "os.slug", "talos-omni-195"),
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "os.slug", "talos-omni-1123"),
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "os.kernel_params.1.key", "talos.customparam_changed"),
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "os.kernel_params.1.value", "654321"),
 					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "status", "delivered"),
+				),
+			},
+			{
+				Config: providerConfig(t) + `
+resource "i3dnet_flexmetal_server" "my-custom-ipxe" {
+  name          = "customIpxeHostNameAcceptanceTest"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "custom-ipxe"
+    ipxe_script_url = "https://raw.githubusercontent.com/flatcar/flatcar-ipxe-scripts/refs/heads/main/packet.ipxe"
+  }
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-custom-ipxe", "os.slug", "custom-ipxe"),
+					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-custom-ipxe", "status", "delivered"),
 				),
 			},
 		},

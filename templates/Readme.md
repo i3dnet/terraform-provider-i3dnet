@@ -10,6 +10,8 @@ The templates in [tfplugindocs](https://github.com/hashicorp/terraform-plugin-do
 `text/template`](https://golang.org/pkg/text/template/). After running `tfplugindocs generate`, the `tfplugindocs` engine
 performs the following operations:
 
+You can also run `go generate ./...` in the `tools` folder (this seems more reliable atm).
+
 - Retrieves the templates in `templates/resources/{resource_name}.md.tmpl` and
   `templates/data-sources/{resource_name}.md.tmpl` for a specific `resource-name`
 - Retrieves the values in `MarkdownDescription` for all the fields in the `resource-name` schema

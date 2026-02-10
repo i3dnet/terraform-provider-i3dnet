@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"net/http"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 const flexMetalEndpoint = "flexMetal"
@@ -30,9 +31,10 @@ type PatchServerReq struct {
 }
 
 type OS struct {
-	Slug         string        `json:"slug"`
-	KernelParams []KernelParam `json:"kernelParams"`
-	Partitions   []Partition   `json:"partitions"`
+	Slug          string        `json:"slug"`
+	KernelParams  []KernelParam `json:"kernelParams"`
+	Partitions    []Partition   `json:"partitions"`
+	IpxeScriptUrl string        `json:"ipxeScriptUrl"`
 }
 
 type KernelParam struct {
