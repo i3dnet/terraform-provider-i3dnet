@@ -4,14 +4,14 @@ page_title: "i3dnet_flexmetal_server Resource - i3dnet"
 subcategory: ""
 description: |-
   FlexMetal servers are physical servers that can be requested and released at will.
-  A How to Guide is available at this URL : https://www.i3d.net/docs/one/Compute/FlexMetal/api/
+  A How to Guide is available at this URL : https://docs.i3d.net/compute/flexmetal/api
 ---
 
 # i3dnet_flexmetal_server (Resource)
 
 FlexMetal servers are physical servers that can be requested and released at will.
 
-A How to Guide is available at this URL : https://www.i3d.net/docs/one/Compute/FlexMetal/api/
+A How to Guide is available at this URL : https://docs.i3d.net/compute/flexmetal/api
 
 ## Example Usage
 
@@ -145,8 +145,8 @@ resource "i3dnet_flexmetal_server" "my-custom-ipxe" {
 
 ### Required
 
-- `instance_type` (String) Server instance type. Available instance types can be obtained from [/v3/flexMetal/location/{locationId}}/instanceTypes](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocationInstanceTypes). Use the `name` field from the response.
-- `location` (String) Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.
+- `instance_type` (String) Server instance type. Available instance types can be obtained from [/v3/flexMetal/location/{locationId}}/instanceTypes](https://docs.i3d.net/api/api_general#get-v3-flexmetal-location-locationid-instancetypes). Use the `name` field from the response.
+- `location` (String) Server location. Available locations can be obtained from [/v3/flexMetal/location](https://docs.i3d.net/api/api_general#get-v3-flexmetal-location). Use the `name` field from the response.
 - `name` (String) Server name or hostname, depending on the chosen OS. E.g. Talos requires a hostname but regular Linux OSs work with either.
 - `os` (Attributes) Server operating system. (see [below for nested schema](#nestedatt--os))
 
@@ -155,7 +155,7 @@ resource "i3dnet_flexmetal_server" "my-custom-ipxe" {
 - `contract_id` (String) Represents client contractId. Format is ^[A-Z0-9_\-.]{0,240}$
 - `overflow` (Boolean) If true, the server will be created even if the location is at commited capacity. Default is false.
 - `post_install_script` (String) Post install script. A shell script (e.g. bash) that will be executed after your OS is installed. Currently only supported for Linux based operating systems.
-- `ssh_key` (List of String) A list of SSH keys. You can either supply SSH key UUIDs from stored objects in [/v3/sshKey](https://www.i3d.net/docs/api/v3/all#/SSHKey/getSshKeys) or provide public keys directly. SSH keys are installed for the root user.
+- `ssh_key` (List of String) A list of SSH keys. You can either supply SSH key UUIDs from stored objects in [/v3/sshKey](https://docs.i3d.net/api/api_general#get-v3-sshkey) or provide public keys directly. SSH keys are installed for the root user.
 - `tags` (List of String) A list of tags. There is a maximum of 60 tags per server. Each tag must adhere to this pattern: ^[A-Za-z0-9_:-]{1,64}$
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
@@ -174,7 +174,7 @@ resource "i3dnet_flexmetal_server" "my-custom-ipxe" {
 
 Required:
 
-- `slug` (String) Identifier of the OS. Available operating systems can be obtained from [/v3/operatingsystem](https://www.i3d.net/docs/api/v3/all#/OperatingSystem/getOperatingsystems). Use the `slug` field from the response.
+- `slug` (String) Identifier of the OS. Available operating systems can be obtained from [/v3/operatingsystem](https://docs.i3d.net/api/api_general#get-v3-operatingsystem). Use the `slug` field from the response.
 
 Optional:
 

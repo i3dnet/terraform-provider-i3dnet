@@ -17114,7 +17114,7 @@
             "name": "FlexMetalServer",
             "description": "FlexMetal servers are physical servers that can be requested and released at will.",
             "externalDocs": {
-                "url": "https://www.i3d.net/docs/one/Compute/FlexMetal/api/"
+                "url": "https://docs.i3d.net/compute/flexmetal/api"
             }
         },
         {
