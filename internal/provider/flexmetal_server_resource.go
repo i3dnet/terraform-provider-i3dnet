@@ -102,8 +102,8 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			"partitions":      partitions,
 			"slug": schema.StringAttribute{
 				Required:            true,
-				Description:         "Identifier of the OS. Available operating systems can be obtained from [/v3/operatingsystem](https://www.i3d.net/docs/api/v3/all#/OperatingSystem/getOperatingsystems). Use the `slug` field from the response.",
-				MarkdownDescription: "Identifier of the OS. Available operating systems can be obtained from [/v3/operatingsystem](https://www.i3d.net/docs/api/v3/all#/OperatingSystem/getOperatingsystems). Use the `slug` field from the response.",
+				Description:         "Identifier of the OS. Available operating systems can be obtained from [/v3/operatingsystem](https://docs.i3d.net/api/api_general#get-v3-operatingsystem). Use the `slug` field from the response.",
+				MarkdownDescription: "Identifier of the OS. Available operating systems can be obtained from [/v3/operatingsystem](https://docs.i3d.net/api/api_general#get-v3-operatingsystem). Use the `slug` field from the response.",
 			},
 		},
 		CustomType:          generatedOSAttribute.CustomType,
@@ -116,20 +116,20 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 	generatedSchema.Attributes["ssh_key"] = schema.ListAttribute{
 		ElementType:         types.StringType,
 		Optional:            true,
-		Description:         "A list of SSH keys. You can either supply SSH key UUIDs from stored objects in [/v3/sshKey](https://www.i3d.net/docs/api/v3/all#/SSHKey/getSshKeys) or provide public keys directly. SSH keys are installed for the root user.",
-		MarkdownDescription: "A list of SSH keys. You can either supply SSH key UUIDs from stored objects in [/v3/sshKey](https://www.i3d.net/docs/api/v3/all#/SSHKey/getSshKeys) or provide public keys directly. SSH keys are installed for the root user.",
+		Description:         "A list of SSH keys. You can either supply SSH key UUIDs from stored objects in [/v3/sshKey](https://docs.i3d.net/api/api_general#get-v3-sshkey) or provide public keys directly. SSH keys are installed for the root user.",
+		MarkdownDescription: "A list of SSH keys. You can either supply SSH key UUIDs from stored objects in [/v3/sshKey](https://docs.i3d.net/api/api_general#get-v3-sshkey) or provide public keys directly. SSH keys are installed for the root user.",
 	}
 
 	// Add extra info to docs
 	generatedSchema.Attributes["instance_type"] = schema.StringAttribute{
 		Required:            true,
-		Description:         "Server instance type. Available instance types can be obtained from [/v3/flexMetal/location/{locationId}}/instanceTypes](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocationInstanceTypes). Use the `name` field from the response.",
-		MarkdownDescription: "Server instance type. Available instance types can be obtained from [/v3/flexMetal/location/{locationId}}/instanceTypes](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocationInstanceTypes). Use the `name` field from the response.",
+		Description:         "Server instance type. Available instance types can be obtained from [/v3/flexMetal/location/{locationId}}/instanceTypes](https://docs.i3d.net/api/api_general#get-v3-flexmetal-location-locationid-instancetypes). Use the `name` field from the response.",
+		MarkdownDescription: "Server instance type. Available instance types can be obtained from [/v3/flexMetal/location/{locationId}}/instanceTypes](https://docs.i3d.net/api/api_general#get-v3-flexmetal-location-locationid-instancetypes). Use the `name` field from the response.",
 	}
 	generatedSchema.Attributes["location"] = schema.StringAttribute{
 		Required:            true,
-		Description:         "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
-		MarkdownDescription: "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://www.i3d.net/docs/api/v3/all#/FlexMetalServer/getFlexMetalLocations). Use the `name` field from the response.",
+		Description:         "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://docs.i3d.net/api/api_general#get-v3-flexmetal-location). Use the `name` field from the response.",
+		MarkdownDescription: "Server location. Available locations can be obtained from [/v3/flexMetal/location](https://docs.i3d.net/api/api_general#get-v3-flexmetal-location). Use the `name` field from the response.",
 	}
 	// Add timeouts to schema
 	generatedSchema.Attributes["timeouts"] = timeouts.Attributes(ctx, timeouts.Opts{
