@@ -7,7 +7,6 @@ import (
 	"terraform-provider-i3dnet/internal/one_api"
 	"terraform-provider-i3dnet/internal/provider/resource_flexmetal_vm_pool"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -180,8 +179,6 @@ func vmPoolRespToModel(ctx context.Context, pool *one_api.VmPool, data *resource
 		if !diags.HasError() {
 			data.Metadata = metadataMap
 		}
-	} else if data.Metadata.IsNull() || data.Metadata.IsUnknown() {
-		data.Metadata = types.MapValueMust(types.StringType, map[string]attr.Value{})
 	}
 }
 
