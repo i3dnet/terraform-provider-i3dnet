@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -27,18 +28,23 @@ data "i3dnet_flexmetal_vm_plans" "all" {}
 func TestAccFlexmetalVmPlanDataSource_filterBySlug(t *testing.T) {
 	t.Parallel()
 
+	slug := os.Getenv("I3D_VM_PLAN")
+	if slug == "" {
+		t.Skip("I3D_VM_PLAN not set, skipping plan filter test")
+	}
+
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: providerConfig(t) + `
 data "i3dnet_flexmetal_vm_plans" "filtered" {
-  slug = "vm-standard-4"
+  slug = "` + slug + `"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.i3dnet_flexmetal_vm_plans.filtered", "plans.#", "1"),
-					resource.TestCheckResourceAttr("data.i3dnet_flexmetal_vm_plans.filtered", "plans.0.slug", "vm-standard-4"),
+					resource.TestCheckResourceAttr("data.i3dnet_flexmetal_vm_plans.filtered", "plans.0.slug", slug),
 				),
 			},
 		},
