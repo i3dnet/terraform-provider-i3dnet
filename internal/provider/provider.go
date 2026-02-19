@@ -128,5 +128,6 @@ func (p *i3dnetProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewServerResource,
 		NewSshKeyResource,
 		NewTagResource,
+		NewVmPoolResource,
 	}
 }
