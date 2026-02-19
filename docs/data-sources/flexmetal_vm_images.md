@@ -1,11 +1,11 @@
 ---
-page_title: "i3dnet_flexmetal_vm_image Data Source - i3dnet"
+page_title: "i3dnet_flexmetal_vm_images Data Source - i3dnet"
 subcategory: ""
 description: |-
   Lists available FlexMetal VM images, optionally filtered by slug or OS family.
 ---
 
-# i3dnet_flexmetal_vm_image (Data Source)
+# i3dnet_flexmetal_vm_images (Data Source)
 
 Lists available FlexMetal VM images, optionally filtered by slug or OS family.
 
@@ -13,20 +13,20 @@ Lists available FlexMetal VM images, optionally filtered by slug or OS family.
 
 ```terraform
 # List all images
-data "i3dnet_flexmetal_vm_image" "all" {}
+data "i3dnet_flexmetal_vm_images" "all" {}
 
 # List Linux images
-data "i3dnet_flexmetal_vm_image" "linux" {
+data "i3dnet_flexmetal_vm_images" "linux" {
   os_family = "linux"
 }
 
 # Find a specific image by slug
-data "i3dnet_flexmetal_vm_image" "ubuntu" {
+data "i3dnet_flexmetal_vm_images" "ubuntu" {
   slug = "ubuntu-2404-lts"
 }
 
 output "linux_image_slugs" {
-  value = [for img in data.i3dnet_flexmetal_vm_image.linux.images : img.slug]
+  value = [for img in data.i3dnet_flexmetal_vm_images.linux.images : img.slug]
 }
 ```
 

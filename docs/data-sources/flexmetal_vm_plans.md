@@ -1,11 +1,11 @@
 ---
-page_title: "i3dnet_flexmetal_vm_plan Data Source - i3dnet"
+page_title: "i3dnet_flexmetal_vm_plans Data Source - i3dnet"
 subcategory: ""
 description: |-
   Lists available FlexMetal VM plans, optionally filtered by slug or GPU count.
 ---
 
-# i3dnet_flexmetal_vm_plan (Data Source)
+# i3dnet_flexmetal_vm_plans (Data Source)
 
 Lists available FlexMetal VM plans, optionally filtered by slug or GPU count.
 
@@ -13,20 +13,20 @@ Lists available FlexMetal VM plans, optionally filtered by slug or GPU count.
 
 ```terraform
 # List all plans
-data "i3dnet_flexmetal_vm_plan" "all" {}
+data "i3dnet_flexmetal_vm_plans" "all" {}
 
 # Find a specific plan by slug
-data "i3dnet_flexmetal_vm_plan" "standard" {
+data "i3dnet_flexmetal_vm_plans" "standard" {
   slug = "vm-standard-4"
 }
 
 # Find all GPU plans
-data "i3dnet_flexmetal_vm_plan" "gpu" {
+data "i3dnet_flexmetal_vm_plans" "gpu" {
   gpu_count = 1
 }
 
 output "gpu_plan_slugs" {
-  value = [for p in data.i3dnet_flexmetal_vm_plan.gpu.plans : p.slug]
+  value = [for p in data.i3dnet_flexmetal_vm_plans.gpu.plans : p.slug]
 }
 ```
 

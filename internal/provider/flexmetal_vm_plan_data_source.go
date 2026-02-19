@@ -25,7 +25,7 @@ type vmPlanDataSource struct {
 }
 
 func (d *vmPlanDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_flexmetal_vm_plan"
+	resp.TypeName = req.ProviderTypeName + "_flexmetal_vm_plans"
 }
 
 func (d *vmPlanDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {

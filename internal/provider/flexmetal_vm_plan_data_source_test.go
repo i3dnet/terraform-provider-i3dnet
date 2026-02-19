@@ -14,10 +14,10 @@ func TestAccFlexmetalVmPlanDataSource(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: providerConfig(t) + `
-data "i3dnet_flexmetal_vm_plan" "all" {}
+data "i3dnet_flexmetal_vm_plans" "all" {}
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("data.i3dnet_flexmetal_vm_plan.all", "plans.#"),
+					resource.TestCheckResourceAttrSet("data.i3dnet_flexmetal_vm_plans.all", "plans.#"),
 				),
 			},
 		},
@@ -32,13 +32,13 @@ func TestAccFlexmetalVmPlanDataSource_filterBySlug(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: providerConfig(t) + `
-data "i3dnet_flexmetal_vm_plan" "filtered" {
+data "i3dnet_flexmetal_vm_plans" "filtered" {
   slug = "vm-standard-4"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.i3dnet_flexmetal_vm_plan.filtered", "plans.#", "1"),
-					resource.TestCheckResourceAttr("data.i3dnet_flexmetal_vm_plan.filtered", "plans.0.slug", "vm-standard-4"),
+					resource.TestCheckResourceAttr("data.i3dnet_flexmetal_vm_plans.filtered", "plans.#", "1"),
+					resource.TestCheckResourceAttr("data.i3dnet_flexmetal_vm_plans.filtered", "plans.0.slug", "vm-standard-4"),
 				),
 			},
 		},

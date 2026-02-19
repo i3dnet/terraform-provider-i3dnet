@@ -25,7 +25,7 @@ type vmImageDataSource struct {
 }
 
 func (d *vmImageDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_flexmetal_vm_image"
+	resp.TypeName = req.ProviderTypeName + "_flexmetal_vm_images"
 }
 
 func (d *vmImageDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
