@@ -14,7 +14,7 @@ func TestAccFlexmetalServerResourceWithUpdate(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: providerConfig(t) + `
+				Config: providerConfig(t, resourceNsFlexmetal) + `
 resource "i3dnet_flexmetal_server" "my-talos" {
   name          = "talosHostNameAcceptanceTest"
   location      = "EU: Rotterdam"
@@ -54,7 +54,7 @@ resource "i3dnet_flexmetal_server" "my-talos" {
 				),
 			},
 			{
-				Config: providerConfig(t) + `
+				Config: providerConfig(t, resourceNsFlexmetal) + `
 resource "i3dnet_flexmetal_server" "my-talos" {
   name          = "talosHostNameAcceptanceTest"
   location      = "EU: Rotterdam"
@@ -82,7 +82,7 @@ resource "i3dnet_flexmetal_server" "my-talos" {
 				),
 			},
 			{
-				Config: providerConfig(t) + `
+				Config: providerConfig(t, resourceNsFlexmetal) + `
 resource "i3dnet_flexmetal_server" "my-custom-ipxe" {
   name          = "customIpxeHostNameAcceptanceTest"
   location      = "EU: Rotterdam"

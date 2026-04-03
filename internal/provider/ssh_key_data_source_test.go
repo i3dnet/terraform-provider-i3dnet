@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"terraform-provider-i3dnet/internal/one_api"
@@ -20,7 +19,7 @@ func TestAccSSHKeyDataSource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Read testing
 			{
-				Config: providerConfig(t) + `
+				Config: providerConfig(t, resourceNsFlexmetal) + `
 data "i3dnet_ssh_key" "example" {
   name = "TestApiKey"
 }
@@ -42,10 +41,7 @@ data "i3dnet_ssh_key" "example" {
 func createTestSSHKey(t *testing.T) {
 	t.Helper()
 
-	apiclient, err := one_api.NewClient(os.Getenv("I3D_API_KEY"), os.Getenv("I3D_BASE_URL"))
-	if err != nil {
-		t.Fatalf("error creating API Client: %s", err)
-	}
+	apiclient := newOneAPIClient(t, resourceNsFlexmetal)
 
 	response, err := apiclient.CreateSSHKey(
 		context.Background(),

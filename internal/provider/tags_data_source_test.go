@@ -3,10 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
-
-	"terraform-provider-i3dnet/internal/one_api"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -21,7 +18,7 @@ func TestAccTagDataSource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Read testing
 			{
-				Config: providerConfig(t) + fmt.Sprintf(`
+				Config: providerConfig(t, resourceNsFlexmetal) + fmt.Sprintf(`
 data "i3dnet_tags" "fooTag" {
   name = "%s"
 }
@@ -44,19 +41,15 @@ data "i3dnet_tags" "fooTag" {
 func createTestTags(t *testing.T, names ...string) {
 	t.Helper()
 
-	apiclient, err := one_api.NewClient(os.Getenv("I3D_API_KEY"), os.Getenv("I3D_BASE_URL"))
-	if err != nil {
-		t.Fatalf("error creating API Client: %s", err)
-	}
-
+	apiclient := newOneAPIClient(t, resourceNsFlexmetal)
 	for _, name := range names {
 		_, createErr := apiclient.CreateTag(context.Background(), name)
 		if createErr != nil {
-			t.Fatalf("error creating tag: %s", err)
+			t.Fatalf("error creating tag: %s", createErr)
 		}
 
 		t.Cleanup(func() {
-			err = apiclient.DeleteTag(context.Background(), name)
+			err := apiclient.DeleteTag(context.Background(), name)
 			if err != nil {
 				t.Fatalf("error deleting tag: %s", err)
 			}

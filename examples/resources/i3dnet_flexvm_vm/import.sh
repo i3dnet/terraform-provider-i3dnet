@@ -1,0 +1,1 @@
+terraform import i3dnet_flexvm_vm.my-vm cloud_uuid/vm_uuid
