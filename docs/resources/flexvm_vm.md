@@ -14,7 +14,7 @@ Manages a virtual machine within an i3D.net FlexvmVM private cloud.
 
 ```terraform
 resource "i3dnet_flexvm_vm" "my-vm" {
-  cloud_uuid         = "019256ab-1554-73a7-b091-f024b0a724ea"
+  cloud_id           = "019256ab-1554-73a7-b091-f024b0a724ea"
   name               = "test-gaming-vm1"
   description        = "Test Gaming VM 1"
   instance_type_name = "vm.gpu.1rtx4000.15c.248g"
@@ -28,7 +28,7 @@ resource "i3dnet_flexvm_vm" "my-vm" {
 
 ### Required
 
-- `cloud_uuid` (String) UUID of the cloud in which to create the VM.
+- `cloud_id` (String) UUID of the cloud in which to create the VM.
 - `image_name` (String) The image name to create the VM from.
 - `instance_type_name` (String) The instance type name to base the VM on.
 - `name` (String) VM name.
@@ -120,5 +120,5 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import i3dnet_flexvm_vm.my-vm cloud_uuid/vm_uuid
+terraform import i3dnet_flexvm_vm.my-vm cloud_id/vm_id
 ```

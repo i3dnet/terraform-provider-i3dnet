@@ -36,7 +36,7 @@ type flexvmVMResource struct {
 }
 
 type FlexvmVMModel struct {
-	CloudUUID        types.String   `tfsdk:"cloud_uuid"`
+	CloudID          types.String   `tfsdk:"cloud_id"`
 	Name             types.String   `tfsdk:"name"`
 	Description      types.String   `tfsdk:"description"`
 	InstanceTypeName types.String   `tfsdk:"instance_type_name"`
@@ -113,7 +113,7 @@ func (r *flexvmVMResource) Schema(ctx context.Context, req resource.SchemaReques
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a virtual machine within an i3D.net FlexvmVM private cloud.",
 		Attributes: map[string]schema.Attribute{
-			"cloud_uuid": schema.StringAttribute{
+			"cloud_id": schema.StringAttribute{
 				Required:            true,
 				MarkdownDescription: "UUID of the cloud in which to create the VM.",
 				PlanModifiers: []planmodifier.String{
@@ -321,7 +321,7 @@ func (r *flexvmVMResource) Create(ctx context.Context, req resource.CreateReques
 	ctx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	vmResp, err := r.client.FlexvmCreateVM(ctx, data.CloudUUID.ValueString(), createReq)
+	vmResp, err := r.client.FlexvmCreateVM(ctx, data.CloudID.ValueString(), createReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating FlexvmVM",
@@ -343,10 +343,10 @@ func (r *flexvmVMResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	vmID := data.ID.ValueString()
-	cloudUUID := data.CloudUUID.ValueString()
+	cloudID := data.CloudID.ValueString()
 	lastStatus := data.Status.ValueString()
 
-	err = r.waitForCondition(ctx, cloudUUID, vmID, 5*time.Second, func(vmResp *one_api.FlexvmVMResponse) (bool, error) {
+	err = r.waitForCondition(ctx, cloudID, vmID, 5*time.Second, func(vmResp *one_api.FlexvmVMResponse) (bool, error) {
 		if vmResp.ErrorResponse != nil {
 			return false, fmt.Errorf("call to FlexvmGetVM error response: %s", vmResp.ErrorResponse.ErrorMessage)
 		}
@@ -376,7 +376,7 @@ func (r *flexvmVMResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	// VM is running, get final details
-	getResp, err := r.client.FlexvmGetVM(ctx, cloudUUID, vmID)
+	getResp, err := r.client.FlexvmGetVM(ctx, cloudID, vmID)
 	if err != nil {
 		resp.Diagnostics.AddError("Error getting FlexvmVM", "Unexpected error: "+err.Error())
 		return
@@ -397,7 +397,7 @@ func (r *flexvmVMResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-	vmResp, err := r.client.FlexvmGetVM(ctx, data.CloudUUID.ValueString(), data.ID.ValueString())
+	vmResp, err := r.client.FlexvmGetVM(ctx, data.CloudID.ValueString(), data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading FlexvmVM",
@@ -440,10 +440,10 @@ func (r *flexvmVMResource) Delete(ctx context.Context, req resource.DeleteReques
 	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
 	defer cancel()
 
-	cloudUUID := data.CloudUUID.ValueString()
+	cloudID := data.CloudID.ValueString()
 	vmID := data.ID.ValueString()
 
-	vmResp, err := r.client.FlexvmDeleteVM(ctx, cloudUUID, vmID)
+	vmResp, err := r.client.FlexvmDeleteVM(ctx, cloudID, vmID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting FlexvmVM",
@@ -458,7 +458,7 @@ func (r *flexvmVMResource) Delete(ctx context.Context, req resource.DeleteReques
 	}
 
 	lastStatus := data.Status.ValueString()
-	err = r.waitForCondition(ctx, cloudUUID, vmID, 5*time.Second, func(vmResp *one_api.FlexvmVMResponse) (bool, error) {
+	err = r.waitForCondition(ctx, cloudID, vmID, 5*time.Second, func(vmResp *one_api.FlexvmVMResponse) (bool, error) {
 		if vmResp.ErrorResponse != nil {
 			if vmResp.ErrorResponse.ErrorCode == http.StatusNotFound {
 				// VM was deleted
@@ -486,16 +486,16 @@ func (r *flexvmVMResource) ImportState(ctx context.Context, req resource.ImportS
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		resp.Diagnostics.AddError(
 			"Invalid import ID",
-			"Expected import ID format: cloud_uuid/vm_uuid",
+			"Expected import ID format: cloud_id/vm_id",
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("cloud_uuid"), parts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("cloud_id"), parts[0])...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), parts[1])...)
 }
 
-func (r *flexvmVMResource) waitForCondition(ctx context.Context, cloudUUID, vmID string, interval time.Duration, check func(vmResp *one_api.FlexvmVMResponse) (bool, error)) error {
+func (r *flexvmVMResource) waitForCondition(ctx context.Context, cloudID, vmID string, interval time.Duration, check func(vmResp *one_api.FlexvmVMResponse) (bool, error)) error {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -504,7 +504,7 @@ func (r *flexvmVMResource) waitForCondition(ctx context.Context, cloudUUID, vmID
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			vmResp, err := r.client.FlexvmGetVM(ctx, cloudUUID, vmID)
+			vmResp, err := r.client.FlexvmGetVM(ctx, cloudID, vmID)
 			if err != nil {
 				return fmt.Errorf("call to FlexvmGetVM: %w", err)
 			}

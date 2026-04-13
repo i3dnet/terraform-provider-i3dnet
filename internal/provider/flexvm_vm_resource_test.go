@@ -23,7 +23,7 @@ func TestAccFlexvmVMResource(t *testing.T) {
 			{
 				Config: providerConfig(t, resourceNsFlexvm) + `
 resource "i3dnet_flexvm_vm" "test" {
-  cloud_uuid         = "019d24e2-98fa-701a-8475-8ac0ff1f4a4a"
+  cloud_id           = "019d24e2-98fa-701a-8475-8ac0ff1f4a4a"
   name               = "terraform-gh-workflows-test"
   description        = "Terraform GitHub Workflows test"
   instance_type_name = "vm.gpu.1rtx4000.15c.248g"
@@ -58,7 +58,7 @@ resource "i3dnet_flexvm_vm" "test" {
 				},
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					rs := s.RootModule().Resources["i3dnet_flexvm_vm.test"]
-					return rs.Primary.Attributes["cloud_uuid"] + "/" + rs.Primary.Attributes["id"], nil
+					return rs.Primary.Attributes["cloud_id"] + "/" + rs.Primary.Attributes["id"], nil
 				},
 			},
 		},

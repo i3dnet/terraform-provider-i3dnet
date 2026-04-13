@@ -71,13 +71,13 @@ type FlexvmVMResponse struct {
 	VM            *FlexvmVM
 }
 
-func (c *Client) FlexvmCreateVM(ctx context.Context, cloudUUID string, req FlexvmCreateVMRequest) (*FlexvmVMResponse, error) {
+func (c *Client) FlexvmCreateVM(ctx context.Context, cloudID string, req FlexvmCreateVMRequest) (*FlexvmVMResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling request: %w", err)
 	}
 
-	resp, err := c.callAPI(ctx, http.MethodPost, flexVMEndpoint, fmt.Sprintf("clouds/%s/vms", cloudUUID), body, nil)
+	resp, err := c.callAPI(ctx, http.MethodPost, flexVMEndpoint, fmt.Sprintf("clouds/%s/vms", cloudID), body, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error calling flexvm create vm API: %w", err)
 	}
@@ -98,8 +98,8 @@ func (c *Client) FlexvmCreateVM(ctx context.Context, cloudUUID string, req Flexv
 	return &response, nil
 }
 
-func (c *Client) FlexvmGetVM(ctx context.Context, cloudUUID, vmUUID string) (*FlexvmVMResponse, error) {
-	resp, err := c.callAPI(ctx, http.MethodGet, flexVMEndpoint, fmt.Sprintf("clouds/%s/vms/%s", cloudUUID, vmUUID), nil, nil)
+func (c *Client) FlexvmGetVM(ctx context.Context, cloudID, vmID string) (*FlexvmVMResponse, error) {
+	resp, err := c.callAPI(ctx, http.MethodGet, flexVMEndpoint, fmt.Sprintf("clouds/%s/vms/%s", cloudID, vmID), nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error calling flexvm get vm API: %w", err)
 	}
@@ -120,8 +120,8 @@ func (c *Client) FlexvmGetVM(ctx context.Context, cloudUUID, vmUUID string) (*Fl
 	return &response, nil
 }
 
-func (c *Client) FlexvmDeleteVM(ctx context.Context, cloudUUID, vmUUID string) (*FlexvmVMResponse, error) {
-	resp, err := c.callAPI(ctx, http.MethodDelete, flexVMEndpoint, fmt.Sprintf("clouds/%s/vms/%s", cloudUUID, vmUUID), nil, nil)
+func (c *Client) FlexvmDeleteVM(ctx context.Context, cloudID, vmID string) (*FlexvmVMResponse, error) {
+	resp, err := c.callAPI(ctx, http.MethodDelete, flexVMEndpoint, fmt.Sprintf("clouds/%s/vms/%s", cloudID, vmID), nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error calling delete flexvm API: %w", err)
 	}
