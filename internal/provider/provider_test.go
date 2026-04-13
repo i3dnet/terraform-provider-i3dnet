@@ -9,6 +9,12 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	resourceNsFlexmetal = "flexmetal"
+	resourceNsFlexvm    = "flexvm"
 )
 
 var (
@@ -23,7 +29,9 @@ var (
 
 // providerConfig is a shared configuration to combine with the actual
 // test configuration so the i3D.net One API client is properly configured.
-func providerConfig(t *testing.T) string {
+func providerConfig(t *testing.T, resourceNs string) string {
+	t.Helper()
+
 	const (
 		providerConfigTemplate = `
 provider "i3dnet" {
@@ -32,15 +40,45 @@ provider "i3dnet" {
 }
 `
 	)
-	apiKey := os.Getenv("I3D_API_KEY")
-	if apiKey == "" {
-		t.Fatalf("I3D_API_KEY key is required to run acceptance tests.")
+
+	apiKey, baseURL := oneAPIVars(t, resourceNs)
+
+	return fmt.Sprintf(providerConfigTemplate, apiKey, baseURL)
+}
+
+func newOneAPIClient(t *testing.T, resourceNs string) *one_api.Client {
+	t.Helper()
+
+	apiKey, baseURL := oneAPIVars(t, resourceNs)
+
+	client, err := one_api.NewClient(apiKey, baseURL)
+	require.NoError(t, err)
+
+	return client
+}
+
+func oneAPIVars(t *testing.T, resourceNs string) (apiKey, baseURL string) {
+	t.Helper()
+
+	if resourceNs != resourceNsFlexmetal && resourceNs != resourceNsFlexvm {
+		t.Fatalf(`resourceNs should be either %q or %q, got %q`,
+			resourceNsFlexmetal, resourceNsFlexvm, resourceNs)
 	}
 
-	baseURL := os.Getenv("I3D_BASE_URL")
+	apiKeyEnv := "I3D_FLEXMETAL_API_KEY"
+	if resourceNs == resourceNsFlexvm {
+		apiKeyEnv = "I3D_FLEXVM_API_KEY"
+	}
+
+	apiKey = os.Getenv(apiKeyEnv)
+	if apiKey == "" {
+		t.Fatalf("%s env is required to run acceptance tests.", apiKeyEnv)
+	}
+
+	baseURL = os.Getenv("I3D_BASE_URL")
 	if baseURL == "" {
 		baseURL = one_api.DefaultBaseURL
 	}
 
-	return fmt.Sprintf(providerConfigTemplate, apiKey, baseURL)
+	return apiKey, baseURL
 }

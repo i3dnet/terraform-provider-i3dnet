@@ -17,7 +17,7 @@ func TestAccTagResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: providerConfig(t) + fmt.Sprintf(`
+				Config: providerConfig(t, resourceNsFlexmetal) + fmt.Sprintf(`
 resource "i3dnet_tag" "test" {
   name = "%s"
 }
