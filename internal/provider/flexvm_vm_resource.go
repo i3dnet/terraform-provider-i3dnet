@@ -135,14 +135,14 @@ func (r *flexvmVMResource) Schema(ctx context.Context, req resource.SchemaReques
 				},
 			},
 			"instance_type_name": schema.StringAttribute{
-				Optional:            true,
+				Required:            true,
 				MarkdownDescription: "The instance type name to base the VM on.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"image_name": schema.StringAttribute{
-				Optional:            true,
+				Required:            true,
 				MarkdownDescription: "The image name to create the VM from.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
