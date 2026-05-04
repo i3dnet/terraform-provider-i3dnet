@@ -26,7 +26,7 @@ resource "i3dnet_flexvm_vm" "test" {
   cloud_id           = "019d24e2-98fa-701a-8475-8ac0ff1f4a4a"
   name               = "terraform-gh-workflows-test"
   description        = "Terraform GitHub Workflows test"
-  instance_type_name = "vm.gpu.1rtx4000.15c.248g"
+  instance_type_name = "vm.4c.8g"
   image_name         = "ubuntu-2404-server-amd64"
   ssh_keys           = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"]
 }
@@ -38,7 +38,7 @@ resource "i3dnet_flexvm_vm" "test" {
 					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "description",
 						"Terraform GitHub Workflows test"),
 					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "instance_type.name",
-						"vm.gpu.1rtx4000.15c.248g"),
+						"vm.4c.8g"),
 					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "image.name",
 						"ubuntu-2404-server-amd64"),
 					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "status", "running"),

@@ -13,19 +13,18 @@ import (
 
 func AddErrorResponseToDiags(message string, resp *one_api.ErrorResponse, diags *diag.Diagnostics) {
 	summary := message
-	var details string
 
+	details := fmt.Sprintf("Status code: %d\n", resp.StatusCode)
+	details += fmt.Sprintf("Code: %d\n", resp.ErrorCode)
 	if len(resp.Errors) == 0 { // for duplicated tags, the error is not in resp.Errors but resp.ErrorMessage
-		details += fmt.Sprintf("Message: %s", firstUpper(resp.ErrorMessage))
+		details += fmt.Sprintf("Message: %s\n", firstUpper(resp.ErrorMessage))
 	}
 
-	for k, v := range resp.Errors {
-		details += fmt.Sprintf("Message: %s", strings.TrimRight(firstUpper(v.Message), ", "))
-		if k != len(resp.Errors)-1 {
-			details += "\n"
-		}
+	for _, v := range resp.Errors {
+		details += fmt.Sprintf("Message: %s\n", strings.TrimRight(firstUpper(v.Message), ", "))
 	}
-	diags.AddError(summary, details)
+
+	diags.AddError(summary, strings.TrimRight(details, "\n"))
 }
 
 // firstUpper returns a string with the first character as upper case.

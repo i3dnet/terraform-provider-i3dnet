@@ -75,6 +75,7 @@ type Server struct {
 }
 
 type ErrorResponse struct {
+	StatusCode   int    `json:"-"`
 	ErrorCode    int    `json:"errorCode"`
 	ErrorMessage string `json:"errorMessage"`
 	Errors       []struct {
@@ -346,6 +347,8 @@ func decodeErrResponse(resp *http.Response) *ErrorResponse {
 			ErrorMessage: fmt.Sprintf("Received %d status code.", resp.StatusCode),
 		}
 	}
+
+	errResponse.StatusCode = resp.StatusCode
 
 	return &errResponse
 }

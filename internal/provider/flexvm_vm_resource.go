@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -345,14 +346,16 @@ func (r *flexvmVMResource) Create(ctx context.Context, req resource.CreateReques
 	vmID := data.ID.ValueString()
 	cloudID := data.CloudID.ValueString()
 	lastStatus := data.Status.ValueString()
+	var lastVM *one_api.FlexvmVM
 
-	err = r.waitForCondition(ctx, cloudID, vmID, 5*time.Second, func(vmResp *one_api.FlexvmVMResponse) (bool, error) {
+	err = r.waitForCondition(ctx, cloudID, vmID, 10*time.Second, 5*time.Second, func(vmResp *one_api.FlexvmVMResponse) (bool, error) {
 		if vmResp.ErrorResponse != nil {
 			return false, fmt.Errorf("call to FlexvmGetVM error response: %s", vmResp.ErrorResponse.ErrorMessage)
 		}
 		if vmResp.VM == nil {
 			return false, errors.New("call to FlexvmGetVM: no vm was set in the response")
 		}
+		lastVM = vmResp.VM
 		lastStatus = vmResp.VM.Status
 		return lastStatus == "running" || lastStatus == "failed", nil
 	})
@@ -365,11 +368,11 @@ func (r *flexvmVMResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	if lastStatus == "failed" {
-		// A "failed" VM was not created, so remove it from state so
-		// that Terraform won't try to delete it.
-		resp.State.RemoveResource(ctx)
+		// Persist the latest VM details so state reflects the actual "failed" status.
+		flexvmVMRespToState(lastVM, &data)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError(
-			"FlexvmVM creation failed, VM was not created",
+			"FlexvmVM creation failed, vm is not running",
 			fmt.Sprintf("VM reached 'failed' status.\nVM id: %s", vmID),
 		)
 		return
@@ -407,7 +410,7 @@ func (r *flexvmVMResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	if vmResp.ErrorResponse != nil {
-		if vmResp.ErrorResponse.ErrorCode == http.StatusNotFound {
+		if vmResp.ErrorResponse.StatusCode == http.StatusNotFound {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -442,6 +445,7 @@ func (r *flexvmVMResource) Delete(ctx context.Context, req resource.DeleteReques
 
 	cloudID := data.CloudID.ValueString()
 	vmID := data.ID.ValueString()
+	lastStatus := data.Status.ValueString()
 
 	vmResp, err := r.client.FlexvmDeleteVM(ctx, cloudID, vmID)
 	if err != nil {
@@ -452,16 +456,78 @@ func (r *flexvmVMResource) Delete(ctx context.Context, req resource.DeleteReques
 		return
 	}
 
+	logFields := map[string]any{"cloud_id": cloudID, "vm_id": vmID}
+
 	if vmResp.ErrorResponse != nil {
-		AddErrorResponseToDiags("Error deleting FlexvmVM", vmResp.ErrorResponse, &resp.Diagnostics)
-		return
+		errResp := vmResp.ErrorResponse
+		switch {
+		case errResp.StatusCode == http.StatusConflict:
+			// VM is already being deleted; poll until it reaches "deleted" (or 404).
+			tflog.Debug(ctx, "FlexvmVM is already deleting; polling for the 'deleted' state", logFields)
+
+		case errResp.StatusCode == http.StatusUnprocessableEntity && errResp.ErrorCode == one_api.FlexvmErrCodeVMTerminal:
+			// VM is already in a terminal state ("failed" or "deleted"); treat as deleted.
+			tflog.Debug(ctx, "FlexvmVM is already in a terminal state; treating it as deleted", logFields)
+			return
+
+		case errResp.StatusCode == http.StatusUnprocessableEntity && errResp.ErrorCode == one_api.FlexvmErrCodeVMInTransition:
+			// VM is in a transitional state; wait until it stabilizes, then retry delete.
+			tflog.Debug(ctx, "FlexvmVM is in a transitional state; polling for a stable state before retrying delete", logFields)
+
+			reachedTerminal, err := r.waitForFlexvmStable(ctx, cloudID, vmID, &lastStatus)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"FlexvmVM deletion failed",
+					fmt.Sprintf("Error waiting for VM to stabilise: %v\nLast status: %s\nVM id: %s", err, lastStatus, vmID),
+				)
+				return
+			}
+			if reachedTerminal {
+				// Observed "failed", "deleted" or 404 while waiting; nothing more to do.
+				return
+			}
+
+			retryResp, err := r.client.FlexvmDeleteVM(ctx, cloudID, vmID)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Error deleting FlexvmVM",
+					"Could not delete FlexvmVM on retry: "+err.Error(),
+				)
+				return
+			}
+			if retryResp.ErrorResponse != nil {
+				retryErr := retryResp.ErrorResponse
+				if retryErr.StatusCode == http.StatusUnprocessableEntity && retryErr.ErrorCode == one_api.FlexvmErrCodeVMTerminal {
+					tflog.Debug(ctx, "FlexvmVM became terminal between stabilisation and retry; treating as deleted", logFields)
+					return
+				}
+				AddErrorResponseToDiags("Error deleting FlexvmVM on retry", retryErr, &resp.Diagnostics)
+				return
+			}
+
+		default:
+			AddErrorResponseToDiags("Error deleting FlexvmVM", errResp, &resp.Diagnostics)
+			return
+		}
 	}
 
-	lastStatus := data.Status.ValueString()
-	err = r.waitForCondition(ctx, cloudID, vmID, 5*time.Second, func(vmResp *one_api.FlexvmVMResponse) (bool, error) {
+	if err := r.waitForFlexvmDeleted(ctx, cloudID, vmID, &lastStatus); err != nil {
+		resp.Diagnostics.AddError(
+			"FlexvmVM deletion failed",
+			fmt.Sprintf("Error: %v\nLast status: %s\nVM id: %s", err, lastStatus, vmID),
+		)
+		return
+	}
+}
+
+// waitForFlexvmDeleted polls the VM until it reports a 404 or status "deleted".
+// "failed" is intentionally not treated as deleted here: a VM only counts as
+// deleted from "failed" when the API tells us so explicitly via the
+// FlexvmErrCodeVMTerminal error on the DELETE call.
+func (r *flexvmVMResource) waitForFlexvmDeleted(ctx context.Context, cloudID, vmID string, lastStatus *string) error {
+	return r.waitForCondition(ctx, cloudID, vmID, 500*time.Millisecond, 5*time.Second, func(vmResp *one_api.FlexvmVMResponse) (bool, error) {
 		if vmResp.ErrorResponse != nil {
-			if vmResp.ErrorResponse.ErrorCode == http.StatusNotFound {
-				// VM was deleted
+			if vmResp.ErrorResponse.StatusCode == http.StatusNotFound {
 				return true, nil
 			}
 			return false, fmt.Errorf("call to FlexvmGetVM error response: %s", vmResp.ErrorResponse.ErrorMessage)
@@ -469,16 +535,39 @@ func (r *flexvmVMResource) Delete(ctx context.Context, req resource.DeleteReques
 		if vmResp.VM == nil {
 			return false, errors.New("call to FlexvmGetVM: no vm was set in the response")
 		}
-		lastStatus = vmResp.VM.Status
-		return lastStatus == "deleted", nil
+		*lastStatus = vmResp.VM.Status
+		return *lastStatus == "deleted", nil
 	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"FlexvmVM deletion failed",
-			fmt.Sprintf("Error: %v\nLast status: %s\nVM id: %s", err, lastStatus, vmID),
-		)
-		return
-	}
+}
+
+// waitForFlexvmStable polls the VM until it reaches a state in which delete can
+// be retried ("running" or "stopped") or a terminal state ("failed", "deleted",
+// or 404). It returns reachedTerminal=true when the VM is already gone or has
+// failed, so the caller can skip the retry-delete step.
+func (r *flexvmVMResource) waitForFlexvmStable(ctx context.Context, cloudID, vmID string, lastStatus *string) (bool, error) {
+	var reachedTerminal bool
+	err := r.waitForCondition(ctx, cloudID, vmID, 500*time.Millisecond, 5*time.Second, func(vmResp *one_api.FlexvmVMResponse) (bool, error) {
+		if vmResp.ErrorResponse != nil {
+			if vmResp.ErrorResponse.StatusCode == http.StatusNotFound {
+				reachedTerminal = true
+				return true, nil
+			}
+			return false, fmt.Errorf("call to FlexvmGetVM error response: %s", vmResp.ErrorResponse.ErrorMessage)
+		}
+		if vmResp.VM == nil {
+			return false, errors.New("call to FlexvmGetVM: no vm was set in the response")
+		}
+		*lastStatus = vmResp.VM.Status
+		switch *lastStatus {
+		case "running", "stopped":
+			return true, nil
+		case "failed", "deleted":
+			reachedTerminal = true
+			return true, nil
+		}
+		return false, nil
+	})
+	return reachedTerminal, err
 }
 
 func (r *flexvmVMResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -495,15 +584,16 @@ func (r *flexvmVMResource) ImportState(ctx context.Context, req resource.ImportS
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), parts[1])...)
 }
 
-func (r *flexvmVMResource) waitForCondition(ctx context.Context, cloudID, vmID string, interval time.Duration, check func(vmResp *one_api.FlexvmVMResponse) (bool, error)) error {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+func (r *flexvmVMResource) waitForCondition(ctx context.Context, cloudID, vmID string,
+	initialPollInterval, pollInterval time.Duration, check func(vmResp *one_api.FlexvmVMResponse) (bool, error)) error {
+	timer := time.NewTimer(initialPollInterval)
+	defer timer.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-ticker.C:
+		case <-timer.C:
 			vmResp, err := r.client.FlexvmGetVM(ctx, cloudID, vmID)
 			if err != nil {
 				return fmt.Errorf("call to FlexvmGetVM: %w", err)
@@ -516,6 +606,8 @@ func (r *flexvmVMResource) waitForCondition(ctx context.Context, cloudID, vmID s
 			if done {
 				return nil
 			}
+
+			timer.Reset(pollInterval)
 		}
 	}
 }
