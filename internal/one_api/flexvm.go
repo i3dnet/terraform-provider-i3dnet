@@ -9,6 +9,18 @@ import (
 
 const flexVMEndpoint = "flexVM"
 
+const (
+	// FlexvmErrCodeVMInTransition (422) is returned when the VM is in a
+	// non-terminal, non-stable state (e.g. provisioning, stopping)
+	// and cannot be deleted until it reaches "running" or "stopped".
+	FlexvmErrCodeVMInTransition = 90001
+
+	// FlexvmErrCodeVMTerminal (422) is returned when the VM is already in
+	// a terminal state ("failed" or "deleted") and cannot be deleted. It
+	// should be treated as deleted.
+	FlexvmErrCodeVMTerminal = 90002
+)
+
 type FlexvmCreateVMRequest struct {
 	Name             string   `json:"name"`
 	Description      string   `json:"description,omitempty"`
