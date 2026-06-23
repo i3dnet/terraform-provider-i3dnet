@@ -337,6 +337,383 @@
 			}
 		},
 		{
+			"name": "flexvm_vm",
+			"schema": {
+				"attributes": [
+					{
+						"name": "description",
+						"string": {
+							"computed_optional_required": "computed_optional",
+							"description": "An optional free-form description of your VM."
+						}
+					},
+					{
+						"name": "image_name",
+						"string": {
+							"computed_optional_required": "computed_optional",
+							"description": "The image name to create the VM from."
+						}
+					},
+					{
+						"name": "instance_type_name",
+						"string": {
+							"computed_optional_required": "computed_optional",
+							"description": "The instance type name to base the VM on."
+						}
+					},
+					{
+						"name": "name",
+						"string": {
+							"computed_optional_required": "required",
+							"description": "VM name."
+						}
+					},
+					{
+						"name": "ssh_keys",
+						"list": {
+							"computed_optional_required": "computed_optional",
+							"element_type": {
+								"string": {}
+							},
+							"description": "Provide your public SSH key(s). Exactly one of ssh_keys or user_data must be specified: a request that sets both, or neither, is rejected with a 422. When user_data is provided instead, configure SSH access through it."
+						}
+					},
+					{
+						"name": "tags",
+						"list": {
+							"computed_optional_required": "computed_optional",
+							"element_type": {
+								"string": {}
+							},
+							"description": "Free-form labels (e.g. project:odyssey, env:build) used for grouping in the monthly usage report. Set at VM create only — values must be non-empty strings up to 128 chars."
+						}
+					},
+					{
+						"name": "user_data",
+						"single_nested": {
+							"computed_optional_required": "computed_optional",
+							"attributes": [
+								{
+									"name": "data",
+									"string": {
+										"computed_optional_required": "required",
+										"description": "Cloud-init user-data passed to the VM on first boot, in a format supported by cloud-init (e.g. a #cloud-config document or a shell script). May be base64-encoded when is_base64 is true. See the cloud-init supported user-data formats: https://docs.cloud-init.io/en/latest/explanation/format/index.html. Note: if provided, user-data overwrites the auto-generated cloud-init configuration which is responsible for configuring ssh-keys and the default username, for example. To ensure access, those must be configured by the provided user-data. Example configurations: https://docs.cloud-init.io/en/latest/reference/examples.html#yaml-examples. Length must be between 1 and 64000 characters.",
+										"validators": [
+											{
+												"custom": {
+													"imports": [
+														{
+															"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+														}
+													],
+													"schema_definition": "stringvalidator.LengthBetween(1, 64000)"
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "is_base64",
+									"bool": {
+										"computed_optional_required": "computed_optional",
+										"default": {
+											"static": false
+										},
+										"description": "Whether data is base64-encoded. Use this for binary user-data that cannot be encoded as JSON, such as gzip-compressed cloud-init content (e.g. https://docs.cloud-init.io/en/latest/explanation/format/gzip.html#gzip). Default is false."
+									}
+								}
+							],
+							"description": "Cloud-init user-data to pass to the VM on first boot. Exactly one of ssh_keys or user_data must be specified: a request that sets both, or neither, is rejected with a 422."
+						}
+					},
+					{
+						"name": "cloud",
+						"single_nested": {
+							"computed_optional_required": "computed",
+							"attributes": [
+								{
+									"name": "created_at",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "When the Cloud was created (RFC3339)."
+									}
+								},
+								{
+									"name": "description",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "An optional free-form description of your Cloud."
+									}
+								},
+								{
+									"name": "id",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "Cloud UUID."
+									}
+								},
+								{
+									"name": "instance_type",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The FlexMetal instance type shared by every node in the Cloud."
+									}
+								},
+								{
+									"name": "name",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "Cloud name."
+									}
+								},
+								{
+									"name": "site",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The i3D site (location) in which the Cloud is located. One of: frmtl1, camtr6."
+									}
+								}
+							],
+							"description": "Cloud object within which the VM is deployed."
+						}
+					},
+					{
+						"name": "created_at",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "VM creation timestamp."
+						}
+					},
+					{
+						"name": "deleted_at",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "VM deletion timestamp."
+						}
+					},
+					{
+						"name": "id",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "Cloud VM UUID."
+						}
+					},
+					{
+						"name": "image",
+						"single_nested": {
+							"computed_optional_required": "computed",
+							"attributes": [
+								{
+									"name": "name",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "Image name."
+									}
+								},
+								{
+									"name": "os",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The name of the OS that the image represents."
+									}
+								},
+								{
+									"name": "os_type",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The OS type the image represents. Can be \"linux\" or \"windows\""
+									}
+								}
+							],
+							"description": "The image the VM is based on."
+						}
+					},
+					{
+						"name": "instance_type",
+						"single_nested": {
+							"computed_optional_required": "computed",
+							"attributes": [
+								{
+									"name": "disk",
+									"int64": {
+										"computed_optional_required": "computed",
+										"description": "The size of the OS disk in GB."
+									}
+								},
+								{
+									"name": "id",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "FlexVM Instance Type UUID."
+									}
+								},
+								{
+									"name": "memory",
+									"int64": {
+										"computed_optional_required": "computed",
+										"description": "The amount of memory in MB."
+									}
+								},
+								{
+									"name": "name",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The name of the instance type."
+									}
+								},
+								{
+									"name": "pci_devices",
+									"list_nested": {
+										"computed_optional_required": "computed",
+										"nested_object": {
+											"attributes": [
+												{
+													"name": "spec",
+													"string": {
+														"computed_optional_required": "computed",
+														"description": "A human-readable specification of the device (model, capacity, etc.)."
+													}
+												},
+												{
+													"name": "type",
+													"string": {
+														"computed_optional_required": "computed",
+														"description": "The kind of pass-through device.\u003cbr /\u003e\u003cli\u003e\u003cul\u003egpu\u003c/ul\u003e\u003cul\u003envme\u003c/ul\u003e\u003c/li\u003e"
+													}
+												}
+											]
+										},
+										"description": "PCI passthrough devices required by this instance type."
+									}
+								},
+								{
+									"name": "vcpu",
+									"int64": {
+										"computed_optional_required": "computed",
+										"description": "The number of vCPU resources."
+									}
+								}
+							],
+							"description": "The instance type the VM is based on."
+						}
+					},
+					{
+						"name": "ips",
+						"list_nested": {
+							"computed_optional_required": "computed",
+							"nested_object": {
+								"attributes": [
+									{
+										"name": "address",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "An IP address, can be v4 or v6, public or private."
+										}
+									},
+									{
+										"name": "public",
+										"bool": {
+											"computed_optional_required": "computed",
+											"description": "Indicates whether the IP address is a public or private one."
+										}
+									}
+								]
+							},
+							"description": "A list of IP address objects that belong to the VM."
+						}
+					},
+					{
+						"name": "node",
+						"single_nested": {
+							"computed_optional_required": "computed",
+							"attributes": [
+								{
+									"name": "cloud",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "When the Cloud was created (RFC3339)."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "An optional free-form description of your Cloud."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "Cloud UUID."
+												}
+											},
+											{
+												"name": "instance_type",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The FlexMetal instance type shared by every node in the Cloud."
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "Cloud name."
+												}
+											},
+											{
+												"name": "site",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The i3D site (location) in which the Cloud is located. One of: frmtl1, camtr6."
+												}
+											}
+										],
+										"description": "Cloud object to which the node belongs."
+									}
+								},
+								{
+									"name": "id",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "Cloud Node UUID."
+									}
+								},
+								{
+									"name": "name",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "Cloud Node name."
+									}
+								},
+								{
+									"name": "serial",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "Cloud Name serial number"
+									}
+								}
+							],
+							"description": "Node object on which the VM is deployed."
+						}
+					},
+					{
+						"name": "status",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "The status of the VM.\u003cbr /\u003e\u003cli\u003e\u003cul\u003eprovisioning\u003c/ul\u003e\u003cul\u003ecreated\u003c/ul\u003e\u003cul\u003estarting\u003c/ul\u003e\u003cul\u003erunning\u003c/ul\u003e\u003cul\u003estopping\u003c/ul\u003e\u003cul\u003estopped\u003c/ul\u003e\u003cul\u003epaused\u003c/ul\u003e\u003cul\u003efailed\u003c/ul\u003e\u003cul\u003edeleting\u003c/ul\u003e\u003cul\u003edeleted\u003c/ul\u003e\u003c/li\u003e"
+						}
+					}
+				]
+			}
+		},
+		{
 			"name": "ssh_key",
 			"schema": {
 				"attributes": [

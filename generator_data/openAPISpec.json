@@ -9078,6 +9078,746 @@
                     }
                 }
             }
+        },
+        "/v3/flexVM/clouds": {
+            "get": {
+                "tags": [
+                    "FlexVMCloud"
+                ],
+                "summary": "Get all your FlexVM Clouds",
+                "operationId": "getFlexVMClouds",
+                "parameters": [
+                    {
+                        "name": "RANGED-DATA",
+                        "in": "header",
+                        "description": "Example header and default range: RANGED-DATA:start=0,results=25",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexVMCloud"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "FlexVMCloud"
+                ],
+                "summary": "Create a new FlexVM Cloud",
+                "operationId": "createFlexVMCloud",
+                "requestBody": {
+                    "description": "Cloud request model",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FlexVMCloud"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexVMCloud"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body"
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "409": {
+                        "description": "Conflict"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/clouds/{cloudUuid}": {
+            "get": {
+                "tags": [
+                    "FlexVMCloud"
+                ],
+                "summary": "Get a specific FlexVM Cloud",
+                "operationId": "getFlexVMCloud",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexVMCloud"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "FlexVMCloud"
+                ],
+                "summary": "Delete a FlexVM Cloud",
+                "operationId": "deleteFlexVMCloud",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/clouds/{cloudUuid}/nodes": {
+            "get": {
+                "tags": [
+                    "FlexVMNode"
+                ],
+                "summary": "Get all your FlexVM Cloud Nodes",
+                "operationId": "getFlexVMCloudNodes",
+                "parameters": [
+                    {
+                        "name": "RANGED-DATA",
+                        "in": "header",
+                        "description": "Example header and default range: RANGED-DATA:start=0,results=25",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexVMNode"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/clouds/{cloudUuid}/nodes/{nodeUuid}": {
+            "get": {
+                "tags": [
+                    "FlexVMNode"
+                ],
+                "summary": "Get a specific FlexVM Cloud Node",
+                "operationId": "getFlexVMCloudNode",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexVMNode"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/images": {
+            "get": {
+                "tags": [
+                    "FlexVMImage"
+                ],
+                "summary": "Get all available FlexVM Images",
+                "operationId": "getFlexVMImages",
+                "parameters": [
+                    {
+                        "name": "RANGED-DATA",
+                        "in": "header",
+                        "description": "Example header and default range: RANGED-DATA:start=0,results=25",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexVMImage"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/instanceTypes": {
+            "get": {
+                "tags": [
+                    "FlexVMInstanceType"
+                ],
+                "summary": "Get all available FlexVM Instance Types",
+                "operationId": "getFlexVMInstanceTypes",
+                "parameters": [
+                    {
+                        "name": "RANGED-DATA",
+                        "in": "header",
+                        "description": "Example header and default range: RANGED-DATA:start=0,results=25",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexVMInstanceType"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/clouds/{cloudUuid}/vms": {
+            "get": {
+                "tags": [
+                    "FlexVM"
+                ],
+                "summary": "Get all your FlexVMs within the given Cloud",
+                "operationId": "getFlexVMCloudVms",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by status [provisioning, created, starting, running, stopping, stopped, paused, failed, deleting, deleted]",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "RANGED-DATA",
+                        "in": "header",
+                        "description": "Example header and default range: RANGED-DATA:start=0,results=25",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexVMVMResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "FlexVM"
+                ],
+                "summary": "Create a new FlexVM",
+                "operationId": "createFlexVMCloudVm",
+                "requestBody": {
+                    "description": "VM request model",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FlexVMVMRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexVMVMResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body"
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/clouds/{cloudUuid}/vms/{vmUuid}": {
+            "get": {
+                "tags": [
+                    "FlexVM"
+                ],
+                "summary": "Get a specific FlexVM within the given Cloud",
+                "operationId": "getFlexVMCloudVm",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexVMVMResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "FlexVM"
+                ],
+                "summary": "Delete a FlexVM",
+                "operationId": "deleteFlexVMCloudVm",
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "description": "Conflict"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/clouds/{cloudUuid}/vms/{vmUuid}/commands": {
+            "post": {
+                "tags": [
+                    "FlexVM"
+                ],
+                "summary": "Execute a FlexVM command",
+                "operationId": "createFlexVMCloudVmCommand",
+                "requestBody": {
+                    "description": "VM request model",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FlexVMVMCommandRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/reports/monthly": {
+            "get": {
+                "tags": [
+                    "FlexVMReport"
+                ],
+                "summary": "Get the monthly usage report for the caller's organization",
+                "operationId": "getFlexVMReportsMonthlies",
+                "parameters": [
+                    {
+                        "name": "start",
+                        "in": "query",
+                        "description": "Inclusive start of the reporting period (ISO 8601, UTC). Must be provided together with `end`. When neither is provided, the period defaults to the current calendar month.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "end",
+                        "in": "query",
+                        "description": "Exclusive end of the reporting period (ISO 8601, UTC). Must be provided together with `start`. When neither is provided, the period defaults to the first instant of the next calendar month.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexVMMonthlyUsageReport"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request — `start` and `end` must be provided together, or the period is invalid"
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/reports/capacity": {
+            "get": {
+                "tags": [
+                    "FlexVMReport"
+                ],
+                "summary": "Get the organization-wide capacity snapshot",
+                "operationId": "getFlexVMReportsCapacities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexVMCapacity"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/flexVM/capacity": {
+            "get": {
+                "tags": [
+                    "FlexVMCapacity"
+                ],
+                "summary": "List capacity per Cloud for the caller's organization",
+                "operationId": "getFlexVMCapacities",
+                "parameters": [
+                    {
+                        "name": "RANGED-DATA",
+                        "in": "header",
+                        "description": "Example header and default range: RANGED-DATA:start=0,results=25",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FlexVMCloudCapacity"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -12853,6 +13593,994 @@
                         "type": "integer",
                         "format": "integer",
                         "description": "Total bandwidth out."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMCapacity": {
+                "type": "object",
+                "required": [
+                    "nodes",
+                    "node_groups",
+                    "resources"
+                ],
+                "properties": {
+                    "nodes": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 25,
+                        "description": "Total number of nodes in scope.",
+                        "readOnly": true
+                    },
+                    "node_groups": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexVMCapacityNodeGroup"
+                        },
+                        "description": "Nodes grouped by bare-metal instance type.",
+                        "readOnly": true
+                    },
+                    "resources": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMCapacityResources"
+                            }
+                        ],
+                        "description": "Resource utilization broken down by dimension.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMCapacityNodeGroup": {
+                "type": "object",
+                "required": [
+                    "instance_type",
+                    "quantity"
+                ],
+                "properties": {
+                    "instance_type": {
+                        "type": "string",
+                        "format": "",
+                        "example": "bm9.hmm.gpu.4rtx4000.64",
+                        "description": "The bare-metal instance type shared by every node in the group.",
+                        "readOnly": true
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 25,
+                        "description": "Number of nodes in the group.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMCapacityPCIDevice": {
+                "type": "object",
+                "required": [
+                    "type",
+                    "total",
+                    "in_use",
+                    "available"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "format": "",
+                        "example": "gpu",
+                        "description": "The kind of pass-through device.<br /><li><ul>gpu</ul><ul>nvme</ul></li>",
+                        "readOnly": true
+                    },
+                    "total": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 100,
+                        "description": "Total number of devices of this class in scope.",
+                        "readOnly": true
+                    },
+                    "in_use": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 20,
+                        "description": "Number of devices of this class currently in use.",
+                        "readOnly": true
+                    },
+                    "available": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 80,
+                        "description": "Number of devices of this class still available for allocation.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMCapacityResource": {
+                "type": "object",
+                "required": [
+                    "total",
+                    "in_use",
+                    "available"
+                ],
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 100,
+                        "description": "Total amount of the resource in scope. The invariant `total = in_use + available` always holds.",
+                        "readOnly": true
+                    },
+                    "in_use": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 30,
+                        "description": "Amount of the resource currently in use.",
+                        "readOnly": true
+                    },
+                    "available": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 70,
+                        "description": "Amount of the resource still available for allocation.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMCapacityResources": {
+                "type": "object",
+                "required": [
+                    "vcpu",
+                    "memory",
+                    "pci_devices"
+                ],
+                "properties": {
+                    "vcpu": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMCapacityResource"
+                            }
+                        ],
+                        "description": "vCPU core counts.",
+                        "readOnly": true
+                    },
+                    "memory": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMCapacityResource"
+                            }
+                        ],
+                        "description": "Memory totals expressed in megabytes.",
+                        "readOnly": true
+                    },
+                    "pci_devices": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexVMCapacityPCIDevice"
+                        },
+                        "description": "PCI passthrough device counts by class.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMCloud": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "site",
+                    "instance_type",
+                    "created_at"
+                ],
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "example": "This Cloud is meant for acceptance tests.",
+                        "description": "An optional free-form description of your Cloud."
+                    },
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "019256ab-1554-73a7-b091-f024b0a724ea",
+                        "description": "Cloud UUID.",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "My private cloud",
+                        "description": "Cloud name."
+                    },
+                    "site": {
+                        "type": "string",
+                        "example": "frmtl1",
+                        "description": "The i3D site (location) in which the Cloud is located. One of: frmtl1, camtr6."
+                    },
+                    "instance_type": {
+                        "type": "string",
+                        "example": "bm9.hmm.gpu.4rtx4000.64",
+                        "description": "The FlexMetal instance type shared by every node in the Cloud."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-01T12:45:14Z",
+                        "description": "When the Cloud was created (RFC3339).",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMCloudCapacity": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "site",
+                    "instance_type",
+                    "created_at",
+                    "nodes",
+                    "node_groups",
+                    "resources"
+                ],
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "format": "",
+                        "example": "This Cloud is meant for acceptance tests.",
+                        "description": "An optional free-form description of the Cloud."
+                    },
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "019256ab-1554-73a7-b091-f024b0a724ea",
+                        "description": "Cloud UUID.",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "My private cloud",
+                        "description": "Cloud name."
+                    },
+                    "site": {
+                        "type": "string",
+                        "example": "nlrtm1",
+                        "description": "The i3D site (location) in which the Cloud is located."
+                    },
+                    "instance_type": {
+                        "type": "string",
+                        "example": "bm9.hmm.gpu.4rtx4000.64",
+                        "description": "The FlexMetal instance type shared by every node in the Cloud."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-06-01T12:45:14Z",
+                        "description": "When the Cloud was created (RFC3339).",
+                        "readOnly": true
+                    },
+                    "nodes": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 25,
+                        "description": "Total number of nodes in the Cloud.",
+                        "readOnly": true
+                    },
+                    "node_groups": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexVMCapacityNodeGroup"
+                        },
+                        "description": "Nodes grouped by bare-metal instance type.",
+                        "readOnly": true
+                    },
+                    "resources": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMCapacityResources"
+                            }
+                        ],
+                        "description": "Resource utilization broken down by dimension.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMIPAddress": {
+                "type": "object",
+                "required": [
+                    "address",
+                    "public"
+                ],
+                "properties": {
+                    "address": {
+                        "type": "string",
+                        "format": "",
+                        "example": "1.2.3.4",
+                        "description": "An IP address, can be v4 or v6, public or private."
+                    },
+                    "public": {
+                        "type": "boolean",
+                        "example": "true",
+                        "description": "Indicates whether the IP address is a public or private one."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMImage": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "os",
+                    "os_type"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "format": "",
+                        "example": "ubuntu-2404-server-amd64",
+                        "description": "Image name.",
+                        "readOnly": true
+                    },
+                    "os": {
+                        "type": "string",
+                        "format": "",
+                        "example": "Ubuntu LTS 24.04",
+                        "description": "The name of the OS that the image represents.",
+                        "readOnly": true
+                    },
+                    "os_type": {
+                        "type": "string",
+                        "format": "",
+                        "example": "linux",
+                        "description": "The OS type the image represents. Can be \"linux\" or \"windows\"",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMInstanceType": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "vcpu",
+                    "memory",
+                    "disk",
+                    "pciDevices"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "",
+                        "example": "019256ab-1554-73a7-b091-f024b0a724ea",
+                        "description": "FlexVM Instance Type UUID.",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "format": "",
+                        "example": "vm.gpu.1rtx4000.15c.248g",
+                        "description": "The name of the instance type.",
+                        "readOnly": true
+                    },
+                    "vcpu": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 4,
+                        "description": "The number of vCPU resources.",
+                        "readOnly": true
+                    },
+                    "memory": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 4096,
+                        "description": "The amount of memory in MB.",
+                        "readOnly": true
+                    },
+                    "disk": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 256,
+                        "description": "The size of the OS disk in GB.",
+                        "readOnly": true
+                    },
+                    "pciDevices": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexVMInstanceTypePCIDevice"
+                        },
+                        "description": "PCI passthrough devices required by this instance type.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMInstanceTypePCIDevice": {
+                "type": "object",
+                "required": [
+                    "type",
+                    "spec"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "format": "",
+                        "example": "gpu",
+                        "description": "The kind of pass-through device.<br /><li><ul>gpu</ul><ul>nvme</ul></li>",
+                        "readOnly": true
+                    },
+                    "spec": {
+                        "type": "string",
+                        "format": "",
+                        "example": "rtx4000",
+                        "description": "A human-readable specification of the device (model, capacity, etc.).",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMMonthlyUsageReport": {
+                "type": "object",
+                "required": [
+                    "period",
+                    "total_nodes",
+                    "total_active_vms",
+                    "clouds",
+                    "by_tag",
+                    "vms"
+                ],
+                "properties": {
+                    "period": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMMonthlyUsageReportPeriod"
+                            }
+                        ],
+                        "description": "The reporting period as a half-open interval [start, end). The end instant itself is not included.",
+                        "readOnly": true
+                    },
+                    "total_nodes": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 25,
+                        "description": "Total nodes across all clouds for the organization.",
+                        "readOnly": true
+                    },
+                    "total_active_vms": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 38,
+                        "description": "Total VMs currently active (not deleted) across all clouds.",
+                        "readOnly": true
+                    },
+                    "clouds": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexVMMonthlyUsageReportCloud"
+                        },
+                        "description": "Per-cloud composition + activity aggregates.",
+                        "readOnly": true
+                    },
+                    "by_tag": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexVMMonthlyUsageReportTag"
+                        },
+                        "description": "Tag-aggregated usage. VMs with multiple tags appear in each group; untagged VMs are excluded.",
+                        "readOnly": true
+                    },
+                    "vms": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexVMMonthlyUsageReportVM"
+                        },
+                        "description": "Per-VM detail for the period.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMMonthlyUsageReportCloud": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "site",
+                    "instance_type",
+                    "nodes",
+                    "active_vms",
+                    "period_usage"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "",
+                        "example": "019cb8c4-25dc-7aac-8023-407f05529118",
+                        "description": "Cloud UUID.",
+                        "readOnly": true
+                    },
+                    "site": {
+                        "type": "string",
+                        "format": "",
+                        "example": "frmtl1",
+                        "description": "Site code where the cloud is deployed.",
+                        "readOnly": true
+                    },
+                    "instance_type": {
+                        "type": "string",
+                        "format": "",
+                        "example": "bm9.hmm.gpu.4rtx4000.64",
+                        "description": "The hardware profile shared by every node in the cloud.",
+                        "readOnly": true
+                    },
+                    "nodes": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 10,
+                        "description": "Number of nodes in the cloud.",
+                        "readOnly": true
+                    },
+                    "active_vms": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 12,
+                        "description": "VMs currently active (not deleted) in this cloud.",
+                        "readOnly": true
+                    },
+                    "period_usage": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMMonthlyUsageReportPeriodUsage"
+                            }
+                        ],
+                        "description": "Aggregated VM activity for the cloud over the reporting period.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMMonthlyUsageReportPeriod": {
+                "type": "object",
+                "required": [
+                    "start",
+                    "end"
+                ],
+                "properties": {
+                    "start": {
+                        "type": "string",
+                        "format": "",
+                        "description": "Inclusive start of the reporting period (ISO 8601, UTC).",
+                        "readOnly": true
+                    },
+                    "end": {
+                        "type": "string",
+                        "format": "",
+                        "description": "Exclusive end of the reporting period (ISO 8601, UTC).",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMMonthlyUsageReportPeriodUsage": {
+                "type": "object",
+                "required": [
+                    "total_vms_created",
+                    "total_vms_released",
+                    "total_vm_hours"
+                ],
+                "properties": {
+                    "total_vms_created": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 847,
+                        "description": "VMs created within the reporting period.",
+                        "readOnly": true
+                    },
+                    "total_vms_released": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 835,
+                        "description": "VMs released (deleted) within the reporting period.",
+                        "readOnly": true
+                    },
+                    "total_vm_hours": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 4321,
+                        "description": "Sum of VM uptime hours within the period, rounded up. Stopped VMs still count (they hold their GPU and NVMe slots). For periods extending into the future the upper bound is the request time, not period.end.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMMonthlyUsageReportTag": {
+                "type": "object",
+                "required": [
+                    "tag",
+                    "active_vms",
+                    "total_vms_created",
+                    "total_vms_released",
+                    "total_vm_hours"
+                ],
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "format": "",
+                        "description": "The tag value (e.g. \"project:odyssey\", \"env:build\").",
+                        "readOnly": true
+                    },
+                    "active_vms": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 8,
+                        "description": "VMs currently active (not deleted) carrying this tag.",
+                        "readOnly": true
+                    },
+                    "total_vms_created": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 620,
+                        "description": "VMs carrying this tag created within the reporting period.",
+                        "readOnly": true
+                    },
+                    "total_vms_released": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 612,
+                        "description": "VMs carrying this tag released within the reporting period.",
+                        "readOnly": true
+                    },
+                    "total_vm_hours": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 2880,
+                        "description": "Sum of VM uptime hours for VMs carrying this tag, rounded up. Same clamping as the cloud-level total_vm_hours.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMMonthlyUsageReportVM": {
+                "type": "object",
+                "required": [
+                    "vm_id",
+                    "name",
+                    "status",
+                    "plan",
+                    "image",
+                    "cloud_id",
+                    "site",
+                    "tags",
+                    "created_at",
+                    "vm_hours"
+                ],
+                "properties": {
+                    "vm_id": {
+                        "type": "string",
+                        "format": "",
+                        "example": "019d1a2b-3c4d-7e8f-9012-3456789abcde",
+                        "description": "VM UUID.",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "format": "",
+                        "example": "ac-build-agent-001",
+                        "description": "VM name.",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "format": "",
+                        "example": "running",
+                        "description": "The status of the VM at the time the report was generated.",
+                        "readOnly": true
+                    },
+                    "plan": {
+                        "type": "string",
+                        "format": "",
+                        "example": "vm.gpu.1rtx4000.15c.248g",
+                        "description": "The instance type the VM is based on.",
+                        "readOnly": true
+                    },
+                    "image": {
+                        "type": "string",
+                        "format": "",
+                        "example": "ubuntu-2404-base",
+                        "description": "The image the VM is based on.",
+                        "readOnly": true
+                    },
+                    "cloud_id": {
+                        "type": "string",
+                        "format": "",
+                        "example": "019cb8c4-25dc-7aac-8023-407f05529118",
+                        "description": "UUID of the cloud the VM was deployed in.",
+                        "readOnly": true
+                    },
+                    "site": {
+                        "type": "string",
+                        "format": "",
+                        "example": "frmtl1",
+                        "description": "Site code where the VM was deployed.",
+                        "readOnly": true
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": ""
+                        },
+                        "description": "Tags attached to the VM at create time. Empty array if untagged.",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "",
+                        "description": "VM creation timestamp (ISO 8601, UTC).",
+                        "readOnly": true
+                    },
+                    "released_at": {
+                        "type": "string",
+                        "format": "",
+                        "description": "VM deletion timestamp (ISO 8601, UTC). Null when the VM is still alive at report-generation time."
+                    },
+                    "vm_hours": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 360,
+                        "description": "Hours the VM was alive within the period, rounded up. Computed as min(released_at or now, period.end) - max(created_at, period.start).",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMNode": {
+                "type": "object",
+                "required": [
+                    "cloud",
+                    "id",
+                    "name",
+                    "serial"
+                ],
+                "properties": {
+                    "cloud": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMCloud",
+                                "example": "019256ab-1554-73a7-b091-f024b0a724ea"
+                            }
+                        ],
+                        "description": "Cloud object to which the node belongs.",
+                        "readOnly": true
+                    },
+                    "id": {
+                        "type": "string",
+                        "format": "",
+                        "example": "019256ab-1554-73a7-b091-f024b0a724ea",
+                        "description": "Cloud Node UUID.",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "format": "",
+                        "example": "proxmox-dev-1",
+                        "description": "Cloud Node name."
+                    },
+                    "serial": {
+                        "type": "string",
+                        "format": "",
+                        "example": "3W2GN83",
+                        "description": "Cloud Name serial number"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMUserDataRequest": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "type": "string",
+                        "format": "",
+                        "minLength": 1,
+                        "maxLength": 64000,
+                        "description": "Cloud-init user-data passed to the VM on first boot, in a format supported by cloud-init (e.g. a #cloud-config document or a shell script). May be base64-encoded when is_base64 is true. See the cloud-init supported user-data formats: https://docs.cloud-init.io/en/latest/explanation/format/index.html. Note: if provided, user-data overwrites the auto-generated cloud-init configuration which is responsible for configuring ssh-keys and the default username, for example. To ensure access, those must be configured by the provided user-data. Example configurations: https://docs.cloud-init.io/en/latest/reference/examples.html#yaml-examples. Length must be between 1 and 64000 characters.",
+                        "example": "#cloud-config\nhostname: my-custom-vm-hostname\nmanage_etc_hosts: true\nfqdn: my-custom-vm-hostname\nuser: my-custom-user\nssh_authorized_keys:\n  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net\nchpasswd:\n  expire: False\nusers:\n  - default\npackage_upgrade: true"
+                    },
+                    "is_base64": {
+                        "type": "boolean",
+                        "default": false,
+                        "example": false,
+                        "description": "Whether data is base64-encoded. Use this for binary user-data that cannot be encoded as JSON, such as gzip-compressed cloud-init content (e.g. https://docs.cloud-init.io/en/latest/explanation/format/gzip.html#gzip). Default is false."
+                    }
+                },
+                "additionalProperties": false,
+                "description": "Cloud-init user-data passed to the VM on first boot."
+            },
+            "FlexVMVMCommandRequest": {
+                "type": "object",
+                "required": [
+                    "command"
+                ],
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "format": "",
+                        "example": "start",
+                        "description": "The command to execute on the VM. Must be one of: start, stop, reboot, or reset."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMVMRequest": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "format": "",
+                        "example": "DB1 VM",
+                        "description": "An optional free-form description of your VM."
+                    },
+                    "image_name": {
+                        "type": "string",
+                        "format": "",
+                        "example": "ubuntu-2404-server-amd64",
+                        "description": "The image name to create the VM from."
+                    },
+                    "instance_type_name": {
+                        "type": "string",
+                        "format": "",
+                        "example": "vm.gpu.1rtx4000.15c.248g",
+                        "description": "The instance type name to base the VM on."
+                    },
+                    "name": {
+                        "type": "string",
+                        "format": "",
+                        "example": "development.ubuntu-2404",
+                        "description": "VM name."
+                    },
+                    "ssh_keys": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "",
+                            "example": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHo8IaPkQ6UnDZvi4F4RBSouRa6Gtysdg2EF+SIXheVF2SGBQ2uH7RfDjXRfvq4VpHJrKYs4kWfNoHQg8ZG6PH4= ecdsa-key-20240131"
+                        },
+                        "description": "Provide your public SSH key(s). Exactly one of ssh_keys or user_data must be specified: a request that sets both, or neither, is rejected with a 422. When user_data is provided instead, configure SSH access through it."
+                    },
+                    "user_data": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMUserDataRequest"
+                            }
+                        ],
+                        "description": "Cloud-init user-data to pass to the VM on first boot. Exactly one of ssh_keys or user_data must be specified: a request that sets both, or neither, is rejected with a 422."
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": ""
+                        },
+                        "description": "Free-form labels (e.g. project:odyssey, env:build) used for grouping in the monthly usage report. Set at VM create only — values must be non-empty strings up to 128 chars."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexVMVMResponse": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "instance_type",
+                    "image",
+                    "status",
+                    "ips",
+                    "cloud",
+                    "node",
+                    "created_at",
+                    "tags"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "",
+                        "example": "019256ab-1554-73a7-b091-f024b0a724ea",
+                        "description": "Cloud VM UUID.",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "format": "",
+                        "example": "development.ubuntu-2404",
+                        "description": "VM name."
+                    },
+                    "description": {
+                        "type": "string",
+                        "format": "",
+                        "example": "DB1 VM",
+                        "description": "An optional free-form description of your VM."
+                    },
+                    "instance_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMInstanceType",
+                                "example": "vm.gpu.1rtx4000.15c.248g"
+                            }
+                        ],
+                        "description": "The instance type the VM is based on.",
+                        "readOnly": true
+                    },
+                    "image": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMImage",
+                                "example": "vm.gpu.1rtx4000.15c.248g"
+                            }
+                        ],
+                        "description": "The image the VM is based on.",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "format": "",
+                        "example": "running",
+                        "description": "The status of the VM.<br /><li><ul>provisioning</ul><ul>created</ul><ul>starting</ul><ul>running</ul><ul>stopping</ul><ul>stopped</ul><ul>paused</ul><ul>failed</ul><ul>deleting</ul><ul>deleted</ul></li>",
+                        "readOnly": true
+                    },
+                    "ips": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexVMIPAddress"
+                        },
+                        "description": "A list of IP address objects that belong to the VM.",
+                        "readOnly": true
+                    },
+                    "cloud": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMCloud",
+                                "example": "019256ab-1554-73a7-b091-f024b0a724ea"
+                            }
+                        ],
+                        "description": "Cloud object within which the VM is deployed.",
+                        "readOnly": true
+                    },
+                    "node": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexVMNode",
+                                "example": "019256ab-1554-73a7-b091-f024b0a724ea"
+                            }
+                        ],
+                        "description": "Node object on which the VM is deployed.",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "",
+                        "description": "VM creation timestamp.",
+                        "readOnly": true
+                    },
+                    "deleted_at": {
+                        "type": "string",
+                        "format": "",
+                        "description": "VM deletion timestamp."
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": ""
+                        },
+                        "description": "Tags attached to the VM at create time. Empty array if untagged.",
+                        "readOnly": true
                     }
                 },
                 "additionalProperties": false
@@ -17124,6 +18852,55 @@
         {
             "name": "FlexMetalUsage",
             "description": "Fetch FlexMetal server(s) usage."
+        },
+        {
+            "name": "FlexVM",
+            "description": "FlexVM VMs are virtual servers that can be requested and released at will within your FlexVM Private Cloud.",
+            "externalDocs": {
+                "url": "https://docs.i3d.net/compute/flexvm/api"
+            }
+        },
+        {
+            "name": "FlexVMCapacity",
+            "description": "Paginated capacity snapshots for each FlexVM Cloud in your organization — hardware inventory and current resource utilization.",
+            "externalDocs": {
+                "url": "https://docs.i3d.net/compute/flexvm/api"
+            }
+        },
+        {
+            "name": "FlexVMCloud",
+            "description": "FlexVM Clouds are your Private Clouds built on top of i3D bare metal servers of your choice.",
+            "externalDocs": {
+                "url": "https://docs.i3d.net/compute/flexvm/api"
+            }
+        },
+        {
+            "name": "FlexVMImage",
+            "description": "FlexVM Images are the vanilla deployment-ready images offered by i3D to create your VMs from.",
+            "externalDocs": {
+                "url": "https://docs.i3d.net/compute/flexvm/api"
+            }
+        },
+        {
+            "name": "FlexVMInstanceType",
+            "description": "FlexVM Instance Type are the VM resource definitions to create your VMs from.",
+            "externalDocs": {
+                "url": "https://docs.i3d.net/compute/flexvm/api"
+            }
+        },
+        {
+            "name": "FlexVMNode",
+            "description": "FlexVM Nodes are the bare metal virtualization servers that form the foundation of your FlexVM Private Cloud.",
+            "externalDocs": {
+                "url": "https://docs.i3d.net/compute/flexvm/api"
+            }
+        },
+        {
+            "name": "FlexVMReport",
+            "description": "Monthly usage aggregates and organization-wide capacity snapshots for FlexVM clouds.",
+            "externalDocs": {
+                "url": "https://docs.i3d.net/compute/flexvm/api"
+            }
         },
         {
             "name": "Health",
