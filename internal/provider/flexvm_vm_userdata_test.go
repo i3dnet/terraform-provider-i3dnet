@@ -25,10 +25,9 @@ func TestBuildUserData(t *testing.T) {
 			wantIsBase64: false,
 		},
 		{
-			name:         "empty content is valid UTF-8 and sent as is",
-			content:      []byte(""),
-			wantData:     "",
-			wantIsBase64: false,
+			name:    "empty content is rejected",
+			content: []byte(""),
+			wantErr: true,
 		},
 		{
 			name:         "multibyte UTF-8 is sent as is",

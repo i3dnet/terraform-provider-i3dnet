@@ -15,6 +15,7 @@ import (
 	"terraform-provider-i3dnet/internal/one_api"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -23,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -165,6 +167,9 @@ func (r *flexvmVMResource) Schema(ctx context.Context, req resource.SchemaReques
 				ElementType:         types.StringType,
 				Optional:            true,
 				MarkdownDescription: "A list of public SSH keys. Exactly one of `ssh_keys` or `user_data_file` must be set.",
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+				},
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.RequiresReplace(),
 				},
@@ -686,6 +691,10 @@ func buildUserDataFromFile(filePath string) (*one_api.FlexvmUserData, error) {
 // the resulting payload length against the API limit. It is separated from file
 // I/O so the encoding logic can be unit-tested.
 func buildUserData(content []byte) (*one_api.FlexvmUserData, error) {
+	if len(content) == 0 {
+		return nil, errors.New("user-data file is empty")
+	}
+
 	userData := &one_api.FlexvmUserData{}
 	if utf8.Valid(content) {
 		userData.Data = string(content)
