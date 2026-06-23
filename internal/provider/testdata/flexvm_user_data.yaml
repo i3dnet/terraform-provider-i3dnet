@@ -1,0 +1,14 @@
+#cloud-config
+# Used by the i3dnet_flexvm_vm acceptance test (user_data_file).
+# When user-data is supplied it overrides the auto-generated cloud-init, so SSH
+# access must be configured here explicitly.
+hostname: terraform-gh-workflows-userdata
+manage_etc_hosts: true
+users:
+  - default
+  - name: i3duser
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net
+package_upgrade: false

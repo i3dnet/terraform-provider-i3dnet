@@ -2,15 +2,20 @@ package provider
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"terraform-provider-i3dnet/internal/one_api"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -23,10 +28,16 @@ import (
 )
 
 var (
-	_ resource.Resource                = (*flexvmVMResource)(nil)
-	_ resource.ResourceWithConfigure   = (*flexvmVMResource)(nil)
-	_ resource.ResourceWithImportState = (*flexvmVMResource)(nil)
+	_ resource.Resource                     = (*flexvmVMResource)(nil)
+	_ resource.ResourceWithConfigure        = (*flexvmVMResource)(nil)
+	_ resource.ResourceWithImportState      = (*flexvmVMResource)(nil)
+	_ resource.ResourceWithConfigValidators = (*flexvmVMResource)(nil)
 )
+
+// flexvmUserDataMaxLen is the maximum length (in characters) the API accepts
+// for the user-data "data" field. For base64-encoded content this applies to
+// the base64-encoded string.
+const flexvmUserDataMaxLen = 64000
 
 func NewFlexvmVMResource() resource.Resource {
 	return &flexvmVMResource{}
@@ -43,6 +54,7 @@ type FlexvmVMModel struct {
 	InstanceTypeName types.String   `tfsdk:"instance_type_name"`
 	ImageName        types.String   `tfsdk:"image_name"`
 	SSHKeys          types.List     `tfsdk:"ssh_keys"`
+	UserDataFile     types.String   `tfsdk:"user_data_file"`
 	ID               types.String   `tfsdk:"id"`
 	Status           types.String   `tfsdk:"status"`
 	IPs              types.List     `tfsdk:"ips"`
@@ -151,10 +163,24 @@ func (r *flexvmVMResource) Schema(ctx context.Context, req resource.SchemaReques
 			},
 			"ssh_keys": schema.ListAttribute{
 				ElementType:         types.StringType,
-				Required:            true,
-				MarkdownDescription: "A list of public SSH keys.",
+				Optional:            true,
+				MarkdownDescription: "A list of public SSH keys. Exactly one of `ssh_keys` or `user_data_file` must be set.",
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.RequiresReplace(),
+				},
+			},
+			"user_data_file": schema.StringAttribute{
+				Optional: true,
+				MarkdownDescription: "Path to a file whose contents are passed to the VM as cloud-init " +
+					"user-data on first boot. Exactly one of `ssh_keys` or `user_data_file` must be set; " +
+					"when `user_data_file` is used, configure SSH access through the user-data itself.\n\n" +
+					"Relative paths are resolved against the directory in which Terraform is run (its working " +
+					"directory), so prefer an absolute path or wrap it with `abspath(\"${path.module}/...\")`.\n\n" +
+					"If the file content is not valid UTF-8 (e.g. gzip-compressed cloud-init) it is automatically " +
+					"base64-encoded before being sent. Only the file path is tracked in state: editing the file's " +
+					"content without changing the path will not trigger a replacement.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"id": schema.StringAttribute{
@@ -292,15 +318,18 @@ func (r *flexvmVMResource) Schema(ctx context.Context, req resource.SchemaReques
 	}
 }
 
+func (r *flexvmVMResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.ExactlyOneOf(
+			path.MatchRoot("ssh_keys"),
+			path.MatchRoot("user_data_file"),
+		),
+	}
+}
+
 func (r *flexvmVMResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data FlexvmVMModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	var sshKeys []string
-	resp.Diagnostics.Append(data.SSHKeys.ElementsAs(ctx, &sshKeys, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -310,7 +339,26 @@ func (r *flexvmVMResource) Create(ctx context.Context, req resource.CreateReques
 		Description:      data.Description.ValueString(),
 		InstanceTypeName: data.InstanceTypeName.ValueString(),
 		ImageName:        data.ImageName.ValueString(),
-		SSHKeys:          sshKeys,
+	}
+
+	// Exactly one of ssh_keys / user_data_file is set (enforced by ConfigValidators).
+	if !data.UserDataFile.IsNull() {
+		userData, err := buildUserDataFromFile(data.UserDataFile.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error reading user_data_file",
+				err.Error(),
+			)
+			return
+		}
+		createReq.UserData = userData
+	} else {
+		var sshKeys []string
+		resp.Diagnostics.Append(data.SSHKeys.ElementsAs(ctx, &sshKeys, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		createReq.SSHKeys = sshKeys
 	}
 
 	createTimeout, diags := data.Timeouts.Create(ctx, 10*time.Minute)
@@ -610,6 +658,50 @@ func (r *flexvmVMResource) waitForCondition(ctx context.Context, cloudID, vmID s
 			timer.Reset(pollInterval)
 		}
 	}
+}
+
+// buildUserDataFromFile reads the file at the given path and turns it into a
+// FlexvmUserData request. Relative paths are resolved against the process
+// working directory (where Terraform is run). Content that is not valid UTF-8
+// is base64-encoded and flagged with is_base64=true.
+func buildUserDataFromFile(filePath string) (*one_api.FlexvmUserData, error) {
+	resolvedPath := filePath
+	if !filepath.IsAbs(resolvedPath) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("could not determine working directory to resolve %q: %w", filePath, err)
+		}
+		resolvedPath = filepath.Join(cwd, resolvedPath)
+	}
+
+	content, err := os.ReadFile(resolvedPath)
+	if err != nil {
+		return nil, fmt.Errorf("could not read file %q: %w", resolvedPath, err)
+	}
+
+	return buildUserData(content)
+}
+
+// buildUserData applies the UTF-8/base64 rule to raw file content and validates
+// the resulting payload length against the API limit. It is separated from file
+// I/O so the encoding logic can be unit-tested.
+func buildUserData(content []byte) (*one_api.FlexvmUserData, error) {
+	userData := &one_api.FlexvmUserData{}
+	if utf8.Valid(content) {
+		userData.Data = string(content)
+	} else {
+		userData.Data = base64.StdEncoding.EncodeToString(content)
+		userData.IsBase64 = true
+	}
+
+	if len(userData.Data) > flexvmUserDataMaxLen {
+		return nil, fmt.Errorf(
+			"user-data is too large: %d characters, maximum is %d (base64-encoded content counts after encoding)",
+			len(userData.Data), flexvmUserDataMaxLen,
+		)
+	}
+
+	return userData, nil
 }
 
 func flexvmVMRespToState(vm *one_api.FlexvmVM, data *FlexvmVMModel) {

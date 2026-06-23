@@ -22,11 +22,19 @@ const (
 )
 
 type FlexvmCreateVMRequest struct {
-	Name             string   `json:"name"`
-	Description      string   `json:"description,omitempty"`
-	InstanceTypeName string   `json:"instance_type_name,omitempty"`
-	ImageName        string   `json:"image_name,omitempty"`
-	SSHKeys          []string `json:"ssh_keys"`
+	Name             string          `json:"name"`
+	Description      string          `json:"description,omitempty"`
+	InstanceTypeName string          `json:"instance_type_name,omitempty"`
+	ImageName        string          `json:"image_name,omitempty"`
+	SSHKeys          []string        `json:"ssh_keys,omitempty"`
+	UserData         *FlexvmUserData `json:"user_data,omitempty"`
+}
+
+// FlexvmUserData is the cloud-init user-data passed to a VM on first boot.
+// Exactly one of SSHKeys or UserData may be set on a create request.
+type FlexvmUserData struct {
+	Data     string `json:"data"`
+	IsBase64 bool   `json:"is_base64"`
 }
 
 type FlexvmVM struct {

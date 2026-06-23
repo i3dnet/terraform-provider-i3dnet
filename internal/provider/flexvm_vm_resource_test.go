@@ -64,3 +64,57 @@ resource "i3dnet_flexvm_vm" "test" {
 		},
 	})
 }
+
+func TestAccFlexvmVMResourceUserData(t *testing.T) {
+	isMain := os.Getenv("TF_MAIN") == "true"
+	if !isMain {
+		t.Skip("To run this test, set TF_MAIN=true env var")
+	}
+
+	t.Parallel()
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create and Read testing, using user_data_file instead of ssh_keys.
+			{
+				Config: providerConfig(t, resourceNsFlexvm) + `
+resource "i3dnet_flexvm_vm" "test" {
+  cloud_id           = "019d24e2-98fa-701a-8475-8ac0ff1f4a4a"
+  name               = "terraform-gh-workflows-userdata-test"
+  description        = "Terraform GitHub Workflows user_data test"
+  instance_type_name = "vm.4c.8g"
+  image_name         = "ubuntu-2404-server-amd64"
+  user_data_file     = "testdata/flexvm_user_data.yaml"
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("i3dnet_flexvm_vm.test", "id"),
+					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "name",
+						"terraform-gh-workflows-userdata-test"),
+					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "user_data_file",
+						"testdata/flexvm_user_data.yaml"),
+					resource.TestCheckNoResourceAttr("i3dnet_flexvm_vm.test", "ssh_keys"),
+					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "status", "running"),
+					resource.TestCheckResourceAttrSet("i3dnet_flexvm_vm.test", "cloud.id"),
+					resource.TestCheckResourceAttrSet("i3dnet_flexvm_vm.test", "node.id"),
+				),
+			},
+			// Import testing
+			{
+				ResourceName:      "i3dnet_flexvm_vm.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"instance_type_name",
+					"image_name",
+					"user_data_file",
+				},
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					rs := s.RootModule().Resources["i3dnet_flexvm_vm.test"]
+					return rs.Primary.Attributes["cloud_id"] + "/" + rs.Primary.Attributes["id"], nil
+				},
+			},
+		},
+	})
+}
