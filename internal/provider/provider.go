@@ -120,6 +120,7 @@ func (p *i3dnetProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewSshKeyDataSource,
 		NewTagsDataSource,
 		NewLocationsDataSource,
+		NewFlexvmCloudDataSource,
 	}
 }
 
