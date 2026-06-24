@@ -34,6 +34,16 @@ resources:
     delete:
       path: /v3/flexMetal/tags/{tag}
       method: DELETE
+  flexvm_vm:
+    create:
+      path: /v3/flexVM/clouds/{cloudUuid}/vms
+      method: POST
+    read:
+      path: /v3/flexVM/clouds/{cloudUuid}/vms/{vmUuid}
+      method: GET
+    delete:
+      path: /v3/flexVM/clouds/{cloudUuid}/vms/{vmUuid}
+      method: DELETE
 data_sources:
   tags:
     read:
