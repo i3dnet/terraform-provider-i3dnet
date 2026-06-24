@@ -93,6 +93,10 @@ func (r *flexvmCloudResource) Schema(ctx context.Context, req resource.SchemaReq
 				Optional:            true,
 				MarkdownDescription: "An optional free-form description of your Cloud.",
 				PlanModifiers: []planmodifier.String{
+					// Empty strings "" are also treated as null, which means that
+					// adding a `description = ""` field to your resource
+					// will not trigger a re-creation of the cloud.
+					emptyStringAsNull{},
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
