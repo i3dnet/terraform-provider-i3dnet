@@ -183,7 +183,9 @@ func (r *flexvmVMResource) Schema(ctx context.Context, req resource.SchemaReques
 					"directory), so prefer an absolute path or wrap it with `abspath(\"${path.module}/...\")`.\n\n" +
 					"If the file content is not valid UTF-8 (e.g. gzip-compressed cloud-init) it is automatically " +
 					"base64-encoded before being sent. Only the file path is tracked in state: editing the file's " +
-					"content without changing the path will not trigger a replacement.",
+					"content without changing the path will not trigger a replacement. See " +
+					"https://docs.cloud-init.io/en/latest/reference/examples.html#yaml-examples for examples of a " +
+					"configuration file.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},

@@ -54,7 +54,7 @@ resource "i3dnet_flexvm_vm" "my-vm-with-user-data" {
 
 Relative paths are resolved against the directory in which Terraform is run (its working directory), so prefer an absolute path or wrap it with `abspath("${path.module}/...")`.
 
-If the file content is not valid UTF-8 (e.g. gzip-compressed cloud-init) it is automatically base64-encoded before being sent. Only the file path is tracked in state: editing the file's content without changing the path will not trigger a replacement.
+If the file content is not valid UTF-8 (e.g. gzip-compressed cloud-init) it is automatically base64-encoded before being sent. Only the file path is tracked in state: editing the file's content without changing the path will not trigger a replacement. See https://docs.cloud-init.io/en/latest/reference/examples.html#yaml-examples for examples of a configuration file.
 
 ### Read-Only
 
