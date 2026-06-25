@@ -698,6 +698,13 @@
 										"computed_optional_required": "computed",
 										"description": "Cloud Name serial number"
 									}
+								},
+								{
+									"name": "status",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The status of the Node.\u003cbr /\u003e\u003cul\u003e\u003cli\u003ecreated\u003c/li\u003e\u003cli\u003erequested\u003c/li\u003e\u003cli\u003ebootstrapping\u003c/li\u003e\u003cli\u003erunning\u003c/li\u003e\u003cli\u003efailed\u003c/li\u003e\u003cli\u003edeleting\u003c/li\u003e\u003cli\u003edeleted\u003c/li\u003e\u003c/ul\u003e"
+									}
 								}
 							],
 							"description": "Node object on which the VM is deployed."
@@ -708,6 +715,18 @@
 						"string": {
 							"computed_optional_required": "computed",
 							"description": "The status of the VM.\u003cbr /\u003e\u003cli\u003e\u003cul\u003eprovisioning\u003c/ul\u003e\u003cul\u003ecreated\u003c/ul\u003e\u003cul\u003estarting\u003c/ul\u003e\u003cul\u003erunning\u003c/ul\u003e\u003cul\u003estopping\u003c/ul\u003e\u003cul\u003estopped\u003c/ul\u003e\u003cul\u003epaused\u003c/ul\u003e\u003cul\u003efailed\u003c/ul\u003e\u003cul\u003edeleting\u003c/ul\u003e\u003cul\u003edeleted\u003c/ul\u003e\u003c/li\u003e"
+						}
+					},
+					{
+						"name": "cloud_uuid",
+						"string": {
+							"computed_optional_required": "computed_optional"
+						}
+					},
+					{
+						"name": "vm_uuid",
+						"string": {
+							"computed_optional_required": "computed_optional"
 						}
 					}
 				]

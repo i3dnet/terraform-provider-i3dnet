@@ -9185,6 +9185,16 @@
                 ],
                 "summary": "Get a specific FlexVM Cloud",
                 "operationId": "getFlexVMCloud",
+                "parameters": [
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -9223,6 +9233,16 @@
                 ],
                 "summary": "Delete a FlexVM Cloud",
                 "operationId": "deleteFlexVMCloud",
+                "parameters": [
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "204": {
                         "description": "No Content"
@@ -9264,6 +9284,14 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -9300,6 +9328,55 @@
                         }
                     }
                 }
+            },
+            "post": {
+                "tags": [
+                    "FlexVMNode"
+                ],
+                "summary": "Add a new Node to your FlexVM Cloud",
+                "description": "Scale your Private Cloud by adding a bare metal Node. The Node uses the Cloud's instance type and location; no request body is required.",
+                "operationId": "createFlexVMCloudNode",
+                "parameters": [
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FlexVMNode"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/v3/flexVM/clouds/{cloudUuid}/nodes/{nodeUuid}": {
@@ -9309,6 +9386,24 @@
                 ],
                 "summary": "Get a specific FlexVM Cloud Node",
                 "operationId": "getFlexVMCloudNode",
+                "parameters": [
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "nodeUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -9325,6 +9420,59 @@
                     },
                     "404": {
                         "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Unprocessable content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "FlexVMNode"
+                ],
+                "summary": "Remove a Node from your FlexVM Cloud",
+                "description": "Scale down your Private Cloud by removing a Node. Rejected with 409 while the Node still hosts VMs or is not in a deletable state.",
+                "operationId": "deleteFlexVMCloudNode",
+                "parameters": [
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "nodeUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "403": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "description": "Conflict"
                     },
                     "422": {
                         "description": "Unprocessable content"
@@ -9472,6 +9620,14 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -9515,6 +9671,16 @@
                 ],
                 "summary": "Create a new FlexVM",
                 "operationId": "createFlexVMCloudVm",
+                "parameters": [
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "description": "VM request model",
                     "content": {
@@ -9569,6 +9735,24 @@
                 ],
                 "summary": "Get a specific FlexVM within the given Cloud",
                 "operationId": "getFlexVMCloudVm",
+                "parameters": [
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "vmUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -9607,6 +9791,24 @@
                 ],
                 "summary": "Delete a FlexVM",
                 "operationId": "deleteFlexVMCloudVm",
+                "parameters": [
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "vmUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "202": {
                         "description": "Accepted"
@@ -9643,6 +9845,24 @@
                 ],
                 "summary": "Execute a FlexVM command",
                 "operationId": "createFlexVMCloudVmCommand",
+                "parameters": [
+                    {
+                        "name": "cloudUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "vmUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "description": "VM request model",
                     "content": {
@@ -14341,7 +14561,8 @@
                     "cloud",
                     "id",
                     "name",
-                    "serial"
+                    "serial",
+                    "status"
                 ],
                 "properties": {
                     "cloud": {
@@ -14372,6 +14593,13 @@
                         "format": "",
                         "example": "3W2GN83",
                         "description": "Cloud Name serial number"
+                    },
+                    "status": {
+                        "type": "string",
+                        "format": "",
+                        "example": "running",
+                        "description": "The status of the Node.<br /><ul><li>created</li><li>requested</li><li>bootstrapping</li><li>running</li><li>failed</li><li>deleting</li><li>deleted</li></ul>",
+                        "readOnly": true
                     }
                 },
                 "additionalProperties": false
