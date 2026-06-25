@@ -31,6 +31,7 @@ type flexvmNodeDataSourceModel struct {
 	ID      types.String `tfsdk:"id"`
 	Name    types.String `tfsdk:"name"`
 	Serial  types.String `tfsdk:"serial"`
+	Status  types.String `tfsdk:"status"`
 }
 
 func (d *flexvmNodeDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
@@ -77,6 +78,10 @@ func (d *flexvmNodeDataSource) Schema(ctx context.Context, req datasource.Schema
 				Computed:            true,
 				MarkdownDescription: "Cloud Node serial number.",
 			},
+			"status": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The status of the Node. One of: `created`, `requested`, `bootstrapping`, `running`, `failed`, `deleting`, `deleted`.",
+			},
 		},
 	}
 }
@@ -114,6 +119,7 @@ func (d *flexvmNodeDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	data.ID = types.StringValue(node.ID)
 	data.Name = types.StringValue(node.Name)
 	data.Serial = types.StringValue(node.Serial)
+	data.Status = types.StringValue(node.Status)
 	if node.CloudID() != "" {
 		data.CloudID = types.StringValue(node.CloudID())
 	}

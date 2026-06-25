@@ -42,3 +42,4 @@ Read-Only:
 - `id` (String) Cloud Node UUID.
 - `name` (String) Cloud Node name.
 - `serial` (String) Cloud Node serial number.
+- `status` (String) The status of the Node. One of: `created`, `requested`, `bootstrapping`, `running`, `failed`, `deleting`, `deleted`.

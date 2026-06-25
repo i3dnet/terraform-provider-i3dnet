@@ -20,6 +20,7 @@ type FlexvmNodeObj struct {
 	ID     string          `json:"id"`
 	Name   string          `json:"name"`
 	Serial string          `json:"serial"`
+	Status string          `json:"status"`
 	Cloud  *FlexvmCloudObj `json:"cloud"`
 }
 

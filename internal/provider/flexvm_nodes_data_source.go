@@ -36,6 +36,7 @@ var flexvmNodeObjectAttrTypes = map[string]attr.Type{
 	"id":     types.StringType,
 	"name":   types.StringType,
 	"serial": types.StringType,
+	"status": types.StringType,
 }
 
 func (d *flexvmNodesDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
@@ -86,6 +87,10 @@ func (d *flexvmNodesDataSource) Schema(ctx context.Context, req datasource.Schem
 							Computed:            true,
 							MarkdownDescription: "Cloud Node serial number.",
 						},
+						"status": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "The status of the Node. One of: `created`, `requested`, `bootstrapping`, `running`, `failed`, `deleting`, `deleted`.",
+						},
 					},
 				},
 			},
@@ -128,6 +133,7 @@ func (d *flexvmNodesDataSource) Read(ctx context.Context, req datasource.ReadReq
 			"id":     types.StringValue(node.ID),
 			"name":   types.StringValue(node.Name),
 			"serial": types.StringValue(node.Serial),
+			"status": types.StringValue(node.Status),
 		})
 		resp.Diagnostics.Append(diags...)
 		nodeValues = append(nodeValues, obj)

@@ -35,6 +35,7 @@ data "i3dnet_flexvm_nodes" "test" {
 					resource.TestCheckResourceAttrSet("data.i3dnet_flexvm_nodes.test", "nodes.#"),
 					resource.TestCheckResourceAttrSet("data.i3dnet_flexvm_nodes.test", "nodes.0.id"),
 					resource.TestCheckResourceAttrSet("data.i3dnet_flexvm_nodes.test", "nodes.0.serial"),
+					resource.TestCheckResourceAttrSet("data.i3dnet_flexvm_nodes.test", "nodes.0.status"),
 				),
 			},
 		},
