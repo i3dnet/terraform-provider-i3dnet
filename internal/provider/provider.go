@@ -121,6 +121,8 @@ func (p *i3dnetProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewTagsDataSource,
 		NewLocationsDataSource,
 		NewFlexvmCloudDataSource,
+		NewFlexvmNodeDataSource,
+		NewFlexvmNodesDataSource,
 	}
 }
 
