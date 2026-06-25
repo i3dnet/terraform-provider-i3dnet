@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"terraform-provider-i3dnet/internal/one_api"
 	"terraform-provider-i3dnet/internal/provider/resource_ssh_key"
@@ -28,23 +27,7 @@ type sshKeyResource struct {
 }
 
 func (r *sshKeyResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	// Add a nil check when handling ProviderData because Terraform
-	// sets that data after it calls the ConfigureProvider RPC.
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*one_api.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *api_utils.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-
-		return
-	}
-
-	r.client = client
+	r.client = clientFromProviderData(req.ProviderData, &resp.Diagnostics)
 }
 
 func (r *sshKeyResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

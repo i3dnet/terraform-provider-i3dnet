@@ -104,20 +104,7 @@ var nodeObjectAttrTypes = map[string]attr.Type{
 }
 
 func (r *flexvmVMResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*one_api.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *one_api.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-
-	r.client = client
+	r.client = clientFromProviderData(req.ProviderData, &resp.Diagnostics)
 }
 
 func (r *flexvmVMResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
