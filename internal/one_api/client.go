@@ -38,6 +38,14 @@ func NewClient(apiKey string, rawBaseURL string) (*Client, error) {
 }
 
 func (c *Client) callAPI(ctx context.Context, method, endpoint, path string, body []byte, queryParams map[string]string) (*http.Response, error) {
+	return c.callAPIWithHeaders(ctx, method, endpoint, path, body, queryParams, nil)
+}
+
+// callAPIWithHeaders behaves like callAPI but also sets the provided request
+// headers in addition to the default ones. It is useful for headers such as
+// the RANGED-DATA pagination header.
+func (c *Client) callAPIWithHeaders(ctx context.Context, method, endpoint, path string, body []byte,
+	queryParams, headers map[string]string) (*http.Response, error) {
 	client := &http.Client{
 		Transport: &loggingRoundTripper{next: http.DefaultTransport, ctx: ctx},
 		Timeout:   90 * time.Second,
@@ -64,6 +72,9 @@ func (c *Client) callAPI(ctx context.Context, method, endpoint, path string, bod
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("PRIVATE-TOKEN", c.apiKey)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -63,6 +63,10 @@ func FlexvmVmResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Cloud object within which the VM is deployed.",
 				MarkdownDescription: "Cloud object within which the VM is deployed.",
 			},
+			"cloud_uuid": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
 				Description:         "VM creation timestamp.",
@@ -272,6 +276,11 @@ func FlexvmVmResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Cloud Name serial number",
 						MarkdownDescription: "Cloud Name serial number",
 					},
+					"status": schema.StringAttribute{
+						Computed:            true,
+						Description:         "The status of the Node.<br /><ul><li>created</li><li>requested</li><li>bootstrapping</li><li>running</li><li>failed</li><li>deleting</li><li>deleted</li></ul>",
+						MarkdownDescription: "The status of the Node.<br /><ul><li>created</li><li>requested</li><li>bootstrapping</li><li>running</li><li>failed</li><li>deleting</li><li>deleted</li></ul>",
+					},
 				},
 				CustomType: NodeType{
 					ObjectType: types.ObjectType{
@@ -329,12 +338,17 @@ func FlexvmVmResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Cloud-init user-data to pass to the VM on first boot. Exactly one of ssh_keys or user_data must be specified: a request that sets both, or neither, is rejected with a 422.",
 				MarkdownDescription: "Cloud-init user-data to pass to the VM on first boot. Exactly one of ssh_keys or user_data must be specified: a request that sets both, or neither, is rejected with a 422.",
 			},
+			"vm_uuid": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+			},
 		},
 	}
 }
 
 type FlexvmVmModel struct {
 	Cloud            CloudValue        `tfsdk:"cloud"`
+	CloudUuid        types.String      `tfsdk:"cloud_uuid"`
 	CreatedAt        types.String      `tfsdk:"created_at"`
 	DeletedAt        types.String      `tfsdk:"deleted_at"`
 	Description      types.String      `tfsdk:"description"`
@@ -350,6 +364,7 @@ type FlexvmVmModel struct {
 	Status           types.String      `tfsdk:"status"`
 	Tags             types.List        `tfsdk:"tags"`
 	UserData         UserDataValue     `tfsdk:"user_data"`
+	VmUuid           types.String      `tfsdk:"vm_uuid"`
 }
 
 var _ basetypes.ObjectTypable = CloudType{}
@@ -2874,6 +2889,24 @@ func (t NodeType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue)
 			fmt.Sprintf(`serial expected to be basetypes.StringValue, was: %T`, serialAttribute))
 	}
 
+	statusAttribute, ok := attributes["status"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`status is missing from object`)
+
+		return nil, diags
+	}
+
+	statusVal, ok := statusAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`status expected to be basetypes.StringValue, was: %T`, statusAttribute))
+	}
+
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -2883,6 +2916,7 @@ func (t NodeType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue)
 		Id:     idVal,
 		Name:   nameVal,
 		Serial: serialVal,
+		Status: statusVal,
 		state:  attr.ValueStateKnown,
 	}, diags
 }
@@ -3022,6 +3056,24 @@ func NewNodeValue(attributeTypes map[string]attr.Type, attributes map[string]att
 			fmt.Sprintf(`serial expected to be basetypes.StringValue, was: %T`, serialAttribute))
 	}
 
+	statusAttribute, ok := attributes["status"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`status is missing from object`)
+
+		return NewNodeValueUnknown(), diags
+	}
+
+	statusVal, ok := statusAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`status expected to be basetypes.StringValue, was: %T`, statusAttribute))
+	}
+
 	if diags.HasError() {
 		return NewNodeValueUnknown(), diags
 	}
@@ -3031,6 +3083,7 @@ func NewNodeValue(attributeTypes map[string]attr.Type, attributes map[string]att
 		Id:     idVal,
 		Name:   nameVal,
 		Serial: serialVal,
+		Status: statusVal,
 		state:  attr.ValueStateKnown,
 	}, diags
 }
@@ -3107,11 +3160,12 @@ type NodeValue struct {
 	Id     basetypes.StringValue `tfsdk:"id"`
 	Name   basetypes.StringValue `tfsdk:"name"`
 	Serial basetypes.StringValue `tfsdk:"serial"`
+	Status basetypes.StringValue `tfsdk:"status"`
 	state  attr.ValueState
 }
 
 func (v NodeValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	attrTypes := make(map[string]tftypes.Type, 4)
+	attrTypes := make(map[string]tftypes.Type, 5)
 
 	var val tftypes.Value
 	var err error
@@ -3122,12 +3176,13 @@ func (v NodeValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) 
 	attrTypes["id"] = basetypes.StringType{}.TerraformType(ctx)
 	attrTypes["name"] = basetypes.StringType{}.TerraformType(ctx)
 	attrTypes["serial"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["status"] = basetypes.StringType{}.TerraformType(ctx)
 
 	objectType := tftypes.Object{AttributeTypes: attrTypes}
 
 	switch v.state {
 	case attr.ValueStateKnown:
-		vals := make(map[string]tftypes.Value, 4)
+		vals := make(map[string]tftypes.Value, 5)
 
 		val, err = v.Cloud.ToTerraformValue(ctx)
 
@@ -3160,6 +3215,14 @@ func (v NodeValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) 
 		}
 
 		vals["serial"] = val
+
+		val, err = v.Status.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["status"] = val
 
 		if err := tftypes.ValidateValue(objectType, vals); err != nil {
 			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
@@ -3218,6 +3281,7 @@ func (v NodeValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, di
 		"id":     basetypes.StringType{},
 		"name":   basetypes.StringType{},
 		"serial": basetypes.StringType{},
+		"status": basetypes.StringType{},
 	}
 
 	if v.IsNull() {
@@ -3235,6 +3299,7 @@ func (v NodeValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, di
 			"id":     v.Id,
 			"name":   v.Name,
 			"serial": v.Serial,
+			"status": v.Status,
 		})
 
 	return objVal, diags
@@ -3271,6 +3336,10 @@ func (v NodeValue) Equal(o attr.Value) bool {
 		return false
 	}
 
+	if !v.Status.Equal(other.Status) {
+		return false
+	}
+
 	return true
 }
 
@@ -3290,6 +3359,7 @@ func (v NodeValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 		"id":     basetypes.StringType{},
 		"name":   basetypes.StringType{},
 		"serial": basetypes.StringType{},
+		"status": basetypes.StringType{},
 	}
 }
 
