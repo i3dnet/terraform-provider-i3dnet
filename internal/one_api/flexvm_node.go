@@ -64,6 +64,52 @@ func (c *Client) FlexvmGetNode(ctx context.Context, cloudID, nodeID string) (*Fl
 	return &response, nil
 }
 
+// FlexvmCreateNode adds a new bare metal Node to the given Cloud. The Node uses
+// the Cloud's instance type and location, so no request body is required.
+//
+// On success, a FlexvmNodeResponse is returned and the creation / provisioning process
+// continues on the background until the node's status turns to 'running' or 'failed' (in case
+// it failed).
+func (c *Client) FlexvmCreateNode(ctx context.Context, cloudID string) (*FlexvmNodeResponse, error) {
+	resp, err := c.callAPI(ctx, http.MethodPost, flexVMEndpoint, fmt.Sprintf("clouds/%s/nodes", cloudID), nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error calling flexvm create node API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var response FlexvmNodeResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(resp)
+		return &response, nil
+	}
+
+	var node FlexvmNodeObj
+	if err := json.NewDecoder(resp.Body).Decode(&node); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	response.Node = &node
+	return &response, nil
+}
+
+// FlexvmDeleteNode removes a Node from the given Cloud. The API responds with
+// 202 Accepted and continues the removal asynchronously.
+func (c *Client) FlexvmDeleteNode(ctx context.Context, cloudID, nodeID string) (*FlexvmNodeResponse, error) {
+	resp, err := c.callAPI(ctx, http.MethodDelete, flexVMEndpoint, fmt.Sprintf("clouds/%s/nodes/%s", cloudID, nodeID), nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error calling flexvm delete node API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var response FlexvmNodeResponse
+	if resp.StatusCode >= 400 {
+		response.ErrorResponse = decodeErrResponse(resp)
+		return &response, nil
+	}
+
+	return &response, nil
+}
+
 // FlexvmListNodes returns every node in the given Cloud, paging through the
 // RANGED-DATA header until all of them are retrieved.
 func (c *Client) FlexvmListNodes(ctx context.Context, cloudID string) (*FlexvmNodeListResponse, error) {
