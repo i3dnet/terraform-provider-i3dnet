@@ -183,8 +183,9 @@ func (r *flexvmVMResource) Schema(ctx context.Context, req resource.SchemaReques
 				ElementType: types.StringType,
 				Optional:    true,
 				MarkdownDescription: "Free-form labels (e.g. `project:odyssey`, `env:build`) used for grouping in the " +
-					"monthly usage report. Each tag must be a non-empty string of at most 128 characters. Tags can " +
-					"only be set when the VM is created; changing them forces the VM to be replaced.",
+					"monthly usage report. When specified, at least one tag is required. Each tag must be a non-empty " +
+					"string of at most 128 characters. Tags can only be set when the VM is created; changing them " +
+					"forces the VM to be replaced.",
 				Validators: []validator.List{
 					listvalidator.SizeAtLeast(1),
 					listvalidator.ValueStringsAre(stringvalidator.LengthBetween(1, 128)),
