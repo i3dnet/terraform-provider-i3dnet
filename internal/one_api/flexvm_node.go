@@ -68,7 +68,7 @@ func (c *Client) FlexvmGetNode(ctx context.Context, cloudID, nodeID string) (*Fl
 // the Cloud's instance type and location, so no request body is required.
 //
 // On success, a FlexvmNodeResponse is returned and the creation / provisioning process
-// continues on the background until the node's status turns to 'running' or 'failed' (in case
+// continues in the background until the node's status turns to 'running' or 'failed' (in case
 // it failed).
 func (c *Client) FlexvmCreateNode(ctx context.Context, cloudID string) (*FlexvmNodeResponse, error) {
 	resp, err := c.callAPI(ctx, http.MethodPost, flexVMEndpoint, fmt.Sprintf("clouds/%s/nodes", cloudID), nil, nil)
