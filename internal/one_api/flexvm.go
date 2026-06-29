@@ -28,6 +28,7 @@ type FlexvmCreateVMRequest struct {
 	ImageName        string          `json:"image_name,omitempty"`
 	SSHKeys          []string        `json:"ssh_keys,omitempty"`
 	UserData         *FlexvmUserData `json:"user_data,omitempty"`
+	Tags             []string        `json:"tags,omitempty"`
 }
 
 // FlexvmUserData is the cloud-init user-data passed to a VM on first boot.

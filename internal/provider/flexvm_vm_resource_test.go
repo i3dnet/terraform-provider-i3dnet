@@ -29,6 +29,7 @@ resource "i3dnet_flexvm_vm" "test" {
   instance_type_name = "vm.4c.8g"
   image_name         = "ubuntu-2404-server-amd64"
   ssh_keys           = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"]
+  tags               = ["project:odyssey", "env:build"]
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -37,6 +38,9 @@ resource "i3dnet_flexvm_vm" "test" {
 						"terraform-gh-workflows-test"),
 					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "description",
 						"Terraform GitHub Workflows test"),
+					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "tags.#", "2"),
+					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "tags.0", "project:odyssey"),
+					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "tags.1", "env:build"),
 					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "instance_type.name",
 						"vm.4c.8g"),
 					resource.TestCheckResourceAttr("i3dnet_flexvm_vm.test", "image.name",
@@ -55,6 +59,7 @@ resource "i3dnet_flexvm_vm" "test" {
 					"instance_type_name",
 					"image_name",
 					"ssh_keys",
+					"tags",
 				},
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					rs := s.RootModule().Resources["i3dnet_flexvm_vm.test"]

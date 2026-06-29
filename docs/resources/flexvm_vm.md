@@ -25,6 +25,9 @@ resource "i3dnet_flexvm_vm" "my-vm" {
   instance_type_name = "vm.gpu.1rtx4000.15c.248g"
   image_name         = "ubuntu-2404-server-amd64"
   ssh_keys           = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"]
+
+  # Optional free-form labels for grouping in the monthly usage report.
+  tags = ["project:odyssey", "env:build"]
 }
 
 # Alternatively, provide cloud-init user-data from a file instead of ssh_keys.
@@ -54,6 +57,7 @@ resource "i3dnet_flexvm_vm" "my-vm-with-user-data" {
 
 - `description` (String) An optional free-form description of your VM.
 - `ssh_keys` (List of String) A list of public SSH keys. Exactly one of `ssh_keys` or `user_data_file` must be set.
+- `tags` (List of String) Free-form labels (e.g. `project:odyssey`, `env:build`) used for grouping in the monthly usage report. Each tag must be a non-empty string of at most 128 characters. Tags can only be set when the VM is created; changing them forces the VM to be replaced.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `user_data_file` (String) Path to a file whose contents are passed to the VM as cloud-init user-data on first boot. Exactly one of `ssh_keys` or `user_data_file` must be set; when `user_data_file` is used, configure SSH access through the user-data itself.
 
