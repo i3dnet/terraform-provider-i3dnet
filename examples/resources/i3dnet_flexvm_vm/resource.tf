@@ -10,6 +10,9 @@ resource "i3dnet_flexvm_vm" "my-vm" {
   instance_type_name = "vm.gpu.1rtx4000.15c.248g"
   image_name         = "ubuntu-2404-server-amd64"
   ssh_keys           = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHwdgjY0AlmkeLknBpoVmJg/quNSifyBHEK1MREpV4Ri john.doe@i3d.net"]
+
+  # Optional free-form labels for grouping in the monthly usage report.
+  tags = ["project:odyssey", "env:build"]
 }
 
 # Alternatively, provide cloud-init user-data from a file instead of ssh_keys.

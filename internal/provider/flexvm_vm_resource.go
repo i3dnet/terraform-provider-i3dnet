@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -57,6 +58,7 @@ type FlexvmVMModel struct {
 	ImageName        types.String   `tfsdk:"image_name"`
 	SSHKeys          types.List     `tfsdk:"ssh_keys"`
 	UserDataFile     types.String   `tfsdk:"user_data_file"`
+	Tags             types.List     `tfsdk:"tags"`
 	ID               types.String   `tfsdk:"id"`
 	Status           types.String   `tfsdk:"status"`
 	IPs              types.List     `tfsdk:"ips"`
@@ -175,6 +177,21 @@ func (r *flexvmVMResource) Schema(ctx context.Context, req resource.SchemaReques
 					"configuration file.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"tags": schema.ListAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
+				MarkdownDescription: "Free-form labels (e.g. `project:odyssey`, `env:build`) used for grouping in the " +
+					"monthly usage report. When specified, at least one tag is required. Each tag must be a non-empty " +
+					"string of at most 128 characters. Tags can only be set when the VM is created; changing them " +
+					"forces the VM to be replaced.",
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+					listvalidator.ValueStringsAre(stringvalidator.LengthBetween(1, 128)),
+				},
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.RequiresReplace(),
 				},
 			},
 			"id": schema.StringAttribute{
@@ -353,6 +370,15 @@ func (r *flexvmVMResource) Create(ctx context.Context, req resource.CreateReques
 			return
 		}
 		createReq.SSHKeys = sshKeys
+	}
+
+	if !data.Tags.IsNull() {
+		var tags []string
+		resp.Diagnostics.Append(data.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		createReq.Tags = tags
 	}
 
 	createTimeout, diags := data.Timeouts.Create(ctx, 10*time.Minute)
