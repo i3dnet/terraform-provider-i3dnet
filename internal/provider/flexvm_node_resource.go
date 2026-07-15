@@ -100,7 +100,7 @@ func (r *flexvmNodeResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	createTimeout, diags := data.Timeouts.Create(ctx, 30*time.Minute)
+	createTimeout, diags := data.Timeouts.Create(ctx, 45*time.Minute)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
