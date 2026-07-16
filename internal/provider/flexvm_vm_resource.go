@@ -731,7 +731,14 @@ func buildUserData(content []byte) (*one_api.FlexvmUserData, error) {
 func flexvmVMRespToState(vm *one_api.FlexvmVM, data *FlexvmVMModel) {
 	data.ID = types.StringValue(vm.ID)
 	data.Name = types.StringValue(vm.Name)
-	data.Description = types.StringValue(vm.Description)
+
+	// The API represents an unset description as an empty string. Keep the state
+	// value null in that case, so a description omitted from config stays
+	// consistent.
+	if !(data.Description.IsNull() && vm.Description == "") {
+		data.Description = types.StringValue(vm.Description)
+	}
+
 	data.Status = types.StringValue(vm.Status)
 	data.CreatedAt = types.StringValue(vm.CreatedAt)
 	data.DeletedAt = types.StringValue(vm.DeletedAt)
