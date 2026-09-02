@@ -735,7 +735,7 @@ func flexvmVMRespToState(vm *one_api.FlexvmVM, data *FlexvmVMModel) {
 	// The API represents an unset description as an empty string. Keep the state
 	// value null in that case, so a description omitted from config stays
 	// consistent.
-	if !(data.Description.IsNull() && vm.Description == "") {
+	if !data.Description.IsNull() || vm.Description != "" {
 		data.Description = types.StringValue(vm.Description)
 	}
 

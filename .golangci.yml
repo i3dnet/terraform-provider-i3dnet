@@ -1,0 +1,9 @@
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      # A failure to close a response body after it has been read is not
+      # actionable, and every API call in internal/one_api defers one.
+      exclude-functions:
+        - (io.ReadCloser).Close
