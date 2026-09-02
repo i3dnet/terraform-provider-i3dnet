@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -285,6 +286,33 @@ func TestCreateRecoveryPossible(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			if got := createRecoveryPossible(tt.postErr, tt.ctxErr); got != tt.want {
 				t.Errorf("createRecoveryPossible = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreateRecoveryUnavailableHint(t *testing.T) {
+	tests := map[string]struct {
+		ctxErr      error
+		wantPhrases []string
+	}{
+		"create timeout exhausted": {
+			ctxErr:      context.DeadlineExceeded,
+			wantPhrases: []string{"create timeout", "terraform import", "may have been registered"},
+		},
+		"apply cancelled": {
+			ctxErr:      context.Canceled,
+			wantPhrases: []string{"cancelled", "terraform import", "may have been registered"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := createRecoveryUnavailableHint(tt.ctxErr)
+			for _, want := range tt.wantPhrases {
+				if !strings.Contains(got, want) {
+					t.Errorf("hint %q does not mention %q", got, want)
+				}
 			}
 		})
 	}

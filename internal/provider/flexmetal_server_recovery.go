@@ -197,3 +197,18 @@ func createRecoveryError(postErr, recoveryErr error, c createdServerCriteria, ca
 func createRecoveryPossible(postErr, ctxErr error) bool {
 	return errors.Is(postErr, one_api.ErrRequestNotCompleted) && ctxErr == nil
 }
+
+// createRecoveryUnavailableHint tells the practitioner what to do when a
+// request that produced no response cannot be reconciled, because the context
+// it would have to look with is already done.
+func createRecoveryUnavailableHint(ctxErr error) string {
+	reason := "The apply was cancelled"
+	if errors.Is(ctxErr, context.DeadlineExceeded) {
+		reason = "The create timeout was reached"
+	}
+
+	return reason + " before Terraform could check whether the request registered a server, " +
+		"so a server may have been registered without Terraform knowing about it. Check the portal: " +
+		"if the server is there, adopt it with 'terraform import <resource address> <uuid>' or release it. " +
+		"Raising the create timeout gives delivery more room."
+}

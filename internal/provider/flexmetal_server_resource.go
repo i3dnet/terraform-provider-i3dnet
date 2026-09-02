@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -208,14 +209,19 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 
 		if !createRecoveryPossible(err, ctx.Err()) {
-			resp.Diagnostics.AddError(
-				"Error creating server",
-				fmt.Sprintf("Unexpected error: %v for server name: %s location: %s instance type: %s", err,
-					data.Name.ValueString(),
-					data.Location.ValueString(),
-					data.InstanceType.ValueString(),
-				),
+			detail := fmt.Sprintf("Unexpected error: %v for server name: %s location: %s instance type: %s", err,
+				data.Name.ValueString(),
+				data.Location.ValueString(),
+				data.InstanceType.ValueString(),
 			)
+			// The request produced no response, so a server may exist; we just
+			// have no context left to go looking with.
+			if errors.Is(err, one_api.ErrRequestNotCompleted) {
+				detail += "\n\n" + createRecoveryUnavailableHint(ctx.Err())
+			}
+
+			resp.Diagnostics.AddError("Error creating server", detail)
+
 			return
 		}
 
