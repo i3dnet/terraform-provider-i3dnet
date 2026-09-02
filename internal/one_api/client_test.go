@@ -156,3 +156,31 @@ func TestCallAPIDoesNotCapALongerContextDeadline(t *testing.T) {
 		t.Errorf("status = %d, want 200", resp.StatusCode)
 	}
 }
+
+func TestCallAPIDoesNotCancelTheCallersContext(t *testing.T) {
+	// The create path derives a long deadline from the resource timeouts and
+	// reuses that context to look for the server afterwards. A request that
+	// times out at the transport level must therefore leave the context
+	// usable: an HTTP timeout is the client's own, not the caller's.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	c, err := NewClient("token", srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	c.transport = &http.Transport{ResponseHeaderTimeout: 50 * time.Millisecond}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+
+	_, err = c.callAPI(ctx, http.MethodPost, "flexMetal", "servers", nil, nil)
+	if !errors.Is(err, ErrRequestNotCompleted) {
+		t.Fatalf("err = %v, want it to wrap ErrRequestNotCompleted", err)
+	}
+	if ctx.Err() != nil {
+		t.Fatalf("ctx.Err() = %v, want nil: recovery would be skipped", ctx.Err())
+	}
+}
