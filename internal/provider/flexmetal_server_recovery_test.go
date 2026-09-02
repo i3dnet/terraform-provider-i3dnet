@@ -196,6 +196,20 @@ func TestRecoverCreatedServer(t *testing.T) {
 		}
 	})
 
+	t.Run("reports a lookup failure when the list never succeeds", func(t *testing.T) {
+		list := func(context.Context) (*one_api.ServerListResponse, error) {
+			return nil, errors.New("boom")
+		}
+
+		_, _, err := recoverCreatedServer(context.Background(), list, criteria, 20*time.Millisecond, time.Millisecond)
+		if !errors.Is(err, errCreatedServerLookupFailed) {
+			t.Fatalf("err = %v, want errCreatedServerLookupFailed", err)
+		}
+		if errors.Is(err, errCreatedServerNotFound) {
+			t.Error("a failed lookup must not be reported as a server that was never registered")
+		}
+	})
+
 	t.Run("stops immediately when candidates are ambiguous", func(t *testing.T) {
 		list, calls := listing(&one_api.ServerListResponse{Servers: []one_api.Server{
 			testServer("a", "wk-0054", "created", 1100),

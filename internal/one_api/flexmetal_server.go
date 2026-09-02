@@ -195,11 +195,16 @@ func (c *Client) ListServers(ctx context.Context) (*ServerListResponse, error) {
 
 		// A page smaller than the requested size means we reached the end.
 		if len(servers) < flexmetalServersPageSize {
-			break
+			return &response, nil
 		}
 	}
 
-	return &response, nil
+	// Never hand back a list that is silently incomplete: callers match against
+	// it, and a missing server would read as a server that does not exist. An
+	// API ignoring the RANGED-DATA header lands here too, with a list of
+	// duplicates.
+	return nil, fmt.Errorf("list flexmetal servers did not complete within %d pages of %d",
+		flexmetalServersMaxPages, flexmetalServersPageSize)
 }
 
 // listServersPage fetches a single page of servers starting at the given

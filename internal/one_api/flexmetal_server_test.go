@@ -95,3 +95,36 @@ func TestListServersReturnsErrorResponse(t *testing.T) {
 		t.Errorf("ErrorMessage = %q, want %q", resp.ErrorResponse.ErrorMessage, "forbidden")
 	}
 }
+
+func TestListServersFailsRatherThanTruncate(t *testing.T) {
+	// An API that ignores RANGED-DATA hands out a full page every time, so the
+	// page cap is reached with a list that is both incomplete and duplicated.
+	pages := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pages++
+
+		page := make([]Server, 0, flexmetalServersPageSize)
+		for i := range flexmetalServersPageSize {
+			page = append(page, Server{Uuid: fmt.Sprintf("server-%d", i)})
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(page); err != nil {
+			t.Errorf("encode: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	c, err := NewClient("token", srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	resp, err := c.ListServers(context.Background())
+	if err == nil {
+		t.Fatalf("ListServers returned %d servers and no error, want an error", len(resp.Servers))
+	}
+	if pages != flexmetalServersMaxPages {
+		t.Errorf("pages fetched = %d, want %d", pages, flexmetalServersMaxPages)
+	}
+}

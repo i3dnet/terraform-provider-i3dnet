@@ -90,8 +90,9 @@ const (
 )
 
 var (
-	errCreatedServerNotFound   = errors.New("no server matching the create request was registered")
-	errAmbiguousCreatedServers = errors.New("multiple servers match the create request")
+	errCreatedServerNotFound     = errors.New("no server matching the create request was registered")
+	errAmbiguousCreatedServers   = errors.New("multiple servers match the create request")
+	errCreatedServerLookupFailed = errors.New("could not check whether the create request registered a server")
 )
 
 // serverLister lists every server of the account.
@@ -123,6 +124,8 @@ func recoverCreatedServer(ctx context.Context, list serverLister, c createdServe
 			lastErr = fmt.Errorf("list servers returned %d: %s",
 				resp.ErrorResponse.ErrorCode, resp.ErrorResponse.ErrorMessage)
 		default:
+			lastErr = nil
+
 			match, candidates := selectCreatedServer(resp.Servers, c)
 			if match != nil {
 				return match, candidates, nil
@@ -136,8 +139,10 @@ func recoverCreatedServer(ctx context.Context, list serverLister, c createdServe
 		case <-ctx.Done():
 			return nil, nil, ctx.Err()
 		case <-deadline:
+			// Only claim the server was never registered when we actually
+			// managed to look; a failed lookup proves nothing either way.
 			if lastErr != nil {
-				return nil, nil, fmt.Errorf("%w (last list attempt failed: %w)", errCreatedServerNotFound, lastErr)
+				return nil, nil, fmt.Errorf("%w: %w", errCreatedServerLookupFailed, lastErr)
 			}
 			return nil, nil, errCreatedServerNotFound
 		case <-ticker.C:
@@ -154,7 +159,7 @@ func createRecoveryWarning(s *one_api.Server, candidates []one_api.Server) (summ
 			"because it is the only one still in status %q.", len(candidates), statusCreated)
 	}
 
-	return "Recovered a server whose create request timed out", detail
+	return "Recovered a server from an unfinished create request", detail
 }
 
 // createRecoveryError explains why an unfinished create request could not be
@@ -177,8 +182,7 @@ func createRecoveryError(postErr, recoveryErr error, c createdServerCriteria, ca
 			"so the request most likely never reached the API. Retrying is safe, but check the portal first "+
 			"in case the server is registered late.", createRecoveryTimeout)
 	default:
-		detail += fmt.Sprintf("Terraform could not check whether the server was registered: %v\n\n"+
-			"Check the portal before retrying: if the server exists, adopt it with "+
+		detail += fmt.Sprintf("%v\n\nCheck the portal before retrying: if the server exists, adopt it with "+
 			"'terraform import <resource address> <uuid>'.", recoveryErr)
 	}
 
