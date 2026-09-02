@@ -15,11 +15,18 @@ type Client struct {
 	apiKey    string
 	baseURL   *url.URL
 	transport http.RoundTripper
+	// requestTimeout caps a request whose context carries no deadline.
+	requestTimeout time.Duration
 }
 
 const (
 	DefaultBaseURL = "https://api.i3d.net"
 	apiVersion     = "v3"
+
+	// defaultRequestTimeout bounds requests that arrive without a deadline of
+	// their own: Read, Update, Delete and the data sources. It has to be
+	// generous, since it covers reading the response body as well.
+	defaultRequestTimeout = 5 * time.Minute
 )
 
 // ErrRequestNotCompleted marks a request that never produced an HTTP response:
@@ -41,8 +48,9 @@ func NewClient(apiKey string, rawBaseURL string) (*Client, error) {
 	baseURL = baseURL.JoinPath(apiVersion)
 
 	return &Client{
-		apiKey:  apiKey,
-		baseURL: baseURL,
+		apiKey:         apiKey,
+		baseURL:        baseURL,
+		requestTimeout: defaultRequestTimeout,
 		// No http.Client.Timeout: a fixed whole-request cap would override the
 		// context deadline callers derive from their Terraform timeouts, and a
 		// slow create POST would then fail even though the server gets built.
@@ -74,6 +82,13 @@ func (c *Client) callAPIWithHeaders(ctx context.Context, method, endpoint, path 
 	queryParams, headers map[string]string) (*http.Response, error) {
 	client := &http.Client{
 		Transport: &loggingRoundTripper{next: c.transport, ctx: ctx},
+	}
+
+	// A deadline on the context always wins: capping the whole request at a
+	// fixed duration is what used to doom slow create requests. Without one,
+	// fall back to a generous cap so a stalled body read cannot hang forever.
+	if _, ok := ctx.Deadline(); !ok {
+		client.Timeout = c.requestTimeout
 	}
 
 	apiURL := c.baseURL
