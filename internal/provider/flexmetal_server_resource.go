@@ -148,12 +148,12 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 	var tags []string
 	for _, tag := range data.Tags.Elements() {
-		tags = append(tags, strings.Replace(tag.String(), "\"", "", -1))
+		tags = append(tags, strings.ReplaceAll(tag.String(), "\"", ""))
 	}
 
 	var sskKeys []string
 	for _, sshKey := range data.SshKey.Elements() {
-		sskKeys = append(sskKeys, strings.Replace(sshKey.String(), "\"", "", -1))
+		sskKeys = append(sskKeys, strings.ReplaceAll(sshKey.String(), "\"", ""))
 	}
 
 	var partitions []one_api.Partition
@@ -401,7 +401,7 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 		var sskKeys []string
 		for _, sshKey := range plan.SshKey.Elements() {
-			sskKeys = append(sskKeys, strings.Replace(sshKey.String(), "\"", "", -1))
+			sskKeys = append(sskKeys, strings.ReplaceAll(sshKey.String(), "\"", ""))
 		}
 
 		var partitions []one_api.Partition
