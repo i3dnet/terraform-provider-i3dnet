@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -194,17 +195,51 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	ctx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
+	startedAt := time.Now().Unix()
+
 	serverResp, err := r.client.CreateServer(ctx, createServerReq)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error creating server",
-			fmt.Sprintf("Unexpected error: %v for server name: %s location: %s instance type: %s", err,
+		// The request may have registered a server without us learning its
+		// UUID. Look it up instead of losing track of it.
+		criteria := createdServerCriteria{
+			Name:         createServerReq.Name,
+			Location:     createServerReq.Location,
+			InstanceType: createServerReq.InstanceType,
+			NotBefore:    startedAt - createRecoveryClockSkew,
+		}
+
+		if !createRecoveryPossible(err, ctx.Err()) {
+			detail := fmt.Sprintf("Unexpected error: %v for server name: %s location: %s instance type: %s", err,
 				data.Name.ValueString(),
 				data.Location.ValueString(),
 				data.InstanceType.ValueString(),
-			),
-		)
-		return
+			)
+			// The request produced no response, so a server may exist; we just
+			// have no context left to go looking with.
+			if errors.Is(err, one_api.ErrRequestNotCompleted) {
+				detail += "\n\n" + createRecoveryUnavailableHint(ctx.Err())
+			}
+
+			resp.Diagnostics.AddError("Error creating server", detail)
+
+			return
+		}
+
+		tflog.Warn(ctx, "create server request did not complete, looking for the server it may have registered",
+			map[string]interface{}{"name": criteria.Name, "error": err.Error()})
+
+		recovered, candidates, recoveryErr := recoverCreatedServer(ctx, r.client.ListServers, criteria,
+			createRecoveryTimeout, createRecoveryInterval)
+		if recoveryErr != nil {
+			resp.Diagnostics.AddError(
+				"Error creating server",
+				createRecoveryError(err, recoveryErr, criteria, candidates),
+			)
+			return
+		}
+
+		resp.Diagnostics.AddWarning(createRecoveryWarning(recovered, candidates))
+		serverResp = &one_api.ServerResponse{Server: recovered}
 	}
 	if serverResp.ErrorResponse != nil {
 		AddErrorResponseToDiags("Error creating server", serverResp.ErrorResponse, &resp.Diagnostics)

@@ -11,6 +11,14 @@ import (
 
 const flexMetalEndpoint = "flexMetal"
 
+// flexmetalServersPageSize is the page size requested via the RANGED-DATA
+// header when listing servers.
+const flexmetalServersPageSize = 100
+
+// flexmetalServersMaxPages caps the number of pages fetched as a safety net
+// against a server that ignores the RANGED-DATA header.
+const flexmetalServersMaxPages = 50
+
 type CreateServerReq struct {
 	Name              string   `json:"name"`
 	Location          string   `json:"location"`
@@ -91,6 +99,13 @@ type ServerResponse struct {
 	Server        *Server
 }
 
+// ServerListResponse holds every server of the account, or an ErrorResponse
+// with no servers at all.
+type ServerListResponse struct {
+	ErrorResponse *ErrorResponse
+	Servers       []Server
+}
+
 type OperationStatus struct {
 	UUID       string        `json:"uuid"`
 	ServerUUID string        `json:"serverUuid"`
@@ -159,6 +174,67 @@ func (c *Client) CreateServer(ctx context.Context, req CreateServerReq) (*Server
 	response.Server = &serverResp[0]
 
 	return &response, nil
+}
+
+// ListServers returns every server of the account, paging through the
+// RANGED-DATA header until all of them are retrieved. The API offers no name
+// filter, so callers match on the fields they care about themselves.
+func (c *Client) ListServers(ctx context.Context) (*ServerListResponse, error) {
+	var response ServerListResponse
+
+	for start, page := 0, 0; page < flexmetalServersMaxPages; start, page = start+flexmetalServersPageSize, page+1 {
+		servers, errResp, err := c.listServersPage(ctx, start)
+		if err != nil {
+			return nil, err
+		}
+		if errResp != nil {
+			// Pages gathered so far are an incomplete list; handing them back
+			// next to the error invites callers to match against them.
+			response.Servers = nil
+			response.ErrorResponse = errResp
+
+			return &response, nil
+		}
+
+		response.Servers = append(response.Servers, servers...)
+
+		// A page smaller than the requested size means we reached the end.
+		if len(servers) < flexmetalServersPageSize {
+			return &response, nil
+		}
+	}
+
+	// Never hand back a list that is silently incomplete: callers match against
+	// it, and a missing server would read as a server that does not exist. An
+	// API ignoring the RANGED-DATA header lands here too, with a list of
+	// duplicates.
+	return nil, fmt.Errorf("list flexmetal servers did not complete within %d pages of %d",
+		flexmetalServersMaxPages, flexmetalServersPageSize)
+}
+
+// listServersPage fetches a single page of servers starting at the given
+// offset. It returns an *ErrorResponse when the API responds with status >= 400.
+func (c *Client) listServersPage(ctx context.Context, start int) ([]Server, *ErrorResponse, error) {
+	headers := map[string]string{
+		"RANGED-DATA": fmt.Sprintf("start=%d,results=%d", start, flexmetalServersPageSize),
+	}
+
+	resp, err := c.callAPIWithHeaders(ctx, http.MethodGet, flexMetalEndpoint, "servers", nil, nil, headers)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error on calling list flexmetal servers api: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, decodeErrResponse(resp), nil
+	}
+
+	var servers []Server
+	if err := json.NewDecoder(resp.Body).Decode(&servers); err != nil {
+		return nil, nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	return servers, nil, nil
 }
 
 func (c *Client) GetServer(ctx context.Context, id string) (*ServerResponse, error) {
