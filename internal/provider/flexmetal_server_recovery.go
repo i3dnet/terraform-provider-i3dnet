@@ -19,8 +19,10 @@ type createdServerCriteria struct {
 	Name         string
 	Location     string
 	InstanceType string
-	// NotBefore excludes servers registered before the create request started,
-	// so earlier servers sharing the same name are not adopted.
+	// NotBefore is the oldest createdAt still considered ours, so earlier
+	// servers sharing the same name are not adopted. Callers set it to the
+	// start of the create request widened by createRecoveryClockSkew, and it
+	// therefore reaches slightly before that request began.
 	NotBefore int64
 }
 

@@ -74,3 +74,26 @@ func TestCallAPIDoesNotFlagAnErrorStatusAsIncomplete(t *testing.T) {
 		t.Fatalf("status = %d, want 500", resp.StatusCode)
 	}
 }
+
+func TestCallAPIDoesNotFlagAReceivedResponseAsIncomplete(t *testing.T) {
+	// An endless redirect makes the default CheckRedirect fail, the one case
+	// where client.Do returns both a response and an error. A response did
+	// arrive, so the request must not be reported as never completed.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/v3/flexMetal/servers", http.StatusFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewClient("token", srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	_, err = c.callAPI(context.Background(), http.MethodGet, "flexMetal", "servers", nil, nil)
+	if err == nil {
+		t.Fatal("err = nil, want the redirect failure")
+	}
+	if errors.Is(err, ErrRequestNotCompleted) {
+		t.Errorf("err = %v, must not be reported as an incomplete request", err)
+	}
+}

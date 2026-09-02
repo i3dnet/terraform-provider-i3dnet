@@ -128,3 +128,45 @@ func TestListServersFailsRatherThanTruncate(t *testing.T) {
 		t.Errorf("pages fetched = %d, want %d", pages, flexmetalServersMaxPages)
 	}
 }
+
+func TestListServersDiscardsPartialPagesOnAnErrorResponse(t *testing.T) {
+	// First page succeeds, second fails: the caller must not be handed the
+	// incomplete first page alongside the error.
+	page := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page++
+		if page > 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			if _, err := w.Write([]byte(`{"errorCode":500,"errorMessage":"boom"}`)); err != nil {
+				t.Errorf("write: %v", err)
+			}
+			return
+		}
+
+		servers := make([]Server, 0, flexmetalServersPageSize)
+		for i := range flexmetalServersPageSize {
+			servers = append(servers, Server{Uuid: fmt.Sprintf("server-%d", i)})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(servers); err != nil {
+			t.Errorf("encode: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	c, err := NewClient("token", srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	resp, err := c.ListServers(context.Background())
+	if err != nil {
+		t.Fatalf("ListServers: %v", err)
+	}
+	if resp.ErrorResponse == nil {
+		t.Fatal("ErrorResponse = nil, want the decoded 500")
+	}
+	if len(resp.Servers) != 0 {
+		t.Errorf("Servers = %d, want none alongside an error response", len(resp.Servers))
+	}
+}

@@ -103,6 +103,13 @@ func (c *Client) callAPIWithHeaders(ctx context.Context, method, endpoint, path 
 
 	resp, err := client.Do(req)
 	if err != nil {
+		// A non-nil response alongside the error only happens when
+		// CheckRedirect fails, and net/http has closed its body already. A
+		// response did arrive, so this is not an incomplete request.
+		if resp != nil {
+			return nil, fmt.Errorf("failed to do HTTP request: %w", err)
+		}
+
 		return nil, fmt.Errorf("failed to do HTTP request: %w: %w", ErrRequestNotCompleted, err)
 	}
 

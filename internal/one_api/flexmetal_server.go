@@ -99,7 +99,8 @@ type ServerResponse struct {
 	Server        *Server
 }
 
-// ServerListResponse holds every server of the account, or an ErrorResponse.
+// ServerListResponse holds every server of the account, or an ErrorResponse
+// with no servers at all.
 type ServerListResponse struct {
 	ErrorResponse *ErrorResponse
 	Servers       []Server
@@ -187,7 +188,11 @@ func (c *Client) ListServers(ctx context.Context) (*ServerListResponse, error) {
 			return nil, err
 		}
 		if errResp != nil {
+			// Pages gathered so far are an incomplete list; handing them back
+			// next to the error invites callers to match against them.
+			response.Servers = nil
 			response.ErrorResponse = errResp
+
 			return &response, nil
 		}
 
