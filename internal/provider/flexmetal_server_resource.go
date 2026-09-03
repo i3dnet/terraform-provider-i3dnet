@@ -25,6 +25,10 @@ import (
 
 var waitForReleasedTimeout = 5 * time.Minute
 
+// releasePollInterval is flat rather than backed off: releasing a server
+// normally completes in seconds, so latency matters more than request count.
+const releasePollInterval = 2 * time.Second
+
 var _ resource.Resource = (*serverResource)(nil)
 var _ resource.ResourceWithConfigure = (*serverResource)(nil)
 
@@ -263,7 +267,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	statusMessage := data.StatusMessage.ValueString()
 	lastStatus := data.Status.ValueString()
 
-	err = r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, createTimeout, 15*time.Second, func(s *one_api.Server) {
+	err = r.waitForStatus(ctx, serverID, []string{"delivered", "failed"}, createTimeout, newDeliveryPoll(), func(s *one_api.Server) {
 		statusMessage = s.StatusMessage
 		lastStatus = s.Status
 	})
@@ -496,7 +500,7 @@ func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 		var operationState string
 		tflog.Debug(ctx, fmt.Sprintf("Updating server OS %v", response.Server))
-		err = r.waitForOperationFinish(ctx, response.Server.Uuid, []string{"finished", "failed"}, 20*time.Minute, 15*time.Second, func(c *one_api.Command) {
+		err = r.waitForOperationFinish(ctx, response.Server.Uuid, []string{"finished", "failed"}, 20*time.Minute, newDeliveryPoll(), func(c *one_api.Command) {
 			tflog.Debug(ctx, "I am here waiting for OS reinstall operation to finish", map[string]interface{}{"id": response.Server.Uuid, "state": c.State})
 			operationState = c.State
 		})
@@ -622,7 +626,7 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 
 	lastStatus := data.Status.ValueString()
-	err = r.waitForStatus(ctx, data.Uuid.ValueString(), []string{"released"}, waitForReleasedTimeout, 1*time.Second, func(s *one_api.Server) {
+	err = r.waitForStatus(ctx, data.Uuid.ValueString(), []string{"released"}, waitForReleasedTimeout, newFixedPoll(releasePollInterval), func(s *one_api.Server) {
 		lastStatus = s.Status
 	})
 	if err != nil {
@@ -631,12 +635,13 @@ func (r *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 }
 
-// waitForStatus performs a GET server request every interval until server status reaches desiredStatuses or timeouts
+// waitForStatus polls GET server until the status reaches desiredStatuses or
+// the timeout is hit, waiting schedule.next() between polls
 // it returns an error and last known status
-func (r *serverResource) waitForStatus(ctx context.Context, serverID string, desiredStatuses []string, timeout, interval time.Duration, onServerResponse func(s *one_api.Server)) (err error) {
+func (r *serverResource) waitForStatus(ctx context.Context, serverID string, desiredStatuses []string, timeout time.Duration, schedule *pollSchedule, onServerResponse func(s *one_api.Server)) (err error) {
 	deadline := time.After(timeout)
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+	timer := time.NewTimer(schedule.next())
+	defer timer.Stop()
 
 	for {
 		select {
@@ -644,7 +649,11 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 			return ctx.Err()
 		case <-deadline:
 			return fmt.Errorf("timeout reached while waiting for server status")
-		case <-ticker.C:
+		case <-timer.C:
+			// Rescheduled before the poll, since the error paths below
+			// continue and would otherwise leave the timer drained.
+			timer.Reset(schedule.next())
+
 			serverResponse, err := r.client.GetServer(ctx, serverID)
 			if err != nil {
 				tflog.Error(ctx, "error getting server by id", map[string]interface{}{"id": serverID})
@@ -668,12 +677,13 @@ func (r *serverResource) waitForStatus(ctx context.Context, serverID string, des
 	}
 }
 
-// waitForOperationFinish performs a GET server request every interval until server status reaches desiredStatuses or timeouts
+// waitForOperationFinish polls GET server until the operation reaches
+// desiredStatuses or the timeout is hit, waiting schedule.next() between polls
 // it returns an error and last known status
-func (r *serverResource) waitForOperationFinish(ctx context.Context, serverID string, desiredStatuses []string, timeout, interval time.Duration, onServerResponse func(s *one_api.Command)) (err error) {
+func (r *serverResource) waitForOperationFinish(ctx context.Context, serverID string, desiredStatuses []string, timeout time.Duration, schedule *pollSchedule, onServerResponse func(s *one_api.Command)) (err error) {
 	deadline := time.After(timeout)
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+	timer := time.NewTimer(schedule.next())
+	defer timer.Stop()
 
 	for {
 		select {
@@ -681,7 +691,11 @@ func (r *serverResource) waitForOperationFinish(ctx context.Context, serverID st
 			return ctx.Err()
 		case <-deadline:
 			return fmt.Errorf("timeout reached while waiting for operation status")
-		case <-ticker.C:
+		case <-timer.C:
+			// Rescheduled before the poll, since the error paths below
+			// continue and would otherwise leave the timer drained.
+			timer.Reset(schedule.next())
+
 			operationStatus, err := r.client.GetOperationStatus(ctx, serverID)
 			if err != nil {
 				tflog.Error(ctx, "error getting operation state", map[string]interface{}{"err": err})
