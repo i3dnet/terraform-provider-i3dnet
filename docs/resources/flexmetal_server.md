@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   FlexMetal servers are physical servers that can be requested and released at will.
   A How to Guide is available at this URL : https://docs.i3d.net/compute/flexmetal/api
+  ~> Note on import: the API does not return ssh_key, post_install_script, os.kernel_params, os.partitions or os.ipxe_script_url, so an imported server has these unset. Add them to your configuration to match the server as it was provisioned; note that a change to post_install_script forces replacement.
 ---
 
 # i3dnet_flexmetal_server (Resource)
@@ -12,6 +13,8 @@ description: |-
 FlexMetal servers are physical servers that can be requested and released at will.
 
 A How to Guide is available at this URL : https://docs.i3d.net/compute/flexmetal/api
+
+~> **Note on import:** the API does not return `ssh_key`, `post_install_script`, `os.kernel_params`, `os.partitions` or `os.ipxe_script_url`, so an imported server has these unset. Add them to your configuration to match the server as it was provisioned; note that a change to `post_install_script` forces replacement.
 
 ## Example Usage
 

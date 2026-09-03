@@ -53,7 +53,11 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 	generatedSchema := resource_flexmetal_server.FlexmetalServerResourceSchema(ctx)
 
 	generatedSchema.MarkdownDescription = "FlexMetal servers are physical servers that can be requested and released at will.\n\n" +
-		"A How to Guide is available at this URL : https://docs.i3d.net/compute/flexmetal/api"
+		"A How to Guide is available at this URL : https://docs.i3d.net/compute/flexmetal/api\n\n" +
+		"~> **Note on import:** the API does not return `ssh_key`, `post_install_script`, " +
+		"`os.kernel_params`, `os.partitions` or `os.ipxe_script_url`, so an imported server has " +
+		"these unset. Add them to your configuration to match the server as it was provisioned; " +
+		"note that a change to `post_install_script` forces replacement."
 
 	// make post_install_script, os.kernel_params and os.partitions as optional:true and computed:false
 	// because they are not included in the GET response body
@@ -306,6 +310,17 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 
 func serverRespToPlan(ctx context.Context, server *one_api.Server, data *FlexmetalServerModel) {
 	data.Uuid = types.StringValue(server.Uuid)
+
+	// name, location, instance_type and os are Required, so on create/update
+	// data already holds the config value and must keep it verbatim - the API
+	// normalizes case and whitespace, and a normalized value in state would
+	// trip Terraform's "inconsistent result after apply" check. They are only
+	// unset on import, which is where the response has to supply them.
+	fillIfUnset(&data.Name, server.Name)
+	fillIfUnset(&data.Location, server.Location.Name)
+	fillIfUnset(&data.InstanceType, server.InstanceType.Name)
+	data.Os = osRespToPlan(ctx, server, data.Os)
+
 	data.CreatedAt = types.Int64Value(server.CreatedAt)
 	data.ReleasedAt = types.Int64Value(server.ReleasedAt)
 	data.DeliveredAt = types.Int64Value(server.DeliveredAt)
@@ -345,6 +360,44 @@ func serverRespToPlan(ctx context.Context, server *one_api.Server, data *Flexmet
 		}
 		data.Tags = basetypes.NewListValueMust(types.StringType, values)
 	}
+}
+
+// fillIfUnset sets target from the API response only when state has no value
+// for it, so a config-supplied value is never overwritten.
+func fillIfUnset(target *types.String, value string) {
+	if target.IsNull() || target.IsUnknown() {
+		*target = types.StringValue(value)
+	}
+}
+
+// osRespToPlan fills os.slug from the response when prior has none, and always
+// carries the remaining os attributes over from prior, since the GET response
+// omits them. On import prior is the null OsValue, so slug comes from the
+// response and the rest stay null.
+func osRespToPlan(ctx context.Context, server *one_api.Server, prior resource_flexmetal_server.OsValue) resource_flexmetal_server.OsValue {
+	slug := prior.Slug
+	fillIfUnset(&slug, server.Os.Slug)
+
+	// A null/unknown OsValue holds zero-value lists with no element type,
+	// which NewOsValue would reject.
+	kernelParams := prior.KernelParams
+	if kernelParams.ElementType(ctx) == nil {
+		kernelParams = basetypes.NewListNull(resource_flexmetal_server.KernelParamsValue{}.Type(ctx))
+	}
+	partitions := prior.Partitions
+	if partitions.ElementType(ctx) == nil {
+		partitions = basetypes.NewListNull(resource_flexmetal_server.PartitionsValue{}.Type(ctx))
+	}
+
+	return resource_flexmetal_server.NewOsValueMust(
+		resource_flexmetal_server.OsValue{}.AttributeTypes(ctx),
+		map[string]attr.Value{
+			"slug":            slug,
+			"ipxe_script_url": prior.IpxeScriptUrl,
+			"kernel_params":   kernelParams,
+			"partitions":      partitions,
+		},
+	)
 }
 
 func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
