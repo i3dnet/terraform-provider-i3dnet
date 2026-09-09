@@ -35,7 +35,7 @@ func getServerWithRetry(ctx context.Context, get getServerFunc, id string,
 		}
 
 		tflog.Warn(ctx, "get server did not complete, retrying", map[string]interface{}{
-			"id": id, "attempt": attempt, "err": err.Error(),
+			"id": id, "attempt": attempt, "err": err,
 		})
 
 		timer := time.NewTimer(delay)

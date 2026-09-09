@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -118,7 +117,7 @@ func TestGetServerWithRetryRecoversFromADroppedConnection(t *testing.T) {
 				t.Errorf("Hijack: %v", err)
 				return
 			}
-			_ = conn.(*net.TCPConn).Close()
+			_ = conn.Close()
 			return
 		}
 		_, _ = w.Write(deliveredServerJSON("delivered"))
