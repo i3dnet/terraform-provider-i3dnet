@@ -414,7 +414,8 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	serverResp, err := r.client.GetServer(ctx, data.Uuid.ValueString())
+	serverResp, err := getServerWithRetry(ctx, r.client.GetServer, data.Uuid.ValueString(),
+		readRetryAttempts, readRetryDelay)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading server",
