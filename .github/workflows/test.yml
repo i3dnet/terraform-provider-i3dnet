@@ -85,5 +85,5 @@ jobs:
           TF_ACC: "1"
           TF_MAIN: ${{ matrix.terraform.main || 'false' }}
           ACCTEST_TIMEOUT: "20m"
-        run: go test -v -cover -timeout 20m ./internal/provider/
+        run: go test -v -cover -timeout 20m ./internal/...
         timeout-minutes: 20

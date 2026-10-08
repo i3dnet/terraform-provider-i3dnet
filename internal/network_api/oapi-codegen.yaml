@@ -1,0 +1,8 @@
+# oapi-codegen configuration for the Network API client. Run through
+# `make generate`, which executes go generate in tools/, so the paths below are
+# relative to tools/.
+package: network_api
+generate:
+  models: true
+  client: true
+output: ../internal/network_api/client.gen.go

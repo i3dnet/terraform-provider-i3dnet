@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"terraform-provider-i3dnet/internal/network_api"
 	"terraform-provider-i3dnet/internal/one_api"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -104,11 +105,28 @@ func (p *i3dnetProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		resp.Diagnostics.AddError(
 			"Could not initialize i3D.net API client",
 			fmt.Sprintf("error: %s", err))
+		return
 	}
 
-	// Make the API client available during DataSource and Resource type Configure methods.
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	networkClient, err := network_api.NewAPI(apiKey, config.BaseURL.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Could not initialize i3D.net Network API client",
+			fmt.Sprintf("error: %s", err))
+		return
+	}
+
+	// Make the API clients available during DataSource and Resource type Configure methods.
+	data := &providerClients{oneAPI: client, network: networkClient}
+	resp.DataSourceData = data
+	resp.ResourceData = data
+}
+
+// providerClients is what the provider hands to every resource and data source
+// through ProviderData.
+type providerClients struct {
+	oneAPI  *one_api.Client
+	network *network_api.ClientWithResponses
 }
 
 func (p *i3dnetProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -123,6 +141,7 @@ func (p *i3dnetProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewFlexvmCloudDataSource,
 		NewFlexvmNodeDataSource,
 		NewFlexvmNodesDataSource,
+		NewFabricsDataSource,
 	}
 }
 
