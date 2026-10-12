@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -329,5 +330,55 @@ func TestWalkPagesPassesNilCursorFirstThenTheParsedCursor(t *testing.T) {
 	}
 	if strings.Join(got, ",") != "<nil>,first+one" {
 		t.Errorf("cursors = %v, want <nil> then the decoded cursor first+one", got)
+	}
+}
+
+// The status decides before the body: a gateway error with a JSON content
+// type and a body that is not JSON is an *APIError, not a decode error.
+func TestListAllFabricsReportsANon2xxWithABrokenJSONBodyAsAnAPIError(t *testing.T) {
+	t.Parallel()
+
+	for _, body := range []string{`{"items":[`, ""} {
+		t.Run(fmt.Sprintf("body %q", body), func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadGateway)
+				_, _ = w.Write([]byte(body))
+			}))
+			t.Cleanup(srv.Close)
+
+			api, err := NewAPI("key", srv.URL)
+			if err != nil {
+				t.Fatalf("NewAPI: %v", err)
+			}
+
+			_, err = api.ListAllFabrics(context.Background())
+			var apiErr *APIError
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("ListAllFabrics: %v, want an *APIError", err)
+			}
+			if apiErr.StatusCode != http.StatusBadGateway {
+				t.Errorf("StatusCode = %d, want 502", apiErr.StatusCode)
+			}
+			if errors.Is(err, ErrNoResponse) {
+				t.Errorf("err = %v, a 502 is a response, not ErrNoResponse", err)
+			}
+		})
+	}
+}
+
+func TestListAllFabricsReportsA200ThatDoesNotDecodeAsErrNoResponse(t *testing.T) {
+	t.Parallel()
+
+	_, api := newPageServer(t, `{"items":[{"slug":`)
+
+	fabrics, err := api.ListAllFabrics(context.Background())
+	if !errors.Is(err, ErrNoResponse) {
+		t.Fatalf("ListAllFabrics: %v, want it to wrap ErrNoResponse", err)
+	}
+	if fabrics != nil {
+		t.Errorf("fabrics = %v, want nil on error", fabrics)
 	}
 }

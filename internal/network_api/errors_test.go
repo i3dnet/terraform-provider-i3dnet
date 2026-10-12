@@ -1,8 +1,12 @@
 package network_api
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -172,5 +176,222 @@ func TestCheckResponseTreatsJSONWithoutTitleOrCodeAsRaw(t *testing.T) {
 	}
 	if !strings.Contains(apiErr.Summary(), "504") {
 		t.Errorf("Summary() = %q, want the HTTP status", apiErr.Summary())
+	}
+}
+
+// A short body is kept whole, but invalid UTF-8 never reaches the diagnostic.
+func TestCheckResponseDropsInvalidUTF8FromAShortNonProblemBody(t *testing.T) {
+	t.Parallel()
+
+	body := []byte("bad gateway \xff\xfe from \xc3upstream")
+
+	err := CheckResponse(http.StatusBadGateway, body)
+
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("CheckResponse: %v, want an *APIError", err)
+	}
+	if !utf8.ValidString(apiErr.RawBody) {
+		t.Errorf("RawBody = %q, want valid UTF-8", apiErr.RawBody)
+	}
+	if !utf8.ValidString(apiErr.DiagnosticDetail()) {
+		t.Errorf("DiagnosticDetail() = %q, want valid UTF-8", apiErr.DiagnosticDetail())
+	}
+	if apiErr.RawBody != "bad gateway  from upstream" {
+		t.Errorf("RawBody = %q, want the valid text kept", apiErr.RawBody)
+	}
+}
+
+// closeTracker records whether Do closed the response body.
+type closeTracker struct {
+	io.Reader
+	closed bool
+}
+
+func (c *closeTracker) Close() error {
+	c.closed = true
+	return nil
+}
+
+func newResponse(status int, contentType, body string) (*http.Response, *closeTracker) {
+	tracker := &closeTracker{Reader: strings.NewReader(body)}
+	header := http.Header{}
+	if contentType != "" {
+		header.Set("Content-Type", contentType)
+	}
+
+	return &http.Response{StatusCode: status, Header: header, Body: tracker}, tracker
+}
+
+func TestDoPassesATransportErrorThroughUnchanged(t *testing.T) {
+	t.Parallel()
+
+	transportErr := fmt.Errorf("failed to do HTTP request: %w: %w", ErrNoResponse, errors.New("connection reset"))
+
+	got, err := Do[FabricListResponse](nil, transportErr)
+	// Identity, not errors.Is: the error must pass through unchanged.
+	if err != transportErr {
+		t.Errorf("Do: %v, want the transport error itself", err)
+	}
+	if got.Items != nil {
+		t.Errorf("Do: %+v, want the zero value", got)
+	}
+}
+
+func TestDoReportsANon2xxAsAnAPIErrorWhateverTheBody(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		status      int
+		contentType string
+		body        string
+	}{
+		{name: "502 JSON malformed body", status: http.StatusBadGateway, contentType: "application/json", body: `{"items":[`},
+		{name: "502 JSON empty body", status: http.StatusBadGateway, contentType: "application/json", body: ""},
+		{name: "500 JSON body of another shape", status: http.StatusInternalServerError, contentType: "application/json", body: `{"items":"nope"}`},
+		{name: "404 no content type", status: http.StatusNotFound, contentType: "", body: "not found"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resp, tracker := newResponse(tt.status, tt.contentType, tt.body)
+
+			_, err := Do[FabricListResponse](resp, nil)
+
+			var apiErr *APIError
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("Do: %v, want an *APIError, not a decode error", err)
+			}
+			if apiErr.StatusCode != tt.status {
+				t.Errorf("StatusCode = %d, want %d", apiErr.StatusCode, tt.status)
+			}
+			if apiErr.RawBody != tt.body {
+				t.Errorf("RawBody = %q, want %q", apiErr.RawBody, tt.body)
+			}
+			if errors.Is(err, ErrNoResponse) {
+				t.Errorf("Do: %v, a non-2xx is a known response, not ErrNoResponse", err)
+			}
+			if !tracker.closed {
+				t.Error("response body not closed")
+			}
+		})
+	}
+}
+
+func TestDoProblemDocumentKeepsItsFields(t *testing.T) {
+	t.Parallel()
+
+	resp, _ := newResponse(http.StatusConflict, "application/problem+json",
+		`{"title":"Conflict","status":409,"code":"E020003","traceId":"trace-1"}`)
+
+	_, err := Do[NetworkResponse](resp, nil)
+
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("Do: %v, want an *APIError", err)
+	}
+	if apiErr.Code != "E020003" || apiErr.TraceID != "trace-1" || apiErr.StatusCode != http.StatusConflict {
+		t.Errorf("APIError = %+v, want the problem document fields", apiErr)
+	}
+}
+
+// The caller never saw the result of a 2xx it cannot decode, so a create must
+// treat it as an unknown outcome.
+func TestDoReportsAn2xxThatDoesNotDecodeAsErrNoResponse(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "200 malformed JSON", status: http.StatusOK, body: `{"items":[`},
+		{name: "200 empty body", status: http.StatusOK, body: ""},
+		{name: "200 wrong shape", status: http.StatusOK, body: `{"items":"nope"}`},
+		{name: "202 HTML body", status: http.StatusAccepted, body: "<html>accepted</html>"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resp, tracker := newResponse(tt.status, "application/json", tt.body)
+
+			_, err := Do[FabricListResponse](resp, nil)
+			if !errors.Is(err, ErrNoResponse) {
+				t.Fatalf("Do: %v, want it to wrap ErrNoResponse", err)
+			}
+			var apiErr *APIError
+			if errors.As(err, &apiErr) {
+				t.Errorf("Do: %v, a 2xx is not an *APIError", err)
+			}
+			if !strings.Contains(err.Error(), fmt.Sprint(tt.status)) {
+				t.Errorf("Do: %v, want the status in the message", err)
+			}
+			if !tracker.closed {
+				t.Error("response body not closed")
+			}
+		})
+	}
+}
+
+func TestDoDecodesAValid2xxBody(t *testing.T) {
+	t.Parallel()
+
+	resp, tracker := newResponse(http.StatusOK, "application/json",
+		`{"items":[{"slug":"rotterdam-a","displayName":"Rotterdam A","metro":"Rotterdam"}],"links":{"self":{"href":"/fabrics?limit=100"},"next":{"href":"/fabrics?cursor=abc"}}}`)
+
+	got, err := Do[FabricListResponse](resp, nil)
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	if len(got.Items) != 1 || got.Items[0].Slug != "rotterdam-a" || got.Items[0].Metro != "Rotterdam" {
+		t.Errorf("Items = %+v, want the decoded fabric", got.Items)
+	}
+	if got.Links.Next == nil || got.Links.Next.Href != "/fabrics?cursor=abc" {
+		t.Errorf("Links.Next = %+v, want the decoded next link", got.Links.Next)
+	}
+	if !tracker.closed {
+		t.Error("response body not closed")
+	}
+}
+
+// A body cut short after the status line, read through the client's doer, is
+// ErrNoResponse: the caller never saw the result.
+func TestDoReportsABodyReadFailureAsErrNoResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Length", "1000")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"items":`))
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Errorf("Hijack: %v", err)
+			return
+		}
+		_ = conn.Close()
+	}))
+	t.Cleanup(srv.Close)
+
+	api, err := NewAPI("key", srv.URL)
+	if err != nil {
+		t.Fatalf("NewAPI: %v", err)
+	}
+
+	_, err = Do[FabricListResponse](api.ListFabrics(context.Background(), &ListFabricsParams{}))
+	if !errors.Is(err, ErrNoResponse) {
+		t.Fatalf("Do: %v, want it to wrap ErrNoResponse", err)
+	}
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		t.Errorf("Do: %v, want no *APIError for a body that never arrived", err)
 	}
 }

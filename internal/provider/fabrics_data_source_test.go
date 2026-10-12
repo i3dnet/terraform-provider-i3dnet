@@ -209,3 +209,57 @@ data "i3dnet_fabrics" "all" {}
 		t.Errorf("%d requests missed /network/v1/fabrics or the PRIVATE-TOKEN header", n)
 	}
 }
+
+// A gateway error whose JSON body does not parse still yields the status
+// diagnostic, never a decode error.
+func TestFabricsDataSourceReportsAGatewayErrorWithABrokenJSONBody(t *testing.T) {
+	t.Parallel()
+
+	for _, body := range []string{`{"items":[`, ""} {
+		t.Run(fmt.Sprintf("body %q", body), func(t *testing.T) {
+			t.Parallel()
+
+			resp := readFabrics(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadGateway)
+				_, _ = w.Write([]byte(body))
+			})
+
+			if !resp.Diagnostics.HasError() {
+				t.Fatal("Read: no error, want a diagnostic")
+			}
+			d := resp.Diagnostics.Errors()[0]
+			if want := "Network API returned HTTP 502 Bad Gateway"; d.Summary() != want {
+				t.Errorf("summary = %q, want %q", d.Summary(), want)
+			}
+			for _, want := range []string{"Unable to read i3D.net fabrics", "Status code: 502"} {
+				if !strings.Contains(d.Detail(), want) {
+					t.Errorf("detail = %q, want it to contain %q", d.Detail(), want)
+				}
+			}
+			if strings.Contains(d.Detail(), "decode") {
+				t.Errorf("detail = %q, want the status, not a decode error", d.Detail())
+			}
+		})
+	}
+}
+
+func TestFabricsDataSourceReportsA200ThatDoesNotDecode(t *testing.T) {
+	t.Parallel()
+
+	resp := readFabrics(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[{"slug":`))
+	})
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("Read: no error, want a diagnostic")
+	}
+	d := resp.Diagnostics.Errors()[0]
+	if d.Summary() != "Unable to read i3D.net fabrics" {
+		t.Errorf("summary = %q, want the data source message", d.Summary())
+	}
+	if !strings.Contains(d.Detail(), "200") {
+		t.Errorf("detail = %q, want the HTTP status of the undecodable body", d.Detail())
+	}
+}

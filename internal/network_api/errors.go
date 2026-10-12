@@ -2,7 +2,9 @@ package network_api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -24,7 +26,7 @@ type APIError struct {
 }
 
 // CheckResponse returns nil for a 2xx status and an *APIError otherwise.
-// body is the already-read response body (the generated responses' Body).
+// body is the already-read response body.
 func CheckResponse(statusCode int, body []byte) error {
 	if statusCode >= 200 && statusCode < 300 {
 		return nil
@@ -44,14 +46,44 @@ func CheckResponse(statusCode int, body []byte) error {
 		return apiErr
 	}
 
-	raw := string(body)
-	if len(raw) > maxRawBodyBytes {
-		// A cut inside a multi-byte character would leave invalid UTF-8.
-		raw = strings.ToValidUTF8(raw[:maxRawBodyBytes], "")
+	if len(body) > maxRawBodyBytes {
+		body = body[:maxRawBodyBytes]
 	}
-	apiErr.RawBody = raw
+	// Drops invalid UTF-8 from the body and from a cut inside a multi-byte character.
+	apiErr.RawBody = strings.ToValidUTF8(string(body), "")
 
 	return apiErr
+}
+
+// Do completes a call to a generated raw method (ClientInterface), e.g.
+// Do[FabricListResponse](c.ListFabrics(ctx, params)). It reads the body,
+// returns the CheckResponse error for a non-2xx status and only then decodes
+// the 2xx JSON body into T. A 2xx body that does not decode is reported as
+// ErrNoResponse, so a create treats its outcome as unknown.
+func Do[T any](resp *http.Response, err error) (T, error) {
+	var out T
+	if err != nil {
+		return out, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		if !errors.Is(err, ErrNoResponse) {
+			err = fmt.Errorf("%w: %w", ErrNoResponse, err)
+		}
+		return out, err
+	}
+
+	if err := CheckResponse(resp.StatusCode, body); err != nil {
+		return out, err
+	}
+
+	if err := json.Unmarshal(body, &out); err != nil {
+		return out, fmt.Errorf("could not decode HTTP %d response body: %w: %w", resp.StatusCode, ErrNoResponse, err)
+	}
+
+	return out, nil
 }
 
 func (e *APIError) Error() string {

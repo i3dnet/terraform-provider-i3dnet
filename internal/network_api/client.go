@@ -25,7 +25,8 @@ var apiPath = []string{"network", "v1"}
 
 // ErrNoResponse marks a request that never produced an HTTP response: a dial,
 // TLS, write or read failure, or an expired context. The API may still have
-// accepted it, so a create must treat its outcome as unknown.
+// accepted it, so a create must treat its outcome as unknown. Do also returns
+// it for a 2xx body that does not decode: the caller never saw the result.
 var ErrNoResponse = errors.New("request did not complete")
 
 // NewAPI builds the generated client for {rawBaseURL}/network/v1 that
@@ -87,9 +88,29 @@ func newDoer() *doer {
 	}
 
 	return &doer{
-		withDeadline:    &http.Client{Transport: transport},
-		withoutDeadline: &http.Client{Transport: transport, Timeout: defaultRequestTimeout},
+		withDeadline:    &http.Client{Transport: transport, CheckRedirect: sameOriginRedirect},
+		withoutDeadline: &http.Client{Transport: transport, CheckRedirect: sameOriginRedirect, Timeout: defaultRequestTimeout},
 	}
+}
+
+// maxRedirects is net/http's default redirect limit.
+const maxRedirects = 10
+
+// sameOriginRedirect follows a redirect only to the scheme and host of the
+// original request. net/http copies the PRIVATE-TOKEN header (and the body on
+// 307/308) to the redirect target, so another origin must never receive it.
+func sameOriginRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) >= maxRedirects {
+		return fmt.Errorf("stopped after %d redirects", maxRedirects)
+	}
+
+	original := via[0].URL
+	if req.URL.Scheme != original.Scheme || req.URL.Host != original.Host {
+		return fmt.Errorf("refusing redirect from %s://%s to another origin %s://%s",
+			original.Scheme, original.Host, req.URL.Scheme, req.URL.Host)
+	}
+
+	return nil
 }
 
 func (d *doer) Do(req *http.Request) (*http.Response, error) {

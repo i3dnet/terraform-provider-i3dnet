@@ -3,10 +3,13 @@ package network_api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -334,8 +337,8 @@ func TestResponseThatArrivedIsNotErrNoResponse(t *testing.T) {
 	t.Run("redirect loop", func(t *testing.T) {
 		t.Parallel()
 
-		// The default CheckRedirect fails after 10 hops, the one case where
-		// the HTTP client returns a response together with an error.
+		// sameOriginRedirect fails after 10 redirects, a case where the HTTP
+		// client returns a response together with an error.
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/network/v1/fabrics", http.StatusFound)
 		}))
@@ -354,4 +357,189 @@ func TestResponseThatArrivedIsNotErrNoResponse(t *testing.T) {
 			t.Errorf("err = %v, must not be reported as a request without a response", err)
 		}
 	})
+}
+
+// tokenRecorder serves the redirect target: it records the PRIVATE-TOKEN of
+// every request that reached it and answers an empty fabric page.
+type tokenRecorder struct {
+	mu     sync.Mutex
+	tokens []string
+}
+
+func (tr *tokenRecorder) record(w http.ResponseWriter, r *http.Request) {
+	tr.mu.Lock()
+	tr.tokens = append(tr.tokens, r.Header.Get("PRIVATE-TOKEN"))
+	tr.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(`{"items":[],"links":{"self":{"href":"/fabrics?limit=100"}}}`))
+}
+
+func (tr *tokenRecorder) seen() []string {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	return append([]string(nil), tr.tokens...)
+}
+
+// net/http copies custom headers such as PRIVATE-TOKEN to a redirect target,
+// so a redirect that leaves the origin of the request must never be followed.
+func TestRedirectToAnotherOriginIsRefused(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		// target builds the Location from the origin and the other server URL.
+		target func(origin, other *url.URL) string
+	}{
+		{
+			name: "another host, same port",
+			target: func(origin, _ *url.URL) string {
+				return "http://localhost:" + origin.Port() + "/landed"
+			},
+		},
+		{
+			name: "another port",
+			target: func(_, other *url.URL) string {
+				return "http://" + other.Host + "/landed"
+			},
+		},
+		{
+			name: "another scheme, same host and port",
+			target: func(origin, _ *url.URL) string {
+				return "https://" + origin.Host + "/landed"
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			landed := &tokenRecorder{}
+
+			other := httptest.NewServer(http.HandlerFunc(landed.record))
+			t.Cleanup(other.Close)
+			otherURL, err := url.Parse(other.URL)
+			if err != nil {
+				t.Fatalf("parse other URL: %v", err)
+			}
+
+			origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/landed" {
+					landed.record(w, r)
+					return
+				}
+				// r.Host is the origin's host:port as the client addressed it.
+				http.Redirect(w, r, tt.target(&url.URL{Scheme: "http", Host: r.Host}, otherURL), http.StatusTemporaryRedirect)
+			}))
+			t.Cleanup(origin.Close)
+
+			api, err := NewAPI("secret-key", origin.URL)
+			if err != nil {
+				t.Fatalf("NewAPI: %v", err)
+			}
+
+			_, err = api.ListAllFabrics(context.Background())
+			if err == nil {
+				t.Fatal("ListAllFabrics: nil error, want the redirect refused")
+			}
+			if !strings.Contains(err.Error(), "another origin") {
+				t.Errorf("err = %v, want the cross-origin refusal", err)
+			}
+			if errors.Is(err, ErrNoResponse) {
+				t.Errorf("err = %v, must not be ErrNoResponse: a response did arrive", err)
+			}
+			if tokens := landed.seen(); len(tokens) != 0 {
+				t.Errorf("redirect target received %d requests (PRIVATE-TOKEN %q), want none", len(tokens), tokens)
+			}
+		})
+	}
+}
+
+func TestSameOriginRedirectIsFollowedWithTheToken(t *testing.T) {
+	t.Parallel()
+
+	landed := &tokenRecorder{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/network/v1/moved" {
+			landed.record(w, r)
+			return
+		}
+		http.Redirect(w, r, "/network/v1/moved", http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(srv.Close)
+
+	api, err := NewAPI("secret-key", srv.URL)
+	if err != nil {
+		t.Fatalf("NewAPI: %v", err)
+	}
+
+	fabrics, err := api.ListAllFabrics(context.Background())
+	if err != nil {
+		t.Fatalf("ListAllFabrics: %v, want the same-origin redirect followed", err)
+	}
+	if fabrics == nil {
+		t.Error("fabrics = nil, want the empty page of the redirect target")
+	}
+	if tokens := landed.seen(); len(tokens) != 1 || tokens[0] != "secret-key" {
+		t.Errorf("redirect target saw PRIVATE-TOKEN %q, want exactly one request with secret-key", tokens)
+	}
+}
+
+// The limit stays net/http's 10 redirects: 9 are followed, the 10th is refused.
+func TestSameOriginRedirectsStopAtTheLimit(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		redirects int
+		wantErr   bool
+	}{
+		{name: "9 redirects are followed", redirects: 9, wantErr: false},
+		{name: "10 redirects stop with an error", redirects: 10, wantErr: true},
+		{name: "endless redirects stop with an error", redirects: 1000, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var requests atomic.Int32
+			landed := &tokenRecorder{}
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				n := int(requests.Add(1))
+				if n > tt.redirects {
+					landed.record(w, r)
+					return
+				}
+				http.Redirect(w, r, fmt.Sprintf("/network/v1/fabrics?hop=%d", n), http.StatusFound)
+			}))
+			t.Cleanup(srv.Close)
+
+			api, err := NewAPI("key", srv.URL)
+			if err != nil {
+				t.Fatalf("NewAPI: %v", err)
+			}
+
+			_, err = api.ListAllFabrics(context.Background())
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("ListAllFabrics: nil error, want the redirect limit")
+				}
+				if !strings.Contains(err.Error(), "stopped after 10 redirects") {
+					t.Errorf("err = %v, want the redirect limit", err)
+				}
+				if errors.Is(err, ErrNoResponse) {
+					t.Errorf("err = %v, must not be ErrNoResponse", err)
+				}
+			} else if err != nil {
+				t.Fatalf("ListAllFabrics: %v, want success after %d redirects", err, tt.redirects)
+			}
+
+			if got := requests.Load(); got != 10 {
+				t.Errorf("server saw %d requests, want 10", got)
+			}
+		})
+	}
 }

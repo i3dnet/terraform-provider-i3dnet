@@ -68,17 +68,11 @@ func cursorFromHref(href string) (string, error) {
 func (c *ClientWithResponses) ListAllFabrics(ctx context.Context) ([]FabricResponse, error) {
 	return WalkPages(ctx, func(ctx context.Context, cursor *string) ([]FabricResponse, *Link, error) {
 		limit := PageSize
-		resp, err := c.ListFabricsWithResponse(ctx, &ListFabricsParams{Limit: &limit, Cursor: cursor})
+		page, err := Do[FabricListResponse](c.ListFabrics(ctx, &ListFabricsParams{Limit: &limit, Cursor: cursor}))
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := CheckResponse(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		if resp.JSON200 == nil {
-			return nil, nil, fmt.Errorf("fabric listing returned HTTP %d without a JSON body", resp.StatusCode())
-		}
 
-		return resp.JSON200.Items, resp.JSON200.Links.Next, nil
+		return page.Items, page.Links.Next, nil
 	})
 }

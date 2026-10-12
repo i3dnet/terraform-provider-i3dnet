@@ -36,8 +36,10 @@ var errCreateOutcomeUnknown = errors.New("the outcome of the create is unknown, 
 // when ctx ends. The create is idempotent by its client-minted id, so send
 // must issue the identical request on every call.
 //
-// send returns the response and the error from network_api.CheckResponse, or
-// the transport error. Any other non-2xx stops at once. On success it returns
+// send returns the response, or the error from network_api.Do: an
+// *network_api.APIError for a non-2xx, or an error wrapping
+// network_api.ErrNoResponse for a request without a response or a 2xx whose
+// body does not decode. Any other non-2xx stops at once. On success it returns
 // the 2xx response. Otherwise it returns the last error, wrapped in
 // errCreateOutcomeUnknown when any attempt ended without a known outcome.
 func resendCreate[R any](ctx context.Context, schedule *pollSchedule, send func(ctx context.Context) (R, error)) (R, error) {

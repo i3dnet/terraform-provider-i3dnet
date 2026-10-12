@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -45,20 +47,16 @@ var (
 )
 
 // sendCreateNetwork is the send func a resource passes to resendCreate.
-func sendCreateNetwork(api *network_api.ClientWithResponses) func(ctx context.Context) (*network_api.CreateNetworkResponse, error) {
-	return func(ctx context.Context) (*network_api.CreateNetworkResponse, error) {
-		resp, err := api.CreateNetworkWithBodyWithResponse(ctx, testNetworkID, "application/json", bytes.NewReader(testNetworkBody))
-		if err != nil {
-			return nil, err
-		}
-		return resp, network_api.CheckResponse(resp.StatusCode(), resp.Body)
+func sendCreateNetwork(api *network_api.ClientWithResponses) func(ctx context.Context) (network_api.NetworkResponse, error) {
+	return func(ctx context.Context) (network_api.NetworkResponse, error) {
+		return network_api.Do[network_api.NetworkResponse](api.CreateNetworkWithBody(ctx, testNetworkID, "application/json", bytes.NewReader(testNetworkBody)))
 	}
 }
 
 func writeAccepted(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	_, _ = w.Write([]byte(`{}`))
+	_, _ = w.Write([]byte(`{"fabric":"rotterdam-a"}`))
 }
 
 func writeProblem(w http.ResponseWriter, status int, code, detail string) {
@@ -94,8 +92,8 @@ func TestResendCreateResendsTheSamePutAfterALostResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resendCreate: %v, want success after the re-sent PUT", err)
 	}
-	if resp.StatusCode() != http.StatusAccepted {
-		t.Errorf("status = %d, want 202", resp.StatusCode())
+	if resp.Fabric != "rotterdam-a" {
+		t.Errorf("fabric = %q, want the decoded 202 body", resp.Fabric)
 	}
 
 	if got := attempts.Load(); got != 2 {
@@ -119,8 +117,8 @@ func TestResendCreateResendsWhenTheServerAsksForTheSamePut(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resendCreate: %v, want success after the re-sent PUT", err)
 	}
-	if resp.StatusCode() != http.StatusAccepted {
-		t.Errorf("status = %d, want 202", resp.StatusCode())
+	if resp.Fabric != "rotterdam-a" {
+		t.Errorf("fabric = %q, want the decoded 202 body", resp.Fabric)
 	}
 
 	if got := attempts.Load(); got != 2 {
@@ -185,6 +183,92 @@ func TestResendCreateResendsANonProblemGatewayError(t *testing.T) {
 	}
 }
 
+// A 500 is an unknown outcome even when its JSON body does not parse: the
+// status decides, not a decode error.
+func TestResendCreateResendsA500WithABrokenJSONBody(t *testing.T) {
+	t.Parallel()
+
+	for _, body := range []string{`{"title":`, ""} {
+		t.Run(fmt.Sprintf("body %q", body), func(t *testing.T) {
+			t.Parallel()
+
+			attempts, api := newCreateServer(t, func(n int, w http.ResponseWriter, r *http.Request) {
+				if n == 1 {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusInternalServerError)
+					_, _ = w.Write([]byte(body))
+					return
+				}
+				writeAccepted(w)
+			})
+
+			resp, err := resendCreate(context.Background(), newFixedPoll(time.Millisecond), sendCreateNetwork(api))
+			if err != nil {
+				t.Fatalf("resendCreate: %v, want success after the re-sent PUT", err)
+			}
+			if resp.Fabric != "rotterdam-a" {
+				t.Errorf("fabric = %q, want the decoded 202 body", resp.Fabric)
+			}
+			if got := attempts.Load(); got != 2 {
+				t.Fatalf("made %d attempts, want 2", got)
+			}
+		})
+	}
+}
+
+// A 202 whose body does not decode left the caller without the result: the
+// outcome is unknown and the identical PUT is re-sent.
+func TestResendCreateResendsA202ThatDoesNotDecode(t *testing.T) {
+	t.Parallel()
+
+	for _, body := range []string{`{"fabric":`, ""} {
+		t.Run(fmt.Sprintf("body %q", body), func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				mu     sync.Mutex
+				bodies [][]byte
+			)
+			attempts, api := newCreateServer(t, func(n int, w http.ResponseWriter, r *http.Request) {
+				got, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Errorf("read request body: %v", err)
+				}
+				mu.Lock()
+				bodies = append(bodies, got)
+				mu.Unlock()
+
+				if n == 1 {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusAccepted)
+					_, _ = w.Write([]byte(body))
+					return
+				}
+				writeAccepted(w)
+			})
+
+			resp, err := resendCreate(context.Background(), newFixedPoll(time.Millisecond), sendCreateNetwork(api))
+			if err != nil {
+				t.Fatalf("resendCreate: %v, want success after the re-sent PUT", err)
+			}
+			if resp.Fabric != "rotterdam-a" {
+				t.Errorf("fabric = %q, want the decoded second 202", resp.Fabric)
+			}
+			if got := attempts.Load(); got != 2 {
+				t.Fatalf("made %d attempts, want 2", got)
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			for i, b := range bodies {
+				if !bytes.Equal(b, testNetworkBody) {
+					t.Errorf("attempt %d body = %s, want the identical create body", i+1, b)
+				}
+			}
+		})
+	}
+}
+
 func TestResendCreateReportsAnUnknownOutcomeAtTheDeadline(t *testing.T) {
 	t.Parallel()
 
@@ -201,6 +285,22 @@ func TestResendCreateReportsAnUnknownOutcomeAtTheDeadline(t *testing.T) {
 		{
 			name:  "no response on every attempt",
 			reply: dropConnection,
+		},
+		{
+			name: "500 with a broken JSON body on every attempt",
+			reply: func(_ *testing.T, w http.ResponseWriter) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"title":`))
+			},
+		},
+		{
+			name: "202 that does not decode on every attempt",
+			reply: func(_ *testing.T, w http.ResponseWriter) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusAccepted)
+				_, _ = w.Write([]byte(`{"fabric":`))
+			},
 		},
 	}
 
