@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"terraform-provider-i3dnet/internal/network_api"
 	"terraform-provider-i3dnet/internal/one_api"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -20,20 +21,40 @@ import (
 // and Configure is called again later with a populated value. A non-nil value of
 // an unexpected type is reported as an error.
 func clientFromProviderData(providerData any, diags *diag.Diagnostics) *one_api.Client {
+	data := clientsFromProviderData(providerData, diags)
+	if data == nil {
+		return nil
+	}
+
+	return data.oneAPI
+}
+
+// networkClientFromProviderData extracts the Network API client the same way
+// clientFromProviderData extracts the One API client.
+func networkClientFromProviderData(providerData any, diags *diag.Diagnostics) *network_api.ClientWithResponses {
+	data := clientsFromProviderData(providerData, diags)
+	if data == nil {
+		return nil
+	}
+
+	return data.network
+}
+
+func clientsFromProviderData(providerData any, diags *diag.Diagnostics) *providerClients {
 	if providerData == nil {
 		return nil
 	}
 
-	client, ok := providerData.(*one_api.Client)
+	data, ok := providerData.(*providerClients)
 	if !ok {
 		diags.AddError(
 			"Unexpected Configure Type",
-			fmt.Sprintf("Expected *one_api.Client, got: %T. Please report this issue to the provider developers.", providerData),
+			fmt.Sprintf("Expected *provider.providerClients, got: %T. Please report this issue to the provider developers.", providerData),
 		)
 		return nil
 	}
 
-	return client
+	return data
 }
 
 // emptyStringAsNull is a plan modifier that treats an explicitly empty string

@@ -1,0 +1,4418 @@
+# Vendored copy of the public Network API contract. Do not edit by hand.
+# Source repository: i3dnet/networkapi-core
+# Source path: openapi/networkv3/public/v1/openapi.yaml
+# Source commit: f4d904cd2271eea2bd4997a35ac90949baf30f43
+# Re-vendor by copying the file at a newer commit, updating this header, and running make generate.
+openapi: 3.0.3
+info:
+  title: i3D.net Network API
+  version: 0.1.0
+  description: |
+    Create and manage your networks, prefixes and IP addresses at
+    i3D.net.
+
+    You declare what you want - a network in a location, a prefix of a
+    given size - and i3D.net provisions it. You never pick a VLAN, a
+    subnet or a router: those are chosen for you.
+
+    **Base path.** The paths in this document are relative to the API
+    base URL. `/networks/{networkId}` means
+    `{base}/networks/{networkId}`.
+
+    **Your account.** Every request acts as the account you authenticate
+    as. There is no account parameter: listings return your own
+    resources, and a resource that belongs to someone else reads as
+    `404` - the API never confirms that it exists.
+
+    **IP addresses are read-only.** You do not claim or release
+    addresses yourself. i3D.net allocates them when a server is
+    provisioned and releases them when it is torn down. This API shows
+    you the result: `GET` on the network-, prefix- and address-level
+    listings and reads.
+
+    **Asynchronous work.** Creating and deleting a network or a prefix
+    returns `202` with a link to an operation resource. Poll that
+    operation, or read the resource's `state`, to find out when the work
+    finished.
+
+    **Errors.** Every error response is `application/problem+json`
+    (RFC 9457) with a stable machine-readable `code` (`E` followed by six
+    digits - the full list is in the `ProblemDetails` schema) and a
+    `traceId`. Quote the `traceId` when you contact support: it is how
+    i3D.net finds your request.
+
+    Every response, successful or failed, also carries an `X-Request-Id`
+    header holding that same value, so it is available even on a response
+    with no body to read it from.
+
+    **Pagination.** Every listing is cursor-paginated: ask for a page
+    size with `limit` and follow the `links.next` / `links.prev` URLs.
+    There are no page numbers and no total counts. Cursors are opaque -
+    do not build or read them yourself.
+
+    **Caching.** Every representation carries a strong `ETag` response
+    header. `If-Match` is not required. `PUT` only ever creates (it never
+    replaces an existing resource), so there is no lost-update risk
+    there. `PATCH /networks/{networkId}` changes one label, `name`, and
+    is last-write-wins: the next read shows the result, so a lost update
+    is visible and easy to repair without a precondition.
+
+    **Permissions.** Each operation names the permission it needs under
+    `x-required-permission` (`network:<resource>:<action>`) and describes
+    it in `x-required-permission-description`. Your credentials decide
+    which of them you hold.
+
+    **Compatibility.** Fields with no value are left out of the response
+    rather than sent as `null`, and new fields and new values may be
+    added over time. Tolerate both.
+
+servers:
+  - url: /v3/public
+    description: Network API - the paths below are relative to your API base URL
+paths:
+  /networks:
+    get:
+      summary: List networks
+      description: |
+        Lists your networks. Only networks on your own account appear,
+        whatever parameters you send. Cursor-paginated; filters use the
+        `filters[field][op]` syntax - supported: `filters[fabric][eq]`,
+        `filters[state][eq]`, `filters[name][contains]`. An unknown
+        filter field, or a known field with an unsupported operator, is
+        a `400` (code E020013) - never silently
+        ignored. Networks in the internal `deleted` state never appear.
+      operationId: listNetworks
+      x-required-permission: network:network:list
+      x-required-permission-description: List the networks on your account.
+      x-audience: customer-facing
+      tags:
+        - Networks
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - in: query
+          name: filters[fabric][eq]
+          description: Filter by public fabric identifier.
+          required: false
+          schema:
+            type: string
+          example: "montreal-a"
+        - in: query
+          name: filters[state][eq]
+          description: |
+            Filter by network state. `deleted` is not a valid filter value -
+            deleted networks are never visible on this API.
+          required: false
+          schema:
+            type: string
+            enum: [provisioning, active, failed]
+          example: "active"
+        - in: query
+          name: filters[name][contains]
+          description: |
+            Case-insensitive substring match on the network's `name`,
+            evaluated datastore-side. Unnamed networks never match. An
+            empty or whitespace-only value reads as if the filter were
+            absent. LIKE wildcard characters in the value are treated as
+            literals - the value never acts as a pattern.
+          required: false
+          schema:
+            type: string
+          example: "web"
+      responses:
+        '200':
+          description: OK - one page of your networks
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkListResponse'
+              examples:
+                page:
+                  summary: One page of networks, with a next page to follow
+                  value:
+                    items:
+                      - id: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                        state: "active"
+                        connectivity:
+                          type: "public"
+                        fabric: "montreal-a"
+                        name: "web tier"
+                        vlanId: 3042
+                        addressing:
+                          source: "provider"
+                        retention: "persistent"
+                        createdAt: "2026-07-27T09:00:00Z"
+                        updatedAt: "2026-07-27T09:02:11Z"
+                        links:
+                          self:
+                            href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                          prefixes:
+                            href: "/prefixes?filters[networkId][eq]=01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                          ipAddresses:
+                            href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf/ip-addresses"
+                      - id: "01984f2e-2d4b-7e32-8b21-4653f38bedd0"
+                        state: "provisioning"
+                        connectivity:
+                          type: "private"
+                          routing:
+                            enabled: false
+                        fabric: "rotterdam-a"
+                        name: "db tier"
+                        addressing:
+                          source: "provider"
+                        retention: "persistent"
+                        createdAt: "2026-07-27T10:15:00Z"
+                        updatedAt: "2026-07-27T10:15:00Z"
+                        links:
+                          self:
+                            href: "/networks/01984f2e-2d4b-7e32-8b21-4653f38bedd0"
+                          operation:
+                            href: "/networks/01984f2e-2d4b-7e32-8b21-4653f38bedd0/operation"
+                          prefixes:
+                            href: "/prefixes?filters[networkId][eq]=01984f2e-2d4b-7e32-8b21-4653f38bedd0"
+                          ipAddresses:
+                            href: "/networks/01984f2e-2d4b-7e32-8b21-4653f38bedd0/ip-addresses"
+                    links:
+                      self:
+                        href: "/networks?limit=2"
+                      next:
+                        href: "/networks?limit=2&cursor=b2Zmc2V0OjI"
+                empty:
+                  summary: No networks yet
+                  value:
+                    items: []
+                    links:
+                      self:
+                        href: "/networks"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Bad Request - the request names an unknown filter field, or a
+            known filter field with an unsupported operator
+            (code E020013).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                unknownFilterField:
+                  summary: Unknown filter field
+                  value:
+                    title: "Unknown filter field"
+                    status: 400
+                    detail: "unknown filter field 'vlan'; supported fields: fabric, name, state"
+                    code: "E020013"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                unsupportedOperator:
+                  summary: Known filter field with an unsupported operator
+                  value:
+                    title: "Unknown filter field"
+                    status: 400
+                    detail: "unsupported filter \"filters[name][eq]\" for field 'name'; supported: filters[name][contains]"
+                    code: "E020013"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - a filter value or the cursor fails
+            validation (code E020001).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                invalidCursor:
+                  summary: Cursor was not issued for this listing
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "cursor is not a cursor previously issued for this listing"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /networks/{networkId}:
+    parameters:
+      - in: path
+        name: networkId
+        description: |
+          Client-generated UUID of the network. On `PUT` it MUST be a v7
+          (time-ordered) UUID and is also the idempotency key: retries of the
+          same logical create MUST reuse it. `GET`, `PATCH` and `DELETE`
+          take any well-formed UUID - the version is not re-checked on an
+          existing identity, and a UUID that names nothing readable on your
+          account is a `404` like any other unknown one.
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+    put:
+      summary: Create a network (idempotent, create-only)
+      description: |
+        Declares a network. Acceptance returns `202` with an operation
+        reference; the network record is created with `state=provisioning`
+        and one orchestration provisions the underlying segment and the
+        initial prefixes.
+
+        Initial prefixes depend on connectivity:
+        - `public` networks MUST state `addressing.prefixes[]` explicitly -
+          a public prefix is billable and geo-pinned, so there is no
+          default; a public create without `prefixes[]` is a `422`.
+        - `private` networks take `addressing.prefixes[]` when given,
+          otherwise exactly one /24 is derived, carved so it does not
+          overlap any private prefix you already hold.
+        - `addressing.source: none` provisions zero prefixes.
+
+        **Idempotency.** The path UUID is the
+        idempotency key. An identical replay returns `202` with the SAME
+        operation reference and starts nothing new. The same UUID with a
+        different body returns `409` (code E020003); a body that differs
+        only in `name` is a replay, not a conflict, and never changes the
+        stored name (rename with `PATCH`). `PUT` is create-only: it never
+        acts as a whole-document replacement of an existing network. Day-2
+        changes are made one resource at a time.
+      operationId: createNetwork
+      x-required-permission: network:network:create
+      x-required-permission-description: Create a network on your account.
+      x-audience: customer-facing
+      tags:
+        - Networks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkCreateRequest'
+            examples:
+              publicWithExplicitPrefixes:
+                summary: Public network with explicit initial prefixes (required for public)
+                value:
+                  connectivity:
+                    type: "public"
+                  fabric: "montreal-a"
+                  name: "web tier"
+                  addressing:
+                    source: "provider"
+                    prefixes:
+                      - family: 4
+                        size: 24
+                  contractId: "PD-2026-000481"
+              privateWithDerivedPrefix:
+                summary: Private network, subnet derived (one /24, no prefixes[] needed)
+                value:
+                  connectivity:
+                    type: "private"
+                  fabric: "montreal-a"
+                  name: "db tier"
+                  retention: "persistent"
+                  contractId: "PD-2026-000481"
+              privateStandaloneNoAddressing:
+                summary: Private standalone Layer 2 segment with no addressing
+                value:
+                  connectivity:
+                    type: "private"
+                  fabric: "rotterdam-a"
+                  addressing:
+                    source: "none"
+      responses:
+        '202':
+          description: |
+            Accepted - the network is being provisioned. The body is the
+            network representation with `state=provisioning`;
+            `links.operation` is the operation reference. An
+            identical replay of the same `PUT` returns `202` with the SAME
+            operation reference.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+              examples:
+                accepted:
+                  summary: Create accepted (`vlanId` is not known yet, so it is absent)
+                  value:
+                    id: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    state: "provisioning"
+                    connectivity:
+                      type: "public"
+                    fabric: "montreal-a"
+                    name: "web tier"
+                    addressing:
+                      source: "provider"
+                    retention: "persistent"
+                    createdAt: "2026-07-27T09:00:00Z"
+                    updatedAt: "2026-07-27T09:00:00Z"
+                    links:
+                      self:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                      operation:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf/operation"
+                      prefixes:
+                        href: "/prefixes?filters[networkId][eq]=01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                      ipAddresses:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf/ip-addresses"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Conflict. Either this UUID already denotes a network created with
+            a different body (code E020003) - `PUT` never replaces an
+            existing network - or the create would exceed your account's
+            network limit for the fabric, or the prefix limit for the
+            initial prefixes it declares (code E020016), or the account is
+            not authorised for self-serve creation of networks at all
+            because no contract covers it (code E020017), or the
+            `contractId` does not authorise the type of a declared initial
+            prefix (code E020031). The network itself is checked first, so
+            an account refused both ways answers E020017. In every case
+            nothing is created and no operation is started.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                sameUuidDifferentBody:
+                  summary: Same UUID, different body
+                  value:
+                    title: "Idempotency conflict"
+                    status: 409
+                    detail: "network 01984f2e-1c3a-7d21-9d10-3542f27adccf exists with a different create request; PUT never replaces an existing network - use a new UUID for a new network"
+                    code: "E020003"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                networkQuotaExceeded:
+                  summary: Network limit for the fabric reached
+                  value:
+                    title: "Quota exceeded"
+                    status: 409
+                    detail: "your limit of 5 networks in fabric 'montreal-a' has been reached (5 in use); release one you no longer need, or contact i3D.net support to request a higher limit"
+                    code: "E020016"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractRequired:
+                  summary: No contract covers self-serve creation for this account
+                  value:
+                    title: "Contract required"
+                    status: 409
+                    detail: "creating networks on this account requires a contract with i3D.net; contact i3D.net support to arrange one"
+                    code: "E020017"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractNotAuthorised:
+                  summary: The contractId does not authorise a declared initial prefix
+                  value:
+                    title: "Contract does not authorise this resource"
+                    status: 409
+                    detail: "contract PD-2026-000481 does not authorise creating IPv6 addresses and prefixes on this account; use a contract that covers this resource type, or contact i3D.net support to have it added to the contract"
+                    code: "E020031"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                initialPrefixQuotaExceeded:
+                  summary: Prefix limit under one contract reached by the declared initial prefixes
+                  value:
+                    title: "Quota exceeded"
+                    status: 409
+                    detail: "your limit of 2 prefixes under contract PD-2026-000481 has been reached (1 in use); this request asked for 3 more; contact i3D.net support to request a higher limit"
+                    code: "E020016"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - the request parses but fails
+            validation; nothing is created. Codes: E020001 (validation
+            failure), E020005 (unknown public fabric identifier - the
+            response lists the valid identifiers).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                publicWithoutPrefixes:
+                  summary: Public network without explicit prefixes
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "a public network requires explicit addressing.prefixes[] (family and size) - there is no default public prefix"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                publicWithSourceNone:
+                  summary: Public network with addressing.source none
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "connectivity.type 'public' contradicts addressing.source 'none': a public network requires explicit addressing.prefixes[]"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                sourceNoneWithPrefixes:
+                  summary: addressing.source none combined with prefixes
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "addressing.source 'none' contradicts a non-empty addressing.prefixes[]: remove the prefixes or use source 'provider'"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                sourceCustomer:
+                  summary: Unsupported addressing.source
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "addressing.source 'customer' is not supported; supported values: provider, none"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                unknownFabric:
+                  summary: Unknown public fabric identifier
+                  value:
+                    title: "Unknown fabric identifier"
+                    status: 422
+                    detail: "unknown fabric 'montreal-x'; valid public fabric identifiers: amsterdam-a, frankfurt-a, montreal-a, rotterdam-a, singapore-a, tokyo-a"
+                    code: "E020005"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                customerDeclaredEphemeral:
+                  summary: Customer identity declaring ephemeral retention
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "retention 'ephemeral' is not available on this account; omit retention or declare persistent"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractMissing:
+                  summary: Persistent network with provider addressing and no contractId
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "contractId is required for a persistent resource: name the contract it is billed under (pattern ^[A-Za-z0-9][A-Za-z0-9_-]{3,19}$)"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractWithSourceNone:
+                  summary: contractId supplied with addressing.source none
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "contractId must be omitted when addressing.source is 'none': no prefix is created, so there is nothing to attribute to a contract"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractOnEphemeral:
+                  summary: contractId supplied on a network resolving to ephemeral
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "contractId must be omitted for an ephemeral resource: ephemeral resources are not attributed to a contract"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      summary: Get a network
+      description: |
+        Returns the network with its current state. A UUID that does not
+        exist, belongs to another account, or names a deleted network
+        reads as `404`.
+      operationId: getNetworkById
+      x-required-permission: network:network:read
+      x-required-permission-description: Read a network and its provisioning status.
+      x-audience: customer-facing
+      tags:
+        - Networks
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+              examples:
+                active:
+                  summary: A provisioned network
+                  value:
+                    id: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    state: "active"
+                    connectivity:
+                      type: "public"
+                    fabric: "montreal-a"
+                    name: "web tier"
+                    vlanId: 3042
+                    addressing:
+                      source: "provider"
+                    retention: "persistent"
+                    createdAt: "2026-07-27T09:00:00Z"
+                    updatedAt: "2026-07-27T09:02:11Z"
+                    links:
+                      self:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                      prefixes:
+                        href: "/prefixes?filters[networkId][eq]=01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                      ipAddresses:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf/ip-addresses"
+                routedPrivate:
+                  summary: A private network i3D.net connected to your other networks
+                  value:
+                    id: "01984f2e-3e5c-7f43-9c32-5764f49cfee1"
+                    state: "active"
+                    connectivity:
+                      type: "private"
+                      routing:
+                        enabled: true
+                        routingDomainId: "01984f2e-9a01-7cc1-8a44-1f27adccf001"
+                    fabric: "rotterdam-a"
+                    name: "rotterdam-a private 1"
+                    vlanId: 2210
+                    addressing:
+                      source: "provider"
+                    retention: "ephemeral"
+                    createdAt: "2026-10-02T09:00:00Z"
+                    updatedAt: "2026-10-02T09:00:00Z"
+                    links:
+                      self:
+                        href: "/networks/01984f2e-3e5c-7f43-9c32-5764f49cfee1"
+                      prefixes:
+                        href: "/prefixes?filters[networkId][eq]=01984f2e-3e5c-7f43-9c32-5764f49cfee1"
+                      ipAddresses:
+                        href: "/networks/01984f2e-3e5c-7f43-9c32-5764f49cfee1/ip-addresses"
+                failed:
+                  summary: Provisioning failed - the reason is in `error`
+                  value:
+                    id: "01984f2e-2d4b-7e32-8b21-4653f38bedd0"
+                    state: "failed"
+                    connectivity:
+                      type: "private"
+                      routing:
+                        enabled: false
+                    fabric: "rotterdam-a"
+                    addressing:
+                      source: "provider"
+                    retention: "persistent"
+                    error:
+                      code: "NETWORK_PROVISIONING_FAILED"
+                      message: "network provisioning failed"
+                    createdAt: "2026-07-27T10:15:00Z"
+                    updatedAt: "2026-07-27T10:18:42Z"
+                    links:
+                      self:
+                        href: "/networks/01984f2e-2d4b-7e32-8b21-4653f38bedd0"
+                      operation:
+                        href: "/networks/01984f2e-2d4b-7e32-8b21-4653f38bedd0/operation"
+                      prefixes:
+                        href: "/prefixes?filters[networkId][eq]=01984f2e-2d4b-7e32-8b21-4653f38bedd0"
+                      ipAddresses:
+                        href: "/networks/01984f2e-2d4b-7e32-8b21-4653f38bedd0/ip-addresses"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NetworkNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          $ref: '#/components/responses/MalformedPathParameter'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      summary: Rename a network
+      description: |
+        Changes the network's `name`. The body is a JSON Merge Patch
+        (`application/merge-patch+json`) with one patchable member,
+        `name`: a string sets the name (trimmed; empty after trim, or
+        longer than 100 characters after trim, is a `422`, code E020001),
+        `null` clears it (the network reads as unnamed and the response
+        omits `name`), and an omitted member leaves it unchanged, so `{}`
+        is a valid no-op that returns the current representation. Any
+        other member is a `422` (code E020001) naming it, and nothing
+        changes.
+
+        Synchronous: `200` with the full network representation and a
+        fresh `ETag`; there is no operation to poll. `updatedAt` reflects
+        the edit. The rename does not depend on the network's state: a
+        `provisioning` or `failed` network can be renamed, and the running
+        or failed operation is unaffected. A network i3D.net manages
+        (`retention: ephemeral`) is read-only and answers `409` (code
+        E020019). Last-write-wins: no `If-Match` precondition is required,
+        see the caching note in this document's description.
+      operationId: patchNetwork
+      x-required-permission: network:network:update
+      x-required-permission-description: Rename a network on your account.
+      x-audience: customer-facing
+      tags:
+        - Networks
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/NetworkPatchRequest'
+            examples:
+              rename:
+                summary: Set a new name
+                value:
+                  name: "db tier"
+              clear:
+                summary: Clear the name
+                value:
+                  name: null
+              noop:
+                summary: Empty patch (no-op)
+                value: {}
+      responses:
+        '200':
+          description: |
+            OK - the network as it reads after the edit, with a fresh
+            strong `ETag`.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+              examples:
+                renamed:
+                  summary: Renamed network
+                  value:
+                    id: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    state: "active"
+                    connectivity:
+                      type: "public"
+                    fabric: "montreal-a"
+                    name: "db tier"
+                    vlanId: 3042
+                    addressing:
+                      source: "provider"
+                    retention: "persistent"
+                    createdAt: "2026-07-27T09:00:00Z"
+                    updatedAt: "2026-07-28T14:30:05Z"
+                    links:
+                      self:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                      prefixes:
+                        href: "/prefixes?filters[networkId][eq]=01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                      ipAddresses:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf/ip-addresses"
+        '400':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Bad Request - the request body does not parse as JSON (code
+            E020001). A body that parses but is not a JSON object, or
+            carries a member other than `name`, is a `422` instead.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                malformedJson:
+                  summary: Body is not valid JSON
+                  value:
+                    title: "Validation failure"
+                    status: 400
+                    detail: "request body is not valid JSON"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NetworkNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Conflict - the network is managed by i3D.net and is read-only
+            here (code E020019). Answered after the tenancy check (a
+            network that is not yours stays a `404`) and before
+            validation. The name is unchanged.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                platformManaged:
+                  summary: The network is managed by i3D.net
+                  value:
+                    title: "Resource is managed by i3D.net"
+                    status: 409
+                    detail: "this network was set up by i3D.net on your behalf and is managed by i3D.net. It is removed automatically; it cannot be changed or deleted here, and prefixes cannot be added to it. Contact i3D.net support if you need it changed or removed."
+                    code: "E020019"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - the body parses but is not a valid
+            patch, or `networkId` is not a well-formed UUID; nothing
+            changes (code E020001). `detail` names the member or
+            parameter: `name` is empty after trimming or longer than 100
+            characters after trimming, `name` is not a string or `null`,
+            or the body carries a member other than `name`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                emptyName:
+                  summary: Whitespace-only name
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "name must not be empty or whitespace-only; send null to clear the name or a non-empty value to set it"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                nameTooLong:
+                  summary: Name longer than 100 characters after trimming
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "name must be at most 100 characters after trimming, got 101"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                unknownMember:
+                  summary: A member other than name
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "fabric is not patchable; the only patchable member is name"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                malformedNetworkId:
+                  summary: networkId is not a UUID
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "networkId is not a valid UUID"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: Delete a network (guarded, asynchronous)
+      description: |
+        Tears down the network and its children. Refused with `409` (code
+        E020004) while ANY IP address is still in use under the network's
+        prefixes, whatever its retention. Addresses are released when the
+        servers using them are decommissioned. Otherwise returns
+        `202` with an operation reference; children are removed first,
+        then the network is deleted.
+
+        Idempotent: repeating the `DELETE` continues a previously failed
+        teardown instead of failing. Once the teardown has completed, the
+        network reads as `404` (`GET` and `DELETE` alike) and no longer
+        appears in listings - the completed operation is your
+        confirmation.
+      operationId: deleteNetwork
+      x-required-permission: network:network:delete
+      x-required-permission-description: Delete a network from your account.
+      x-audience: customer-facing
+      tags:
+        - Networks
+      responses:
+        '202':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Accepted - teardown is running. `links.operation` is the
+            operation reference; a repeated `DELETE` returns the
+            operation reference of the teardown it continues.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkDeleteAccepted'
+              examples:
+                accepted:
+                  summary: Delete accepted
+                  value:
+                    id: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    links:
+                      operation:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf/operation"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Not Found - the network does not exist on your account, or it
+            was already deleted (code E020002).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                alreadyDeleted:
+                  summary: Re-delete after a completed teardown
+                  value:
+                    title: "Network not found"
+                    status: 404
+                    detail: "network 01984f2e-1c3a-7d21-9d10-3542f27adccf does not exist"
+                    code: "E020002"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Conflict - the network is managed by i3D.net and is read-only
+            here (code E020019), or the account is not authorised to remove
+            resources it provisioned for itself because no contract covers
+            them (code E020018), or the delete is blocked because IP
+            addresses are still in use under the network's prefixes (code
+            E020004).
+            They are answered in that order, and both refusals ahead of
+            E020004 for the same reason: someone who cannot clear the
+            blocking addresses must not be told to clear them. A network with
+            no contract AND managed by i3D.net answers E020019, because
+            arranging a contract would not make the request succeed.
+            E020019 also covers a network the account owns whose prefixes
+            include one managed by i3D.net - deleting the network would tear
+            that prefix down with it. That variant's detail is about the
+            NETWORK ("this network holds a prefix that was set up by
+            i3D.net ..."), not about the prefix: the request named a network.
+            It names no prefix id; `retention` on the prefix listing is where
+            the blocking prefix is identified.
+            Re-driving a teardown that was already accepted is never refused
+            by E020018 or E020019.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                platformManaged:
+                  summary: The network is managed by i3D.net
+                  value:
+                    title: "Resource is managed by i3D.net"
+                    status: 409
+                    detail: "this network was set up by i3D.net on your behalf and is managed by i3D.net. It is removed automatically; it cannot be changed or deleted here, and prefixes cannot be added to it. Contact i3D.net support if you need it changed or removed."
+                    code: "E020019"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractRequired:
+                  summary: No contract covers this account's self-serve resources
+                  value:
+                    title: "Contract required"
+                    status: 409
+                    detail: "removing networks on this account requires a contract with i3D.net; contact i3D.net support to arrange one"
+                    code: "E020018"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                addressesInUse:
+                  summary: Delete blocked by IP addresses in use
+                  value:
+                    title: "Delete blocked by IP addresses in use"
+                    status: 409
+                    detail: "network 01984f2e-1c3a-7d21-9d10-3542f27adccf still holds 3 IP addresses in use (e.g. 01984f2e-aa01-7bb2-8c11-1f27adccf111); decommission the servers using them, then retry the delete"
+                    code: "E020004"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '422':
+          $ref: '#/components/responses/MalformedPathParameter'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /networks/{networkId}/operation:
+    get:
+      summary: Get a network's current or last operation
+      description: |
+        Returns the async operation attached to the network: the
+        running or terminally failed create, or the running, failed, or
+        completed delete. This is the resource behind the `links.operation`
+        reference returned by `PUT` and `DELETE`; an idempotent replay of
+        either returns the SAME reference to this resource. `404` when no
+        operation record exists for the UUID (unknown network, foreign
+        account, or nothing recorded).
+      operationId: getNetworkOperation
+      x-required-permission: network:network:read
+      x-required-permission-description: Read a network and its provisioning status.
+      x-audience: customer-facing
+      tags:
+        - Networks
+      parameters:
+        - in: path
+          name: networkId
+          description: UUID of the network the operation belongs to.
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+              examples:
+                running:
+                  summary: A create still running
+                  value:
+                    resourceId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    resourceType: "network"
+                    kind: "create"
+                    state: "running"
+                    startedAt: "2026-07-27T09:00:00Z"
+                    updatedAt: "2026-07-27T09:00:00Z"
+                    links:
+                      resource:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                failed:
+                  summary: A create that failed
+                  value:
+                    resourceId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    resourceType: "network"
+                    kind: "create"
+                    state: "failed"
+                    startedAt: "2026-07-27T09:00:00Z"
+                    updatedAt: "2026-07-27T09:03:12Z"
+                    completedAt: "2026-07-27T09:03:12Z"
+                    error:
+                      code: "NETWORK_BOOTSTRAP_FAILED"
+                      message: "network provisioning failed"
+                      retryable: false
+                    links:
+                      resource:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                deleted:
+                  summary: A completed teardown (the network now reads 404)
+                  value:
+                    resourceId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    resourceType: "network"
+                    kind: "delete"
+                    state: "succeeded"
+                    startedAt: "2026-07-29T11:00:00Z"
+                    updatedAt: "2026-07-29T11:01:40Z"
+                    completedAt: "2026-07-29T11:01:40Z"
+                    links:
+                      resource:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NetworkNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          $ref: '#/components/responses/MalformedPathParameter'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /networks/{networkId}/ip-addresses:
+    parameters:
+      - in: path
+        name: networkId
+        description: |
+          UUID of the network. Any well-formed UUID is accepted - a
+          network that does not exist, belongs to another account, or
+          is deleted reads as `404` (default deny - existence is not
+          disclosed).
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+    get:
+      summary: List all IP addresses under a network
+      description: |
+        Lists ALL IP addresses that exist under the network's prefixes - allocated addresses and
+        infrastructure addresses alike. Role derivation (`gateway` /
+        `router-ip` / `reserved`, omitted when none) is identical to
+        the prefix-scoped listing
+        (`GET /prefixes/{prefixId}/ip-addresses`): the two listings
+        never disagree about what exists. Items are the same
+        `IPAddressResponse` objects - each carries its `prefixId` and
+        its canonical `links.self`. Address-pool prefixes
+        are excluded entirely: a pool is never an allocation target and
+        its address objects are not the network's addresses.
+
+        Availability is exposed as counters only (`capacity`,
+        `allocated`, `available`), aggregated across ALL the network's
+        non-pool prefixes and BOTH address families - the per-family
+        view is the prefix-scoped listing. Per-prefix counter semantics
+        carry over into the sum, including saturation at the maximum
+        int64 value. Free addresses are NEVER enumerated. `available`
+        is the number of addresses that can still be allocated under
+        the network.
+
+        The listing does NOT require `state: active`: provisioning and
+        failed networks answer `200` - a network without a provisioned
+        segment yet yields an empty page with all counters 0. A network
+        that does not exist,
+        belongs to another account, or is deleted reads as `404` (default
+        deny, code E020002) - existence is never disclosed.
+
+        Cursor-paginated with a deterministic cross-prefix order. Page
+        links (`links.next` / `links.prev`) are identity-free and
+        followable verbatim. The listing reads live address data - it is
+        not a cached copy.
+      operationId: listNetworkIPAddresses
+      x-required-permission: network:ip-address:list
+      x-required-permission-description: List the IP addresses in your networks and prefixes.
+      x-audience: customer-facing
+      tags:
+        - IP Addresses
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK - one page of IP address objects, with aggregated counters
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkIPAddressListResponse'
+              examples:
+                page:
+                  summary: Addresses across the network's prefixes
+                  value:
+                    items:
+                      - id: "01984f2e-aa01-7bb2-8c11-1f27adccf111"
+                        address: "10.0.0.1"
+                        family: 4
+                        prefixId: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                        role: "gateway"
+                        created: "2026-07-27T09:00:00Z"
+                        links:
+                          self:
+                            href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses/01984f2e-aa01-7bb2-8c11-1f27adccf111"
+                      - id: "01984f2e-aa02-7bb2-8c11-1f27adccf112"
+                        address: "10.0.0.10"
+                        family: 4
+                        prefixId: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                        created: "2026-07-27T09:05:00Z"
+                        links:
+                          self:
+                            href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses/01984f2e-aa02-7bb2-8c11-1f27adccf112"
+                      - id: "01984f2e-aa03-7bb2-8c11-1f27adccf113"
+                        address: "10.0.1.1"
+                        family: 4
+                        prefixId: "01984f2e-bb03-7cc3-9d22-2f27adccf333"
+                        role: "gateway"
+                        created: "2026-07-28T08:02:00Z"
+                        links:
+                          self:
+                            href: "/prefixes/01984f2e-bb03-7cc3-9d22-2f27adccf333/ip-addresses/01984f2e-aa03-7bb2-8c11-1f27adccf113"
+                    capacity: 508
+                    allocated: 8
+                    available: 500
+                    links:
+                      self:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf/ip-addresses"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NetworkNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - the request parses but fails
+            validation, e.g. the cursor value does not decode as a
+            cursor issued by this API (code E020001).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                invalidCursor:
+                  summary: Cursor was not issued for this listing
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "cursor is not a cursor previously issued for this listing"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+
+  /prefixes:
+    get:
+      summary: List prefixes
+      description: |
+        Lists your prefixes. Locations are public fabric slugs and
+        metro names (internal location names never appear), and
+        prefixes provisioned through a network carry `networkId`.
+        Cursor-paginated; filters use the `filters[field][op]` syntax.
+        The listing carries NO availability counters - read a single
+        prefix (`GET /prefixes/{prefixId}`) for
+        `capacity`/`allocated`/`available`.
+
+        **Account scope.** The result is always the prefixes on your own
+        account. There is no account parameter and no cross-account
+        search.
+
+        **Filter combinations.** Filters AND-combine, except
+        `filters[fabric][eq]` and
+        `filters[metro][eq]`, which are mutually exclusive - combining
+        them returns `422` (code E020001).
+
+        An unknown filter field is a `400` (code E020013). An unknown
+        `filters[networkId][eq]` value - including another account's
+        network - yields an empty page, not an error: filters narrow,
+        they don't probe existence.
+      operationId: listPrefixes
+      x-required-permission: network:prefix:list
+      x-required-permission-description: List the prefixes on your account.
+      x-audience: customer-facing
+      tags:
+        - Prefixes
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - in: query
+          name: filters[family][eq]
+          description: "Filter by IP family: 4 or 6, for IPv4 or IPv6 respectively."
+          required: false
+          schema:
+            type: integer
+            enum: [4, 6]
+          example: 4
+        - in: query
+          name: filters[fabric][eq]
+          description: |
+            Filter by public fabric identifier (as served by the fabrics
+            listing). Mutually exclusive with
+            `filters[metro][eq]`.
+          required: false
+          schema:
+            type: string
+          example: "montreal-a"
+        - in: query
+          name: filters[metro][eq]
+          description: |
+            Filter by public metro name (as served by the fabrics
+            listing). Mutually exclusive with `filters[fabric][eq]`.
+          required: false
+          schema:
+            type: string
+          example: "Montreal"
+        - in: query
+          name: filters[cidr][contains]
+          description: |
+            Network containment filter: returns the prefixes that CONTAIN
+            the given IP address or CIDR (e.g. `10.0.0.5` matches
+            `10.0.0.0/24`). This is address-math containment, NOT string
+            substring matching.
+          required: false
+          schema:
+            type: string
+          example: "10.0.0.5"
+        - in: query
+          name: filters[state][eq]
+          description: |
+            Filter by prefix state. `provisioning` and `failed` are set
+            while a create is in flight or has failed and are not
+            filterable. When omitted, prefixes in all states are
+            returned.
+          required: false
+          schema:
+            type: string
+            enum: [container, active, reserved, deprecated]
+          example: "active"
+        - in: query
+          name: filters[connectivity][eq]
+          description: |
+            Filter by the connectivity class of the prefix, matching
+            `connectivity.type` in the representation and the same two
+            values a network uses: `public` for internet-connected
+            address space, `private` for address space in an isolated
+            segment.
+          required: false
+          schema:
+            type: string
+            enum: [public, private]
+          example: "public"
+        - in: query
+          name: filters[networkId][eq]
+          description: |
+            Filter by the network that owns the prefixes (children
+            discovery). An unknown network - including another account's -
+            yields an empty page.
+          required: false
+          schema:
+            type: string
+            format: uuid
+          example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+      responses:
+        '200':
+          description: OK - one page of prefixes
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrefixListResponse'
+              examples:
+                page:
+                  summary: The two prefixes of one network
+                  value:
+                    items:
+                      - id: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                        cidr: "10.0.0.0/24"
+                        family: 4
+                        state: "active"
+                        fabric: "montreal-a"
+                        metro: "Montreal"
+                        customerDescription: "edge pool, EU traffic"
+                        vlanId: 3042
+                        gatewayIp: "10.0.0.1"
+                        routerIps:
+                          - "10.0.0.2"
+                          - "10.0.0.3"
+                        connectivity:
+                          type: public
+                        networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                        retention: "persistent"
+                        contractId: "PD-2026-000481"
+                        created: "2026-07-27T09:00:00Z"
+                        lastUpdated: "2026-07-27T09:02:11Z"
+                        links:
+                          self:
+                            href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                      - id: "01984f2e-bb03-7cc3-9d22-2f27adccf333"
+                        cidr: "10.0.1.0/24"
+                        family: 4
+                        state: "provisioning"
+                        fabric: "montreal-a"
+                        metro: "Montreal"
+                        vlanId: 3042
+                        connectivity:
+                          type: public
+                        networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                        retention: "persistent"
+                        contractId: "PD-2026-000481"
+                        created: "2026-07-28T08:00:00Z"
+                        lastUpdated: "2026-07-28T08:00:00Z"
+                        links:
+                          self:
+                            href: "/prefixes/01984f2e-bb03-7cc3-9d22-2f27adccf333"
+                          operation:
+                            href: "/prefixes/01984f2e-bb03-7cc3-9d22-2f27adccf333/operation"
+                    links:
+                      self:
+                        href: "/prefixes?filters[networkId][eq]=01984f2e-1c3a-7d21-9d10-3542f27adccf&limit=2"
+                      next:
+                        href: "/prefixes?filters[networkId][eq]=01984f2e-1c3a-7d21-9d10-3542f27adccf&limit=2&cursor=b2Zmc2V0OjI"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Bad Request - the request names an unknown filter field
+            (code E020013).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                unknownFilterField:
+                  summary: Unknown filter field
+                  value:
+                    title: "Unknown filter field"
+                    status: 400
+                    detail: "unknown filter field 'vlan'; supported fields: cidr, connectivity, fabric, family, metro, networkId, state"
+                    code: "E020013"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - a filter value or the cursor fails
+            validation, or mutually exclusive filters are combined
+            (code E020001).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                exclusiveFilters:
+                  summary: Mutually exclusive filters combined
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "filters[fabric][eq] and filters[metro][eq] are mutually exclusive"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                invalidCursor:
+                  summary: Cursor was not issued for this listing
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "cursor is not a cursor previously issued for this listing"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /prefixes/{prefixId}:
+    parameters:
+      - in: path
+        name: prefixId
+        description: |
+          Client-generated UUID of the prefix. On `PUT` it MUST be a v7
+          (time-ordered) UUID and is also the idempotency key: retries of
+          the same logical create MUST reuse it. `GET` and `DELETE` take
+          any well-formed UUID - the version is not re-checked on an
+          existing identity, and a UUID that names nothing readable for
+          your account is a `404` like any other unknown one.
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+    put:
+      summary: Create a prefix in a network (idempotent, create-only)
+      description: |
+        Declares an additional prefix in an existing network - the day-2
+        grow step for a network that is running out of addresses.
+        Acceptance returns `202` with an operation reference;
+        the prefix is provisioned asynchronously in the referenced
+        network.
+
+        The request names the owning network by `networkId` (required).
+        A `networkId` that does not exist on your account - including
+        another account's network - is a `422` with guidance; a network
+        is never auto-created as a side effect. The prefix shape is
+        `family` + `size` (both required): the concrete subnet is
+        selected by i3D.net during provisioning - customers never
+        pick the subnet. A request naming an explicit `cidr`
+        is a `422` with guidance; an explicit-cidr capability, if ever
+        ratified, would be a separate contract change.
+
+        For private networks the concrete subnet is carved so that it
+        does not overlap any private prefix you already hold.
+
+        `retention` MAY be omitted: it defaults to the owning network's
+        retention; an explicit value overrides the default. The
+        rule applies to the RESOLVED value: a resource on your account
+        can never end up `ephemeral`, whether you declared it or it came
+        from the network (such a request is a `422`).
+
+        `contractId` names the contract the prefix is billed under. It
+        is decided on the RESOLVED `retention`: REQUIRED for
+        `persistent`, FORBIDDEN for `ephemeral`; each refusal is a
+        `422` naming
+        `contractId` in `detail`. Only the format is verified, never
+        the contract's existence. The value is recorded per prefix and
+        is immutable. Because validation runs before the idempotency
+        settlement, a replay whose body omits `contractId` for a
+        `persistent` prefix is a `422`, not a `409`.
+
+        **Idempotency.** The path UUID is the
+        idempotency key. An identical replay returns `202` with the
+        SAME operation reference and provisions nothing new. The same
+        UUID with a different body returns `409` (code E020003). `PUT`
+        is create-only: it never replaces an existing prefix. A UUID
+        with a delete operation attached - a delete in progress, or a
+        retained failed-delete tombstone - is also a `409` with the
+        same code E020003: a deleted identity is never re-created, and
+        the recorded create request is not even compared - a new prefix
+        needs a NEW UUID.
+
+        Once provisioned, the prefix is discoverable via
+        `filters[networkId][eq]` on the prefix listing.
+      operationId: createPrefix
+      x-required-permission: network:prefix:create
+      x-required-permission-description: Create a prefix in one of your networks.
+      x-audience: customer-facing
+      tags:
+        - Prefixes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrefixCreateRequest'
+            examples:
+              dayTwoBySize:
+                summary: Day-2 prefix by size (subnet selected by i3D.net)
+                value:
+                  networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                  family: 4
+                  size: 24
+                  contractId: "PD-2026-000481"
+              declaredPersistent:
+                summary: Day-2 prefix with declared persistent retention
+                value:
+                  networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                  family: 4
+                  size: 24
+                  retention: "persistent"
+                  contractId: "PD-2026-000481"
+      responses:
+        '202':
+          description: |
+            Accepted - the prefix is being provisioned. The body echoes
+            the recorded request with the RESOLVED `retention`;
+            `links.operation` is the operation reference. An
+            identical replay of the same `PUT` returns `202` with the
+            SAME operation reference.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrefixCreateAccepted'
+              examples:
+                accepted:
+                  summary: Create accepted
+                  value:
+                    id: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                    state: "provisioning"
+                    networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    family: 4
+                    size: 24
+                    retention: "persistent"
+                    contractId: "PD-2026-000481"
+                    createdAt: "2026-07-27T09:00:00Z"
+                    updatedAt: "2026-07-27T09:00:00Z"
+                    links:
+                      operation:
+                        href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/operation"
+                      network:
+                        href: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Conflict. This UUID cannot denote a new prefix (code
+            E020003 for both branches):
+            - the UUID already denotes a prefix created with a
+              different body - `PUT` never replaces an existing prefix;
+              nothing is changed;
+            - a delete operation is in progress (or has failed) for
+              this UUID - a deleted identity is never re-created and
+              the recorded create request is not compared; a new prefix
+              needs a NEW UUID.
+
+            Or the referenced network is one i3D.net manages, so it takes no
+            customer prefixes (code E020019). Or the referenced network
+            cannot take a prefix in its
+            current state (code E020007) - it is not `active`, or its DELETE has
+            already been accepted, which its `state` does not yet show
+            because a network is not marked `deleted` until its teardown
+            fully succeeds; a prefix added then would be destroyed while
+            still provisioning or stranded on a deleted network, so the
+            remedy is a different network rather than a retry. Or the
+            create would exceed your
+            prefix limit for the network or for the contract (code
+            E020016), or the `contractId` does not authorise the prefix's
+            type for your account (code E020031; never E020017, which is
+            returned only for networks).
+            In every case nothing is created and no operation is started.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                sameUuidDifferentBody:
+                  summary: Same UUID, different body
+                  value:
+                    title: "Idempotency conflict"
+                    status: 409
+                    detail: "prefix 01984f2e-bb02-7cc3-9d22-2f27adccf222 exists with a different create request; PUT never replaces an existing prefix - use a new UUID for a new prefix"
+                    code: "E020003"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                deleteInProgress:
+                  summary: Delete in progress (or failed) for this UUID
+                  value:
+                    title: "Idempotency conflict"
+                    status: 409
+                    detail: "a delete operation is in progress or has failed for prefix 01984f2e-bb02-7cc3-9d22-2f27adccf222; a deleted identity is never re-created - use a new UUID for a new prefix"
+                    code: "E020003"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                quotaExceededInNetwork:
+                  summary: Prefix limit for the network reached
+                  value:
+                    title: "Quota exceeded"
+                    status: 409
+                    detail: "your limit of 4 prefixes in this network under contract PD-2026-000481 has been reached (4 in use); release one you no longer need from contract PD-2026-000481 in this network, or contact i3D.net support to request a higher limit"
+                    code: "E020016"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                quotaExceededForAccount:
+                  summary: Prefix limit under one contract reached
+                  value:
+                    title: "Quota exceeded"
+                    status: 409
+                    detail: "your limit of 100 prefixes under contract PD-2026-000481 has been reached (100 in use); release one you no longer need from contract PD-2026-000481, or contact i3D.net support to request a higher limit"
+                    code: "E020016"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractNotAuthorised:
+                  summary: The contractId does not authorise this prefix type
+                  value:
+                    title: "Contract does not authorise this resource"
+                    status: 409
+                    detail: "contract PD-2026-000481 does not authorise creating prefixes on this account; use a contract that covers this resource type, or contact i3D.net support to have it added to the contract"
+                    code: "E020031"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - the request parses but fails
+            validation; nothing is created (code E020001).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                unknownNetwork:
+                  summary: Unknown networkId (never auto-created)
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "network 01984f2e-1c3a-7d21-9d10-3542f27ad999 does not exist; create the network first - it is never created as a side effect"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                explicitCidrNotSupported:
+                  summary: Explicit cidr is not supported (provider selects the subnet)
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "an explicit cidr is not supported: the provider selects the concrete subnet during provisioning; state a 'size' instead"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                sizeAboveCap:
+                  summary: Requested block larger than the cap
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "size /22 exceeds the /24 cap; request /24 or smaller"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                customerDeclaredEphemeral:
+                  summary: Customer identity resolving to ephemeral retention
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "retention resolved to 'ephemeral', which is not available on this account; declare retention persistent explicitly"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractMissing:
+                  summary: Persistent prefix without a contractId
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "contractId is required for a persistent resource: name the contract it is billed under (pattern ^[A-Za-z0-9][A-Za-z0-9_-]{3,19}$)"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractMalformed:
+                  summary: contractId outside the accepted pattern
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "contractId must match ^[A-Za-z0-9][A-Za-z0-9_-]{3,19}$ (4-20 characters: letters, digits, '_' or '-', starting with a letter or digit; no surrounding whitespace)"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractOnEphemeral:
+                  summary: contractId supplied on a prefix resolving to ephemeral
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "contractId must be omitted for an ephemeral resource: ephemeral resources are not attributed to a contract"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      summary: Get a prefix
+      description: |
+        Returns the prefix, extended with
+        the availability counters `capacity`, `allocated`, and
+        `available` - the same definitions as the IP-address listing
+        under the prefix (`available` excludes the positionally reserved
+        addresses whether or not they are materialized). The counters
+        cost one extra lookup, which is why the prefix LISTING
+        does not carry them. A UUID that does not exist or is owned by
+        another account reads as `404` (default deny - existence is not
+        disclosed).
+
+        While a local lifecycle record exists (create in flight, or a
+        retained failed tombstone), `state` reports the lifecycle value
+        (`provisioning` / `failed`) and `links` carries the operation
+        reference (`links.operation`) alongside `self`.
+      operationId: getPrefixById
+      x-required-permission: network:prefix:read
+      x-required-permission-description: Read a prefix and its provisioning status.
+      x-audience: customer-facing
+      tags:
+        - Prefixes
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrefixDetailResponse'
+              examples:
+                active:
+                  summary: An active prefix with its availability counters
+                  value:
+                    id: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                    cidr: "10.0.0.0/24"
+                    family: 4
+                    state: "active"
+                    fabric: "montreal-a"
+                    metro: "Montreal"
+                    customerDescription: "edge pool, EU traffic"
+                    vlanId: 3042
+                    gatewayIp: "10.0.0.1"
+                    routerIps:
+                      - "10.0.0.2"
+                      - "10.0.0.3"
+                    connectivity:
+                      type: public
+                    networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    retention: "persistent"
+                    contractId: "PD-2026-000481"
+                    created: "2026-07-27T09:00:00Z"
+                    lastUpdated: "2026-07-27T09:02:11Z"
+                    capacity: 254
+                    allocated: 5
+                    available: 249
+                    links:
+                      self:
+                        href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                provisioning:
+                  summary: Still provisioning - no subnet chosen yet, counters zero
+                  value:
+                    id: "01984f2e-bb03-7cc3-9d22-2f27adccf333"
+                    cidr: ""
+                    family: 4
+                    state: "provisioning"
+                    networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    retention: "persistent"
+                    contractId: "PD-2026-000481"
+                    created: "2026-07-28T08:00:00Z"
+                    lastUpdated: "2026-07-28T08:00:00Z"
+                    capacity: 0
+                    allocated: 0
+                    available: 0
+                    links:
+                      self:
+                        href: "/prefixes/01984f2e-bb03-7cc3-9d22-2f27adccf333"
+                      operation:
+                        href: "/prefixes/01984f2e-bb03-7cc3-9d22-2f27adccf333/operation"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/PrefixNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          $ref: '#/components/responses/MalformedPathParameter'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: Delete a prefix (guarded, asynchronous)
+      description: |
+        Tears down the prefix: the records (the prefix, its
+        VLAN-scoped gateway objects, and its reserved addresses) are
+        removed and the routers are deconfigured. Refused with `409`
+        (code E020014) while ANY customer IP address is still in use
+        under the prefix, whatever its retention - infrastructure
+        addresses (`role` of `gateway`, `router-ip`, or `reserved`)
+        never block; the teardown removes them itself. Otherwise
+        returns `202` with an operation reference; the operation is
+        served by `GET /prefixes/{prefixId}/operation`.
+
+        Deleting the last remaining prefix of a network is allowed and
+        leaves a valid empty network: the network, its state, and its
+        VLAN are untouched - deleting the network remains the only way
+        to remove them.
+
+        Idempotent: repeating the `DELETE` while a teardown is running
+        returns `202` referencing the same operation, and repeating it
+        after a failed teardown continues it instead of failing. Once
+        the teardown has completed, the prefix reads as `404` (`GET`
+        and `DELETE` alike) and no longer appears in listings - the
+        completed operation is your confirmation.
+      operationId: deletePrefix
+      x-required-permission: network:prefix:delete
+      x-required-permission-description: Delete a prefix from your account.
+      x-audience: customer-facing
+      tags:
+        - Prefixes
+      responses:
+        '202':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Accepted - teardown is running. `links.operation` is the
+            operation reference; a repeated `DELETE` returns the
+            operation reference of the teardown it continues.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrefixDeleteAccepted'
+              examples:
+                accepted:
+                  summary: Delete accepted
+                  value:
+                    id: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                    links:
+                      operation:
+                        href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/operation"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Not Found - the prefix does not exist on your account, or it
+            was already deleted (code E020002).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                alreadyDeleted:
+                  summary: Re-delete after a completed teardown
+                  value:
+                    title: "Prefix not found"
+                    status: 404
+                    detail: "prefix 01984f2e-bb02-7cc3-9d22-2f27adccf222 does not exist"
+                    code: "E020002"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Conflict - the prefix is managed by i3D.net and is read-only
+            here (code E020019), or the contract the prefix is held under
+            does not authorise its type for your account (code E020032), or
+            the delete is blocked because customer IP addresses are still in
+            use under the prefix (code E020014).
+            They are answered in that order, for the same reasons as on the
+            network delete: someone who cannot clear the blocking addresses
+            must not be told to clear them, and a contract does not make a
+            managed prefix deletable.
+            The check uses the prefix's OWN recorded contract, never your
+            account's other contracts; a prefix with no recorded contract is
+            not checked. Never E020018, which is returned only by the network
+            delete.
+            Re-driving an already accepted teardown is never refused by
+            E020032 or E020019.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                platformManaged:
+                  summary: The prefix is managed by i3D.net
+                  value:
+                    title: "Resource is managed by i3D.net"
+                    status: 409
+                    detail: "this prefix was set up by i3D.net on your behalf and is managed by i3D.net. It is removed automatically, and cannot be changed, deleted or claimed into here. Contact i3D.net support if you need it changed or removed."
+                    code: "E020019"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                contractNotAuthorised:
+                  summary: The prefix's contract does not authorise its type
+                  value:
+                    title: "Contract does not authorise removing this resource"
+                    status: 409
+                    detail: "contract PD-2026-000481 does not authorise removing prefixes on this account; contact i3D.net support to have this resource type added to the contract"
+                    code: "E020032"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                addressesInUse:
+                  summary: Delete blocked by IP addresses in use
+                  value:
+                    title: "Delete blocked by IP addresses in use"
+                    status: 409
+                    detail: "prefix 01984f2e-bb02-7cc3-9d22-2f27adccf222 still holds 2 IP addresses in use (e.g. 01984f2e-aa01-7bb2-8c11-1f27adccf111); decommission the servers using them, then retry the delete"
+                    code: "E020014"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '422':
+          $ref: '#/components/responses/MalformedPathParameter'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /prefixes/{prefixId}/operation:
+    get:
+      summary: Get a prefix's current or last operation
+      description: |
+        Returns the async operation attached to the prefix:
+        the running or terminally failed create, or the running,
+        failed, or completed delete. This is the resource behind the
+        `links.operation` reference returned by `PUT` and `DELETE` on
+        `/prefixes/{prefixId}`; an idempotent replay of either returns
+        the SAME reference to this resource. `404` when no operation
+        record exists for the UUID (unknown prefix, another account's, or
+        nothing recorded). Once a create has succeeded, the provisioned
+        prefix is discoverable via `filters[networkId][eq]` on the
+        prefix listing.
+      operationId: getPrefixOperation
+      x-required-permission: network:prefix:read
+      x-required-permission-description: Read a prefix and its provisioning status.
+      x-audience: customer-facing
+      tags:
+        - Prefixes
+      parameters:
+        - in: path
+          name: prefixId
+          description: UUID of the prefix the operation belongs to.
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+              examples:
+                running:
+                  summary: A create still running
+                  value:
+                    resourceId: "01984f2e-bb03-7cc3-9d22-2f27adccf333"
+                    resourceType: "prefix"
+                    kind: "create"
+                    state: "running"
+                    startedAt: "2026-07-28T08:00:00Z"
+                    updatedAt: "2026-07-28T08:00:00Z"
+                    links:
+                      resource:
+                        href: "/prefixes/01984f2e-bb03-7cc3-9d22-2f27adccf333"
+                failed:
+                  summary: A create that failed
+                  value:
+                    resourceId: "01984f2e-bb03-7cc3-9d22-2f27adccf333"
+                    resourceType: "prefix"
+                    kind: "create"
+                    state: "failed"
+                    startedAt: "2026-07-28T08:00:00Z"
+                    updatedAt: "2026-07-28T08:04:19Z"
+                    completedAt: "2026-07-28T08:04:19Z"
+                    error:
+                      code: "PREFIX_NETWORK_CONFIGURATION_FAILED"
+                      message: "prefix provisioning failed"
+                      retryable: true
+                    links:
+                      resource:
+                        href: "/prefixes/01984f2e-bb03-7cc3-9d22-2f27adccf333"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/PrefixNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          $ref: '#/components/responses/MalformedPathParameter'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /prefixes/{prefixId}/ip-addresses:
+    parameters:
+      - in: path
+        name: prefixId
+        description: |
+          UUID of the owning prefix. Any well-formed UUID is accepted -
+          a prefix that does not exist or belongs to another account
+          reads as `404` (default deny - existence is not disclosed).
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+    get:
+      summary: List all IP addresses under a prefix
+      description: |
+        Lists ALL IP addresses that exist under the referenced prefix - allocated addresses and infrastructure
+        addresses alike. Addresses recorded as the
+        prefix's gateway or a router address carry a `role` field
+        (`gateway` / `router-ip`), derived by the same rules that
+        populate the prefix's `gatewayIp` / `routerIps` fields, so the
+        listing and the prefix representation never disagree. Positional
+        reservations (the first usable addresses, held for future
+        infrastructure) carry
+        `role: "reserved"`. Addresses without an infrastructure role
+        omit the field (never `null`). Nothing is synthesized: a prefix
+        whose gateway/router addresses were never created
+        lists none, and a positional reservation appears only once it
+        has been materialized.
+
+        Availability is exposed as counters only (`capacity`,
+        `allocated`, `available`). Free addresses are NEVER enumerated
+        in any response. `allocated` counts ALL IP address objects under
+        the prefix - allocated and infrastructure alike - so the total
+        of `items` across all pages equals `allocated`. `available`
+        excludes the positionally reserved addresses whether or not
+        they are materialized: it is the number of addresses that can
+        still be allocated.
+
+        Cursor-paginated. The listing reads live address data - it is
+        not a cached copy. A prefix
+        that does not exist or belongs to another account reads as
+        `404` (default deny, code E020002) - existence is never
+        disclosed.
+      operationId: listPrefixIPAddresses
+      x-required-permission: network:ip-address:list
+      x-required-permission-description: List the IP addresses in your networks and prefixes.
+      x-audience: customer-facing
+      tags:
+        - IP Addresses
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK - one page of IP address objects, with counters
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IPAddressListResponse'
+              examples:
+                page:
+                  summary: Every address under the prefix, with counters
+                  value:
+                    items:
+                      - id: "01984f2e-aa01-7bb2-8c11-1f27adccf111"
+                        address: "10.0.0.1"
+                        family: 4
+                        prefixId: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                        role: "gateway"
+                        created: "2026-07-27T09:00:00Z"
+                        links:
+                          self:
+                            href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses/01984f2e-aa01-7bb2-8c11-1f27adccf111"
+                      - id: "01984f2e-aa04-7bb2-8c11-1f27adccf114"
+                        address: "10.0.0.4"
+                        family: 4
+                        prefixId: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                        role: "reserved"
+                        created: "2026-07-27T09:00:00Z"
+                        links:
+                          self:
+                            href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses/01984f2e-aa04-7bb2-8c11-1f27adccf114"
+                      - id: "01984f2e-aa02-7bb2-8c11-1f27adccf112"
+                        address: "10.0.0.10"
+                        family: 4
+                        prefixId: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                        created: "2026-07-27T09:05:00Z"
+                        links:
+                          self:
+                            href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses/01984f2e-aa02-7bb2-8c11-1f27adccf112"
+                    capacity: 254
+                    allocated: 5
+                    available: 249
+                    links:
+                      self:
+                        href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/PrefixNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - the request parses but fails
+            validation, e.g. the cursor is not a cursor previously
+            issued for this listing (code E020001).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                invalidCursor:
+                  summary: Cursor was not issued for this listing
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "cursor is not a cursor previously issued for this listing"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+
+  /prefixes/{prefixId}/ip-addresses/{ipId}:
+    parameters:
+      - in: path
+        name: prefixId
+        description: |
+          UUID of the owning prefix. Any well-formed UUID is accepted -
+          a prefix that does not exist or belongs to another account
+          reads as `404` (default deny - existence is not disclosed).
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+      - in: path
+        name: ipId
+        description: |
+          UUID of the IP address (canonical lowercase; any casing is
+          accepted and canonicalized for lookups). Any well-formed UUID
+          is accepted - an address that does not exist under the prefix
+          reads as `404` (default deny - existence is not disclosed).
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: "01984f2e-aa01-7bb2-8c11-1f27adccf111"
+    get:
+      summary: Get an IP address under a prefix
+      description: |
+        Returns one IP address object under the referenced prefix - an
+        allocated address or an infrastructure address alike, the same
+        `IPAddressResponse` the listings serve. This path is the
+        canonical `links.self` of every IP address on this API; the
+        same address is also readable by UUID alone at
+        `GET /ip-addresses/{ipId}`.
+
+        `404` when no IP address with this UUID exists under the prefix,
+        or when the prefix is unknown or belongs to another account
+        (default deny, code E020002) - existence is never disclosed.
+      operationId: getPrefixIPAddressById
+      x-required-permission: network:ip-address:read
+      x-required-permission-description: Read one IP address on your account.
+      x-audience: customer-facing
+      tags:
+        - IP Addresses
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IPAddressResponse'
+              examples:
+                allocated:
+                  summary: An address allocated to one of your servers
+                  value:
+                    id: "01984f2e-aa02-7bb2-8c11-1f27adccf112"
+                    address: "10.0.0.10"
+                    family: 4
+                    prefixId: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                    created: "2026-07-27T09:05:00Z"
+                    links:
+                      self:
+                        href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses/01984f2e-aa02-7bb2-8c11-1f27adccf112"
+                gateway:
+                  summary: An infrastructure address (the prefix gateway)
+                  value:
+                    id: "01984f2e-aa01-7bb2-8c11-1f27adccf111"
+                    address: "10.0.0.1"
+                    family: 4
+                    prefixId: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                    role: "gateway"
+                    created: "2026-07-27T09:00:00Z"
+                    links:
+                      self:
+                        href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses/01984f2e-aa01-7bb2-8c11-1f27adccf111"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Not Found - the prefix does not exist on your account
+            (unknown UUID or another account's UUID; existence is never
+            disclosed), or no IP address with this UUID exists under it
+            (code E020002).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                notFound:
+                  summary: Unknown IP address under one of your prefixes
+                  value:
+                    title: "IP address not found"
+                    status: 404
+                    detail: "IP address 01984f2e-aa01-7bb2-8c11-1f27adccf111 does not exist under prefix 01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                    code: "E020002"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          $ref: '#/components/responses/MalformedPathParameter'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ip-addresses/{ipId}:
+    parameters:
+      - in: path
+        name: ipId
+        description: |
+          UUID of the IP address (canonical lowercase; any casing is
+          accepted and canonicalized for lookups). Any well-formed UUID
+          is accepted - an address that does not exist, belongs to
+          another account, or sits under a parent prefix you do
+          not own reads as `404` (default deny - existence
+          is not disclosed).
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: "01984f2e-aa01-7bb2-8c11-1f27adccf111"
+    get:
+      summary: Get an IP address by UUID
+      description: |
+        Resolves an IP address by its UUID alone: the parent prefix is
+        looked up from the address itself and reported as `prefixId`.
+        Use this when you hold an address UUID and not the prefix it
+        sits under.
+
+        An unknown UUID, another account's address, or an address whose
+        parent prefix you do not own reads as `404`
+        (default deny, code E020002) - existence is never disclosed.
+      operationId: getIPAddressById
+      x-required-permission: network:ip-address:read
+      x-required-permission-description: Read one IP address on your account.
+      x-audience: customer-facing
+      tags:
+        - IP Addresses
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IPAddressResponse'
+              examples:
+                allocated:
+                  summary: An address allocated to one of your servers
+                  value:
+                    id: "01984f2e-aa02-7bb2-8c11-1f27adccf112"
+                    address: "10.0.0.10"
+                    family: 4
+                    prefixId: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                    created: "2026-07-27T09:05:00Z"
+                    links:
+                      self:
+                        href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses/01984f2e-aa02-7bb2-8c11-1f27adccf112"
+                gateway:
+                  summary: An infrastructure address (the prefix gateway)
+                  value:
+                    id: "01984f2e-aa01-7bb2-8c11-1f27adccf111"
+                    address: "10.0.0.1"
+                    family: 4
+                    prefixId: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                    role: "gateway"
+                    created: "2026-07-27T09:00:00Z"
+                    links:
+                      self:
+                        href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222/ip-addresses/01984f2e-aa01-7bb2-8c11-1f27adccf111"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Not Found - no IP address with this UUID exists for this
+            account: an unknown UUID, another account's address, or an
+            address whose parent prefix you do not own
+            (existence is never disclosed) (code E020002).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                notFound:
+                  summary: Unknown, foreign, or unowned IP address UUID
+                  value:
+                    title: "IP address not found"
+                    status: 404
+                    detail: "IP address 01984f2e-aa01-7bb2-8c11-1f27adccf111 does not exist"
+                    code: "E020002"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          $ref: '#/components/responses/MalformedPathParameter'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /fabrics:
+    get:
+      summary: List public fabrics
+      description: |
+        Fabric discovery: lists the fabrics this API offers, with the
+        public identifier, display name, and metro area. Served from
+        the fabric registry - adding a fabric is a data change, so
+        consume this listing rather than hard-coding identifiers. Pick
+        a slug from this listing wherever this API takes a `fabric`;
+        an identifier that is not one of these is a `422` listing the
+        ones on offer (code E020005). A location is offered here only
+        while i3D.net sells into it; a network you already have in a
+        location that is no longer offered keeps reporting that
+        location. Cursor-paginated. Not account-scoped:
+        fabrics are i3D.net locations, the same for everyone.
+      operationId: listFabrics
+      x-required-permission: network:fabric:list
+      x-required-permission-description: List the fabrics where networks can be created.
+      x-audience: customer-facing
+      tags:
+        - Fabrics
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK - one page of public fabrics
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FabricListResponse'
+              examples:
+                page:
+                  summary: Fabric discovery page
+                  value:
+                    items:
+                      - slug: "montreal-a"
+                        displayName: "Montreal A"
+                        metro: "Montreal"
+                      - slug: "rotterdam-a"
+                        displayName: "Rotterdam A"
+                        metro: "Rotterdam"
+                    links:
+                      self:
+                        href: "/fabrics"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Bad Request - the request carries a filter (code E020013).
+            This listing takes none: it is short, and a page of it is
+            the whole catalogue.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                unknownFilterField:
+                  summary: This listing takes no filters
+                  value:
+                    title: "Unknown filter field"
+                    status: 400
+                    detail: "unknown filter field 'scope'; supported fields: none"
+                    code: "E020013"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - the cursor fails validation (code
+            E020001).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                invalidCursor:
+                  summary: Cursor was not issued for this listing
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "cursor is not a cursor previously issued for this listing"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+
+  /usage:
+    get:
+      summary: Get current usage and limits
+      description: |
+        Your current usage report: one view answering
+        "what do I hold?", "what of it is billable?" and "how much
+        headroom do I have?" per resource type and fabric. Current
+        state only - this is NOT a historical or billing time-series
+        view (prices, currency and invoices are owned by finance
+        systems; this API exposes facts).
+
+        **Rows.** One row per `(resourceType, fabric)` pair; a row
+        without `fabric` is a customer-wide aggregate (emitted when a
+        limit is defined customer-wide rather than per fabric).
+        Resource types whose usage is accounted per address family
+        are split into `-v4` / `-v6` typed rows (see
+        `UsageItem.resourceType`), so an IPv4 limit and an IPv6 limit
+        never land on one row. A row
+        appears when you hold at least one resource at that
+        grain OR a customer-specific limit is defined there - so a
+        customer sees their headroom before creating the first
+        resource.
+
+        **Semantics (frozen in the field descriptions of `UsageItem`):**
+        - `held` counts exactly the resources the corresponding
+          listing returns for the same account and
+          fabric (restricted to the row's address family on
+          family-suffixed types) - the two views never diverge.
+        - `persistent` is the subset of `held` with
+          `retention: persistent` - the count quota enforcement
+          charges against the limit; ephemeral resources are never
+          counted.
+        - `billable` counts how many of `held` are currently
+          billable. It is computed by the same rule and from the same
+          source as your invoice, never by a second calculation. Only
+          prefix rows carry it, and only when something is billable.
+        - `limit` / `remaining` come from the quota module and are
+          present ONLY when a limit specific to your account
+          applies (a per-resource-type default or a per-customer
+          override). Platform-internal ceilings are never shown. The
+          numbers are the ones quota enforcement applies at the grains
+          this report carries (customer-wide and per-fabric): at those
+          grains a create rejected over-limit and this report always
+          agree. A ceiling enforced at a finer grain (the prefix limit
+          per network) is not a row here - the rejection itself names
+          it.
+        - Prefix and IP address rows (`prefixes-v4`, `prefixes-v6`,
+          `ip-addresses-v4`) never carry `limit` / `remaining`. Their
+          ceilings are held per contract, a row here covers every
+          contract you hold, and no single number would be true for all
+          of them; `held` and `persistent` count across all your
+          contracts, and such a row appears only when you hold at least
+          one resource of that type. The agreement above holds trivially
+          for these rows, because they show no limit: a create refused
+          on a contract's ceiling names that limit and usage in the
+          rejection itself.
+
+        **Filters** use the `filters[field][op]` syntax - supported:
+        `filters[fabric][eq]`, `filters[resourceType][eq]`. An unknown
+        filter field, or a known field with an unsupported operator,
+        is a `400` (code E020013) - never
+        silently ignored. More operators MAY be added additively.
+
+        **No pagination.** This is a single report, not a collection:
+        its cardinality is bounded (resource types × fabrics) and the
+        report is only useful as one consistent snapshot - a cursor
+        would split the snapshot across requests. Should the row set
+        ever grow unbounded, pagination will be introduced with a new
+        resource, not retrofitted here.
+      operationId: getUsage
+      x-required-permission: network:usage:read
+      x-required-permission-description: Read your resource usage and limits.
+      x-audience: customer-facing
+      tags:
+        - Usage
+      parameters:
+        - in: query
+          name: filters[fabric][eq]
+          description: |
+            Restrict the report to one public fabric identifier. Customer-wide rows (no `fabric`) are not
+            returned when this filter is set - and resource types
+            whose ceilings are customer-wide today (prefixes, IP
+            addresses) report ONLY customer-wide rows, so this filter
+            narrows the report to the fabric-scoped rows (`networks`).
+            An identifier not in the
+            fabric registry is a `422` listing the valid ones (code
+            E020005).
+          required: false
+          schema:
+            type: string
+          example: "montreal-a"
+        - in: query
+          name: filters[resourceType][eq]
+          description: |
+            Restrict the report to one resource type. Accepts any value
+            the report's `resourceType` field can carry (deliberately not
+            a closed enum, so a client can filter by a resource type
+            introduced after its copy of this spec). A value that is not
+            a resource type known to the server is a `422` listing the
+            valid ones (code E020001).
+          required: false
+          schema:
+            type: string
+          example: "networks"
+      responses:
+        '200':
+          description: OK - your current usage report
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageResponse'
+              examples:
+                report:
+                  summary: Usage report with limited and unlimited rows
+                  value:
+                    items:
+                      - resourceType: "networks"
+                        fabric: "montreal-a"
+                        held: 3
+                        persistent: 3
+                        limit: 5
+                        remaining: 2
+                      - resourceType: "prefixes-v4"
+                        held: 4
+                        persistent: 3
+                        billable: 2
+                        subscription:
+                          startedAt: "2026-09-17T14:00:00Z"
+                      - resourceType: "prefixes-v6"
+                        held: 1
+                        persistent: 1
+                      - resourceType: "ip-addresses-v4"
+                        held: 12
+                        persistent: 8
+                    links:
+                      self:
+                        href: "/usage"
+                headroomBeforeFirstCreate:
+                  summary: Limit visible with nothing held yet
+                  value:
+                    items:
+                      - resourceType: "networks"
+                        fabric: "montreal-a"
+                        held: 0
+                        persistent: 0
+                        limit: 5
+                        remaining: 5
+                    links:
+                      self:
+                        href: "/usage"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Bad Request - the request names an unknown filter field, or a
+            known filter field with an unsupported operator
+            (code E020013).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                unknownFilterField:
+                  summary: Unknown filter field
+                  value:
+                    title: "Unknown filter field"
+                    status: 400
+                    detail: "unknown filter field 'metro'; supported fields: fabric, resourceType"
+                    code: "E020013"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - a filter value fails validation:
+            an unknown public fabric identifier (code E020005) or an
+            invalid `resourceType` value (code E020001).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                unknownFabric:
+                  summary: Fabric identifier not in the fabric list
+                  value:
+                    title: "Unknown fabric identifier"
+                    status: 422
+                    detail: "unknown fabric 'atlantis-a'; valid public fabric identifiers: amsterdam-a, frankfurt-a, montreal-a, rotterdam-a, singapore-a, tokyo-a"
+                    code: "E020005"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  headers:
+    XRequestId:
+      description: |
+        Identifier of this request, on every response, successful or
+        failed. On an error response it equals the `traceId` in the body.
+        Quote it when you contact support.
+      schema:
+        type: string
+        example: "0af7651916cd43dd8448eb211c80319c"
+    Allow:
+      description: |
+        Methods the path does support, comma-separated. Sent on every `405`
+        (RFC 9110 §15.5.6) and never empty: a path that supports no method at
+        all does not exist, and is answered `404` rather than `405`.
+      schema:
+        type: string
+      example: "DELETE, GET, PUT"
+    ETag:
+      description: |
+        Strong entity tag of this representation, returned on every
+        response body. `If-Match` is not required: `PUT` only ever
+        creates, and the one label edit (`PATCH /networks/{networkId}`)
+        is last-write-wins; see the caching note in this document's
+        description.
+      schema:
+        type: string
+      example: "\"5d41402abc4b2a76b9719d911017c592\""
+
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      description: |
+        Page size. Server default is 100; values above the server maximum
+        of 1000 are clamped, not rejected.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 1000
+        default: 100
+    Cursor:
+      name: cursor
+      in: query
+      description: |
+        Opaque pagination cursor obtained from a previous response's
+        `links.next` or `links.prev`. Omit for the first page. Cursors are
+        opaque - do not construct or parse them.
+      required: false
+      schema:
+        type: string
+
+  responses:
+    MalformedPathParameter:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      description: |
+        Unprocessable Content - a path parameter is not a well-formed
+        UUID (code E020001) - `detail` names the parameter. The lookup
+        is never attempted, so the
+        answer discloses nothing about what the value might have named;
+        a well-formed UUID that names nothing on your account is a
+        `404` instead.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            malformedNetworkId:
+              summary: networkId is not a UUID
+              value:
+                title: "Validation failure"
+                status: 422
+                detail: "networkId is not a valid UUID"
+                code: "E020001"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+            malformedPrefixId:
+              summary: prefixId is not a UUID
+              value:
+                title: "Validation failure"
+                status: 422
+                detail: "prefixId is not a valid UUID"
+                code: "E020001"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+            malformedIpId:
+              summary: ipId is not a UUID
+              value:
+                title: "Validation failure"
+                status: 422
+                detail: "ipId is not a valid UUID"
+                code: "E020001"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+
+    MethodNotAllowed:
+      description: |
+        Method Not Allowed - the path exists but does not support this method
+        (code E020023). It is answered by the router before any operation is
+        chosen, which is why it is listed on every operation while belonging
+        to none of them: the method that earns it has no operation of its own
+        to carry the response. The response carries an `Allow` header naming
+        the methods the path does support.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+        Allow:
+          $ref: '#/components/headers/Allow'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            methodNotAllowed:
+              summary: A method the path does not support
+              value:
+                title: "Method not allowed"
+                status: 405
+                detail: "this path does not support the request method"
+                code: "E020023"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+    NetworkNotFound:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      description: |
+        Not Found - the network does not exist on your account (unknown
+        UUID, another account's UUID, or a deleted network; existence is
+        never disclosed) (code E020002).
+
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            notFound:
+              summary: Unknown or foreign network UUID
+              value:
+                title: "Network not found"
+                status: 404
+                detail: "network 01984f2e-1c3a-7d21-9d10-3542f27adccf does not exist"
+                code: "E020002"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+    InternalError:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      description: |
+        Internal Server Error - a failure behind the API, mapped to
+        problem+json; the underlying error body is never passed through
+        (code E020006).
+
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            internal:
+              summary: Mapped internal failure
+              value:
+                title: "Internal error"
+                status: 500
+                detail: "the request could not be completed; retry later or contact support with the traceId"
+                code: "E020006"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+    PrefixNotFound:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      description: |
+        Not Found - the prefix does not exist on your account (unknown
+        UUID or another account's UUID; existence is never disclosed)
+        (code E020002).
+
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            notFound:
+              summary: Unknown or foreign prefix UUID
+              value:
+                title: "Prefix not found"
+                status: 404
+                detail: "prefix 01984f2e-bb02-7cc3-9d22-2f27adccf222 does not exist"
+                code: "E020002"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+    Unauthorized:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      description: |
+        Unauthorized - the request is not authenticated: the
+        caller identity is missing or unusable (code E020015).
+
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            identityNotEstablished:
+              summary: Identity not established on the public surface
+              value:
+                title: "Unauthorized"
+                status: 401
+                detail: "identity could not be established"
+                code: "E020015"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+
+  schemas:
+    ProblemDetails:
+      type: object
+      description: |
+        RFC 9457 problem details (`application/problem+json`). Every
+        error response uses this shape. Errors coming from systems
+        behind the API are mapped into it and never passed through
+        verbatim; i3D.net can retrieve the full detail from its logs
+        using the `traceId`.
+
+        Stable machine-readable codes (`E` followed by six digits):
+        - E020001: validation failure (422)
+        - E020002: resource not found - unknown UUID, another account's
+          UUID, or a deleted resource (404)
+        - E020003: idempotency conflict - the UUID already denotes a
+          resource created with a different body (409)
+        - E020004: delete blocked - IP addresses are still in use under
+          the network's prefixes (409)
+        - E020005: unknown public fabric identifier - the response lists
+          the currently valid identifiers (422)
+        - E020006: internal or upstream failure, mapped (500)
+        - E020007: refused by network state - the network cannot
+          take a prefix in its current state, which also covers a network
+          whose DELETE has been accepted (its `state` still reads `active`
+          until the teardown succeeds). State-dependent, hence 409: the
+          request may succeed once the network is active, though for an
+          accepted teardown the state it will reach is `deleted`, so the
+          remedy is a different network (409)
+        - E020013: unknown filter field on a listing, or a known filter
+          field with an unsupported operator (400)
+        - E020014: prefix delete blocked - customer IP addresses are
+          still in use under the prefix (409). Distinct from E020004, whose
+          trigger is frozen as the NETWORK-scoped delete-blocked
+          condition - a stable code never changes meaning
+        - E020015: unauthorized - identity not established on the
+          public surface (401)
+        - E020016: quota exceeded - the request would take your account past a
+          configured limit for the resource; the response states the limit,
+          the current usage, and how to request a raise. Nothing is created:
+          no operation is started. State-dependent, so the SAME request
+          succeeds after releasing a resource or having the limit raised -
+          which is why it is 409 and not 422. It is not 403 either: you are
+          allowed to perform the operation, you are simply at your ceiling.
+        - E020017: contract required - self-serve creation is not authorised
+          for this account because no contract covers resources the account
+          provisions for itself. Distinct from E020016 on purpose: an
+          over-limit refusal is fixed by releasing a resource, and this one
+          never is. Nothing is created and no operation is started.
+          State-dependent for the same reason as E020016 - the SAME request
+          succeeds once a contract exists - so 409, not 422. Not 403 either:
+          your credentials are valid and you are entitled to the
+          operation; what is missing is a commercial agreement.
+          Read operations and addresses allocated as part of server
+          provisioning are unaffected. Removing a resource the account
+          already holds carries E020018, not this code.
+          Returned for NETWORKS only: the network create, for the network
+          itself. Prefixes are authorised per contract, and their refusal
+          is E020031 instead. The trigger is unchanged; it simply no
+          longer occurs for prefixes.
+        - E020018: contract required to remove - self-serve DELETION is not
+          authorised for this account, for the same reason and on the same
+          terms as E020017. A separate code rather than a widening of
+          E020017: a published code's meaning never changes, and E020017
+          means creation, so a client keying off it must not silently
+          start receiving it for a different operation. The two carry the same status and the same
+          remedy - arrange a contract - and differ in the act refused, which
+          the detail names.
+          Nothing is removed and no teardown is started. Re-driving a
+          teardown that was ALREADY accepted is not refused: that action was
+          taken before authorisation lapsed, and refusing its continuation
+          would leave the resource with no path forward.
+          Read operations and addresses released as part of server teardown
+          are unaffected.
+          Returned by the network delete only. The prefix delete is
+          authorised against the prefix's own contract, and its refusal is
+          E020032 instead. The trigger is unchanged; it simply no longer
+          occurs for that operation.
+        - E020019: the resource is managed by i3D.net - it was set up on the
+          account's behalf and i3D.net owns its lifecycle, so on this API
+          it is read-only. Returned by the network rename, the network
+          delete and the prefix delete.
+          Nothing is changed, no operation record is written and no teardown
+          is started.
+          Distinct from E020017/E020018, whose trigger is a missing contract:
+          an account refused THIS may hold a perfectly valid contract, and
+          arranging one would not make the request succeed. The resource is
+          removed automatically when what it was provisioned for is; support
+          can remove it sooner.
+          State-dependent, hence 409 and not 403: the resource stops existing
+          on its own, so the same request can succeed later.
+          READS are unaffected - every such resource stays fully visible, and
+          its `retention` is reported, so this refusal is predictable from a
+          read the account already has.
+          Re-driving a teardown that was ALREADY accepted is not refused, on
+          the same terms as E020018.
+          It also refuses a day-2 prefix CREATE naming a network i3D.net
+          manages: a prefix placed there is removed with the network, whatever
+          its own retention, and is billed until then. Before this refusal
+          existed the request was answered with a `422` whose remedy was to
+          declare `retention: persistent`, which succeeded and caused exactly
+          that loss.
+        - E020023: the path does not support this method. The response
+          carries an `Allow` header listing the methods it does support.
+        - E020031: the contract does not authorise this resource - the
+          contract the refused resource would be held under does not
+          authorise this resource type for your account. That contract is
+          the request's `contractId` on a prefix create and on the prefixes
+          a network create declares. One trigger covers both ways a
+          contract can fail to authorise: no allowance is registered for
+          the resource type under that contract, or the account-wide
+          allowance under it is zero. The detail names the resource type
+          and the contract; it states no limit or usage figure. The remedy:
+          use a contract that covers this resource type, or contact i3D.net
+          support to have it added to the contract. Nothing is created and
+          no operation is started.
+          State-dependent, so 409 and not 422: the SAME request succeeds
+          once the contract authorises the type.
+          A separate code rather than a reuse of E020017: E020017's meaning
+          is "no contract for this account", which is false for an account
+          that holds one contract and names another. Not E020016 either:
+          releasing a resource never makes a contract authorise a type,
+          whereas it does resolve a breached limit. A zero limit for a
+          single network under a contract that DOES authorise the type is a
+          real limit and stays E020016.
+          Returned by the network create (for its declared prefixes) and
+          the prefix create.
+        - E020032: the contract does not authorise removing this resource -
+          the delete twin of E020031: the contract the prefix is held under
+          (its recorded contract) does not authorise this resource type for
+          your account, on the same two grounds as E020031. The detail
+          names the resource type, the contract and the act of removing it;
+          it states no limit or usage figure. The remedy: contact i3D.net
+          support to have the resource type added to the contract. Nothing
+          is removed and no teardown is started.
+          A separate code rather than a reuse of E020018, whose meaning is
+          "no contract for this account", or of E020031, which means
+          creation. Not E020016: releasing a resource never fixes a
+          contract that does not authorise the type.
+          Returned by the prefix delete. A prefix with no recorded contract
+          is not checked. Re-driving a teardown that was ALREADY accepted
+          is not refused, on the same terms as E020018.
+
+
+        Codes are stable: a code's meaning never changes. New codes may
+        be added over time, so treat an unknown code as a generic failure
+        of its HTTP status. E020031 and E020032 were added this way: on
+        the prefix create E020031 takes over from E020017, and on the
+        prefix delete E020032 takes over from E020018. Neither older
+        code's meaning changed; they no longer occur on those operations.
+      required:
+        - title
+        - status
+        - code
+        - traceId
+      properties:
+        title:
+          type: string
+          description: Short, human-readable summary of the problem type.
+          example: "Validation failure"
+        status:
+          type: integer
+          description: The HTTP status code of this response.
+          example: 422
+        detail:
+          type: string
+          description: |
+            Human-readable explanation specific to this occurrence.
+            Generic and safe for display - never leaks internal system
+            details.
+          example: "a public network requires explicit addressing.prefixes[]"
+        code:
+          type: string
+          pattern: '^E[0-9]{6}$'
+          description: Stable machine-readable error code.
+          example: "E020001"
+        traceId:
+          type: string
+          description: |
+            Tracing ID of the request, matching the request trace, for
+            correlating with server-side logs and traces.
+          example: "0af7651916cd43dd8448eb211c80319c"
+
+    Link:
+      type: object
+      description: |
+        A single hypermedia link. `href` is a path relative to the API
+        base URL and starts with `/`: build the request URL by
+        appending it to the base URL (`{base}` + `href`), never by
+        RFC 3986 reference resolution, which would drop the base path.
+        Link hrefs never repeat the base path. The object is
+        intentionally extensible.
+      required:
+        - href
+      properties:
+        href:
+          type: string
+          description: Path the client appends to the API base URL to follow the link.
+          example: "/networks/01984f2e-1c3a-7d21-9d10-3542f27adccf"
+      additionalProperties: true
+
+    CursorPageLinks:
+      type: object
+      description: |
+        Cursor pagination links. `self` is
+        always present. `next` / `prev` carry opaque cursor URLs; a
+        missing relation means there is no further page in that direction.
+        No page numbers, no total counts. Page links are identity-free
+        (cursor and limit only - the account comes from your
+        credentials) and followable verbatim.
+      required:
+        - self
+      properties:
+        self:
+          allOf:
+            - $ref: '#/components/schemas/Link'
+          description: The current page.
+        next:
+          allOf:
+            - $ref: '#/components/schemas/Link'
+          description: The next page. Omitted on the last page.
+        prev:
+          allOf:
+            - $ref: '#/components/schemas/Link'
+          description: The previous page. Omitted on the first page.
+
+    NetworkConnectivityType:
+      type: string
+      enum: [public, private]
+      description: |
+        `public`: internet-connected; requires explicit
+        `addressing.prefixes[]`.
+        `private`: a Layer 2 segment that carries traffic between your
+        own machines only. A private network you create here is
+        isolated: it has no gateway and does not route to the internet
+        or to any other network you own. Some private networks that
+        i3D.net set up for your account are connected to each other;
+        `routing` on the response tells you which.
+      example: "public"
+
+    NetworkConnectivity:
+      type: object
+      description: |
+        Connectivity class you declare when creating a network. Responses
+        carry `NetworkConnectivityResponse`, which adds the routing state.
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/NetworkConnectivityType'
+
+    NetworkRouting:
+      type: object
+      description: |
+        Routing state of a private network. Read-only: this API has no
+        operation that changes it. Present on private networks only.
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+          description: |
+            `false`: the network is isolated - no gateway, no routing to any
+            other network. `true`: the network has a gateway and routes
+            traffic with your other networks in the same routing domain.
+            Networks you create through this API are always `false`;
+            `true` appears only on networks i3D.net set up for your
+            account.
+          example: false
+        routingDomainId:
+          type: string
+          format: uuid
+          description: |
+            Identifier of the routing domain this network belongs to.
+            Present exactly when `enabled` is `true`. Two of your networks
+            carrying the same value route traffic to each other, in one
+            location or across locations when i3D.net connects them over
+            its backbone. Connections to other accounts arranged by
+            i3D.net are not represented. There is no operation to read or
+            manage a routing domain yet; use the identifier to group
+            networks.
+          example: "01984f2e-9a01-7cc1-8a44-1f27adccf001"
+
+    NetworkConnectivityResponse:
+      type: object
+      description: |
+        Connectivity of the network as recorded: the class you declared
+        and, for private networks, its routing state.
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/NetworkConnectivityType'
+        routing:
+          allOf:
+            - $ref: '#/components/schemas/NetworkRouting'
+          description: |
+            Present on `private` networks, absent on `public` ones. Never
+            `null`.
+
+    RetentionAttribute:
+      type: string
+      enum: [persistent, ephemeral]
+      description: |
+        Lifecycle intent of the resource. On this API a resource the
+        customer creates is always `persistent`: the value MAY be omitted
+        on a create and resolves to `persistent`; declaring `ephemeral`
+        fails validation with `422`. `ephemeral` appears on READS, for
+        resources i3D.net provisioned on the account's behalf and removes
+        again with what they were provisioned for. The stored value is
+        never re-derived after creation.
+      example: "persistent"
+
+    InitialPrefixRequest:
+      type: object
+      description: |
+        One initial prefix to provision with the network. You state
+        family and size only - i3D.net selects the concrete subnet.
+        Customers never pick the subnet.
+      required:
+        - family
+        - size
+      properties:
+        family:
+          type: integer
+          enum: [4, 6]
+          description: IP family (4 for IPv4, 6 for IPv6).
+          example: 4
+        size:
+          type: integer
+          description: |
+            Prefix size as a CIDR mask length (e.g. `24` for a /24).
+            The largest block you can ask for is a /24: a request for a
+            larger block (a smaller mask number) is a `422` stating the
+            cap.
+          example: 24
+
+    NetworkAddressingRequest:
+      type: object
+      description: |
+        Addressing intent for the network. Rules:
+        - `source: provider` (default): i3D.net supplies the address
+          space. Public networks MUST state `prefixes[]` explicitly (no
+          default public prefix); private networks may omit `prefixes[]`
+          and receive exactly one derived /24.
+        - `source: none`: no provider addressing - zero prefixes are
+          provisioned (private only; `public` with `source: none` is a
+          `422` naming the contradiction). A non-empty `prefixes[]`
+          combined with `source: none` is a `422` (contradiction).
+        - `source: customer` is not supported; requesting it is a `422`
+          naming the supported values.
+      properties:
+        source:
+          type: string
+          enum: [provider, none]
+          default: provider
+          description: Where the network's address space comes from.
+          example: "provider"
+        prefixes:
+          type: array
+          description: |
+            Initial prefixes to provision with the network. REQUIRED for
+            public networks; optional for private networks (omitted →
+            exactly one derived /24). Must be absent or empty when
+            `source` is `none`.
+          items:
+            $ref: '#/components/schemas/InitialPrefixRequest'
+
+    NetworkCreateRequest:
+      type: object
+      description: |
+        Declarative create request for a network. The request body is
+        recorded: an identical replay of the same `PUT` is idempotent,
+        while the same UUID with a different body is a `409`.
+      required:
+        - connectivity
+        - fabric
+      properties:
+        connectivity:
+          $ref: '#/components/schemas/NetworkConnectivity'
+        fabric:
+          type: string
+          description: |
+            Public fabric identifier. Internal location names are never
+            accepted or returned. An identifier not
+            in the registry is a `422` listing the valid identifiers
+            (code E020005).
+          example: "montreal-a"
+        name:
+          type: string
+          maxLength: 100
+          description: |
+            Optional customer-set label for the network. A search label,
+            not an identity: no uniqueness is enforced - duplicates within
+            one account are allowed. The API trims the value; a
+            present-but-empty (after trim) value, or a value longer than
+            100 characters (Unicode code points) after trim, is a `422`
+            (code E020001). Omit the field for an unnamed network.
+
+            The 100-character limit applies to the TRIMMED value.
+            Documented deviation: `maxLength` binds the raw value as
+            written, while the server enforces the limit post-trim - a
+            whitespace-padded value over 100 raw characters but within
+            100 after trim is schema-invalid yet server-accepted.
+
+            You can change it later with `PATCH /networks/{networkId}`.
+            `name` is NOT part of the idempotency comparison: a replay of
+            the same UUID that differs only in `name` is a `202` (referencing
+            the original operation while it is still running), and a replay
+            never changes the stored name.
+          example: "web tier"
+        addressing:
+          $ref: '#/components/schemas/NetworkAddressingRequest'
+        retention:
+          $ref: '#/components/schemas/RetentionAttribute'
+        contractId:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{3,19}$'
+          minLength: 4
+          maxLength: 20
+          description: |
+            Contract every bootstrap prefix is billed under; the
+            network itself exposes none. REQUIRED when `retention` resolves
+            to `persistent` and `addressing.source` to `provider`; FORBIDDEN
+            with `addressing.source: none` or a resolved `ephemeral`
+            retention; each refusal is a `422` naming `contractId`. Not in
+            `required` because the rule is conditional. Matched exactly
+            against the pattern; only the format is verified, never
+            existence. The contract must authorise the type of every
+            declared prefix for your account, or the create is a `409`
+            E020031. Part of the recorded create request (a different
+            value on replay is a `409` E020003); a network recorded before
+            this field existed accepts any value on replay.
+          example: "PD-2026-000481"
+
+    NetworkPatchRequest:
+      type: object
+      description: |
+        JSON Merge Patch body for `PATCH /networks/{networkId}`. The only
+        patchable member is `name`: a string sets it, `null` clears it, an
+        omitted member leaves it unchanged, and `{}` is a no-op. Any other
+        member is a `422` (code E020001) naming it.
+      properties:
+        name:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: |
+            New label for the network, or `null` to clear it. The create
+            rules apply: the API trims the value; a present-but-empty
+            (after trim) value, or a value longer than 100 characters
+            (Unicode code points) after trim, is a `422` (code E020001).
+            The 100-character limit applies to the TRIMMED value, with the
+            same documented `maxLength` deviation as
+            `NetworkCreateRequest.name`.
+          example: "db tier"
+
+    NetworkState:
+      type: string
+      enum: [provisioning, active, failed]
+      description: |
+        DB-native network state: `provisioning` → `active` | `failed`;
+        `active` is reached only via an explicit transition. A terminal
+        `deleted` state exists internally but NEVER appears on this
+        surface: a deleted network reads as `404` and is absent from
+        listings. A `failed` network keeps its already-created children
+        visible (keep-partial; no automatic rollback) and carries the
+        failure reason in `error`.
+      example: "active"
+
+    NetworkAddressingResponse:
+      type: object
+      description: |
+        Addressing intent as recorded at create time. The network's
+        prefixes themselves are separate resources - discover them via
+        `filters[networkId][eq]` on the prefix listing.
+      required:
+        - source
+      properties:
+        source:
+          type: string
+          enum: [provider, none]
+          description: Where the network's address space comes from.
+          example: "provider"
+
+    NetworkLinks:
+      type: object
+      description: |
+        Hypermedia links for the network. `self` is always present;
+        `operation` is present while an async operation is attached
+        (create in flight or failed, delete in flight or failed);
+        `prefixes` and `ipAddresses` are present on every
+        representation whose state is not `deleted` - a deleted
+        network's children are gone with it. All hrefs are relative to
+        the API base and carry no account identifier, exactly like
+        `self`. `prefixes` and
+        `ipAddresses` are relation names specific to this API, not
+        IANA-registered ones.
+      required:
+        - self
+      properties:
+        self:
+          allOf:
+            - $ref: '#/components/schemas/Link'
+          description: Link to the canonical resource.
+        operation:
+          allOf:
+            - $ref: '#/components/schemas/Link'
+          description: |
+            Link to the network's operation resource. This is
+            the operation reference returned by `PUT` and `DELETE`;
+            idempotent replays return the SAME reference.
+        prefixes:
+          allOf:
+            - $ref: '#/components/schemas/Link'
+          description: |
+            The network's prefixes - the flat filtered prefix listing:
+            `/prefixes?filters[networkId][eq]={networkId}` (prefixes
+            stay a flat collection; the href encodes the
+            filter so the consumer never needs to know the convention
+            out-of-band). Present on every representation whose state
+            is not `deleted`.
+        ipAddresses:
+          allOf:
+            - $ref: '#/components/schemas/Link'
+          description: |
+            The network's IP addresses - the nested listing:
+            `/networks/{networkId}/ip-addresses`. Present on every
+            representation whose state is not `deleted`.
+
+    NetworkResponse:
+      type: object
+      description: |
+        A network as i3D.net recorded it. Locations are public fabric
+        identifiers; the underlying network segment is never exposed.
+      required:
+        - id
+        - state
+        - connectivity
+        - fabric
+        - addressing
+        - retention
+        - links
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated UUID of the network.
+          example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+        state:
+          $ref: '#/components/schemas/NetworkState'
+        connectivity:
+          $ref: '#/components/schemas/NetworkConnectivityResponse'
+        fabric:
+          type: string
+          description: Public fabric identifier.
+          example: "montreal-a"
+        name:
+          type: string
+          description: |
+            Customer-set label (trimmed), as set at create or by the last
+            `PATCH /networks/{networkId}`. Present only while the network
+            has a name; omitted for an unnamed network - never `null`.
+          example: "web tier"
+        vlanId:
+          type: integer
+          description: |
+            The 802.1Q VLAN ID of the network. Present even for a
+            network with no prefixes (`addressing.source: none`). It is
+            the only VLAN detail this API exposes, and it is there so you
+            can configure a server that is attached to the network.
+            Omitted while the network is still being provisioned and the
+            VLAN ID is not known yet; never `null`.
+          example: 3042
+        addressing:
+          $ref: '#/components/schemas/NetworkAddressingResponse'
+        retention:
+          allOf:
+            - $ref: '#/components/schemas/RetentionAttribute'
+          description: The RESOLVED retention value stored at create time.
+        error:
+          allOf:
+            - $ref: '#/components/schemas/PublicError'
+          description: |
+            Public failure reason. Present only when `state` is `failed`,
+            and it carries `code` and `message` only - the `retryable`
+            hint is sent on the operation resource
+            (`GET /networks/{networkId}/operation`), not here.
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2026-07-27T09:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: |
+            Timestamp of the last change to the network record: a state
+            change or a rename.
+          example: "2026-07-27T09:02:11Z"
+        links:
+          $ref: '#/components/schemas/NetworkLinks'
+
+    NetworkListResponse:
+      type: object
+      description: |
+        Cursor-paginated page of your networks. No page numbers, no
+        total counts.
+      required:
+        - items
+        - links
+      properties:
+        items:
+          type: array
+          description: The page of networks (`[]` when empty, never `null`).
+          items:
+            $ref: '#/components/schemas/NetworkResponse'
+        links:
+          $ref: '#/components/schemas/CursorPageLinks'
+
+    NetworkDeleteAccepted:
+      type: object
+      description: |
+        Acceptance body for an asynchronous network delete. The operation
+        reference tracks the teardown; when it completes, the network
+        reads as `404` and the completed operation is your
+        confirmation.
+      required:
+        - id
+        - links
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID of the network being deleted.
+          example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+        links:
+          type: object
+          required:
+            - operation
+          properties:
+            operation:
+              allOf:
+                - $ref: '#/components/schemas/Link'
+              description: The operation reference for the teardown.
+
+    PublicError:
+      type: object
+      description: |
+        Stable, resource-agnostic public error. Carries only a
+        machine-readable `code`, a human-readable `message`, and an
+        optional `retryable` hint; it never contains internal system
+        identifiers or downstream payloads.
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: |
+            Machine-readable, stable public error code in
+            SCREAMING_SNAKE_CASE. Currently issued:
+            `NETWORK_PROVISIONING_FAILED` (on a failed network's own
+            `error`), `NETWORK_BOOTSTRAP_FAILED`,
+            `NETWORK_TEARDOWN_FAILED`,
+            `PREFIX_NETWORK_CONFIGURATION_FAILED`,
+            `PREFIX_ADDRESSING_FAILED`, `PREFIX_TEARDOWN_FAILED`,
+            `VLAN_NETWORK_CONFIGURATION_FAILED`,
+            `PREFIX_NOT_PROVISIONED`. NOT a closed set: new codes may be
+            added, so treat an unknown one as a generic failure.
+          example: "NETWORK_BOOTSTRAP_FAILED"
+        message:
+          type: string
+          description: |
+            Human-readable error message, generic and safe for display.
+            Does not leak internal system details.
+          example: "network provisioning failed"
+        retryable:
+          type: boolean
+          description: Whether retrying the operation may succeed.
+          example: true
+
+    OperationResponse:
+      type: object
+      description: |
+        Public view of a resource's async operation - the
+        same shape for networks and prefixes. `state` is `running`
+        while the operation is in flight, `failed` for a terminal
+        failure (with a public `error`), and `succeeded` for a
+        completed delete. This resource is the target of every
+        operation reference returned by `PUT` and `DELETE`; an
+        idempotent replay returns the SAME reference.
+      required:
+        - resourceId
+        - resourceType
+        - kind
+        - state
+        - startedAt
+        - updatedAt
+        - links
+      properties:
+        resourceId:
+          type: string
+          format: uuid
+          description: UUID of the resource the operation acts on.
+          example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+        resourceType:
+          type: string
+          description: Resource type discriminator (`network` or `prefix`).
+          example: "network"
+        kind:
+          type: string
+          enum: [create, delete]
+          description: Which operation this record describes.
+          example: "create"
+        state:
+          type: string
+          enum: [running, failed, succeeded]
+          description: |
+            Operation state, describing the operation (not the resource).
+            `running` while in flight; `failed` for a terminal failure;
+            `succeeded` for a completed delete.
+          example: "running"
+        startedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the operation started.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp of the last operation update.
+        completedAt:
+          type: string
+          format: date-time
+          description: |
+            Timestamp when the operation reached a terminal state. Present
+            for terminal operations (`failed` and `succeeded`).
+        error:
+          allOf:
+            - $ref: '#/components/schemas/PublicError'
+          description: |
+            Public error describing the failure. Present only when `state`
+            is `failed`.
+        traceId:
+          type: string
+          description: |
+            Trace ID of the request that started the operation's current
+            run - NOT of the request reading it, so it differs from the
+            `X-Request-Id` of this `GET`. Same encoding as `X-Request-Id`
+            and the error-body `traceId` (32 lowercase hex characters).
+            Quote it to support to find the provisioning run in server-side
+            logs and traces. An idempotent replay that joins the operation
+            in flight keeps the first accepted request's value.
+
+            For a delete, it is the trace of the request that started the
+            teardown's current run, so it changes when a failed delete is
+            repeated and a fresh run starts. While that run is in progress,
+            `state` and `error` still describe the previous run until the
+            new run settles.
+
+            Present while the operation is `running` and on `failed`
+            operations. Omitted, never `null`, for operations recorded
+            without a trace and for a completed (`succeeded`) delete. It is
+            not refreshed when a create's first dispatch was lost and the
+            create was started by a retry: it then names the first request.
+          example: "0af7651916cd43dd8448eb211c80319c"
+        links:
+          type: object
+          required:
+            - resource
+          properties:
+            resource:
+              allOf:
+                - $ref: '#/components/schemas/Link'
+              description: Link to the resource this operation acts on.
+
+
+
+    PrefixCreateRequest:
+      type: object
+      description: |
+        Declarative create request for a day-2 prefix in an existing
+        network. The prefix shape is `family` + `size`: the concrete
+        subnet is selected by i3D.net during provisioning -
+        customers never pick the subnet. A request naming an
+        explicit `cidr` is a `422` with guidance; an explicit-cidr
+        capability, if ever ratified, is a separate contract change.
+        The request body is recorded: an identical replay of the same
+        `PUT` is idempotent, while the same UUID with a different body
+        is a `409`.
+      required:
+        - networkId
+        - family
+        - size
+      properties:
+        networkId:
+          type: string
+          format: uuid
+          description: |
+            UUID of the network that owns the prefix (MUST be v7). Required;
+            the network must already exist on your account (unknown →
+            `422`; a network is never auto-created as a side effect).
+          example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+        family:
+          type: integer
+          enum: [4, 6]
+          description: IP family (4 for IPv4, 6 for IPv6).
+          example: 4
+        size:
+          type: integer
+          description: |
+            Prefix size as a CIDR mask length (e.g. `24` for a /24) -
+            i3D.net then selects the concrete subnet. The largest block
+            you can ask for is a /24: a request for a larger block (a
+            smaller mask number) is a `422` stating the cap.
+          example: 24
+        retention:
+          allOf:
+            - $ref: '#/components/schemas/RetentionAttribute'
+          description: |
+            Declared lifecycle intent of the prefix. MAY be omitted: it
+            then defaults to the owning network's retention. A declared
+            value always wins over the default. The rule applies to the
+            RESOLVED value: a resource on your account can never end up
+            `ephemeral`, whether you declared it or it came from the
+            network - such a request is a `422`.
+        contractId:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{3,19}$'
+          minLength: 4
+          maxLength: 20
+          description: |
+            Contract the prefix is billed under. The rule is
+            decided on the RESOLVED `retention`, never on who is calling:
+            REQUIRED when it resolves to `persistent` (omitting it is a
+            `422` naming `contractId`), FORBIDDEN when it resolves to
+            `ephemeral` (a value is a `422` naming the contradiction).
+            Deliberately NOT listed in `required`: the rule is
+            conditional, which JSON Schema cannot express, so the
+            handler decides. Matched exactly against the pattern, with
+            no trimming and no case folding; a value outside it is a
+            `422` stating the pattern. The contract is never checked for
+            existence; it must authorise the prefix's type for your
+            account, or the create is a `409` E020031.
+            Recorded per prefix at create and immutable afterwards; a
+            replay with a different value is a `409` (E020003). The
+            value is an opaque identifier minted by billing operations
+            and mirrored verbatim, a documented deviation from the
+            lowercase-UUID rule for client-supplied identifiers.
+          example: "PD-2026-000481"
+
+    PrefixState:
+      type: string
+      enum: [provisioning, active, failed]
+      description: |
+        Prefix lifecycle state: `provisioning` → `active` |
+        `failed`. In the create acceptance body the state is
+        `provisioning`; a late replay of the same `PUT` may already
+        read `active` or `failed`.
+      example: "provisioning"
+
+    PrefixCreateAccepted:
+      type: object
+      description: |
+        Acceptance body for an asynchronous prefix create. Echoes the
+        recorded request with the RESOLVED `retention`;
+        `links.operation` is the operation reference and
+        resolves at `GET /prefixes/{prefixId}/operation`. Once
+        provisioned, the prefix is discoverable via
+        `filters[networkId][eq]` on the prefix listing.
+      required:
+        - id
+        - state
+        - networkId
+        - family
+        - retention
+        - links
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated UUID of the prefix.
+          example: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+        state:
+          $ref: '#/components/schemas/PrefixState'
+        networkId:
+          type: string
+          format: uuid
+          description: UUID of the network that owns the prefix.
+          example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+        family:
+          type: integer
+          enum: [4, 6]
+          description: IP family (4 for IPv4, 6 for IPv6).
+          example: 4
+        size:
+          type: integer
+          description: |
+            Requested prefix size as a CIDR mask length; the concrete
+            subnet is selected by i3D.net during provisioning.
+          example: 24
+        retention:
+          allOf:
+            - $ref: '#/components/schemas/RetentionAttribute'
+          description: The RESOLVED retention value stored at create time.
+        contractId:
+          type: string
+          description: |
+            Contract the prefix is billed under, as recorded at create.
+            OMITTED, never `null`, when none was recorded:
+            the prefix resolved to `ephemeral`.
+          example: "PD-2026-000481"
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2026-07-27T09:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp of the last state change.
+          example: "2026-07-27T09:00:00Z"
+        links:
+          type: object
+          description: |
+            Hypermedia links. `operation` is the operation reference
+            returned by `PUT`; idempotent replays return the SAME
+            reference.
+          required:
+            - operation
+          properties:
+            operation:
+              allOf:
+                - $ref: '#/components/schemas/Link'
+              description: |
+                Link to the prefix's operation resource.
+            network:
+              allOf:
+                - $ref: '#/components/schemas/Link'
+              description: Link to the owning network.
+
+    PrefixConnectivity:
+      type: object
+      description: |
+        Connectivity class of the prefix - the same two values a network
+        uses: `public` for address space reachable from the internet,
+        `private` for address space confined to an isolated segment.
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [public, private]
+          description: |
+            `public`: internet-connected address space.
+            `private`: address space in an isolated segment, routed or
+            gateway-less.
+          example: "public"
+
+    PrefixLinks:
+      type: object
+      description: |
+        Hypermedia links for the prefix. `self` is always present;
+        `operation` is present only while a local lifecycle record
+        exists (create in flight, or a retained failed tombstone) and
+        resolves at `GET /prefixes/{prefixId}/operation`.
+      required:
+        - self
+      properties:
+        self:
+          allOf:
+            - $ref: '#/components/schemas/Link'
+          description: Link to the canonical resource.
+        operation:
+          allOf:
+            - $ref: '#/components/schemas/Link'
+          description: |
+            Link to the prefix's operation resource. Present
+            only while a local lifecycle record exists; omitted once the
+            prefix is live.
+
+    PrefixResponse:
+      type: object
+      description: |
+        A prefix on your account: the location is the public fabric
+        slug and metro name, the VLAN appears only as the
+        integer 802.1Q `vlanId`, and prefixes provisioned through a
+        network carry `networkId`.
+
+        Optional fields are OMITTED when they have no value - never
+        `null`. Absence is a valid state, not an error or a data gap: a
+        prefix may not be bound to a fabric, and a reserved prefix may
+        not have a gateway assigned yet.
+      required:
+        - id
+        - cidr
+        - family
+        - state
+        - links
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID of the prefix.
+          example: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+        cidr:
+          type: string
+          description: |
+            The prefix in CIDR notation. Sent as an EMPTY string (not
+            omitted) while the prefix is still `provisioning`: i3D.net
+            has not selected the concrete subnet yet.
+          example: "10.0.0.0/24"
+        family:
+          type: integer
+          enum: [4, 6]
+          description: IP family (4 for IPv4, 6 for IPv6).
+          example: 4
+        state:
+          type: string
+          description: |
+            Resource state: `provisioning` and `failed` while a create
+            is in flight or has failed, then the status of the live
+            prefix - `active` in service, `reserved` held but not
+            in service, `container` a parent block, `deprecated` on its
+            way out. This field is NOT a closed set: tolerate values you
+            do not know.
+          example: "active"
+        customerDescription:
+          type: string
+          description: |
+            Customer-editable description. Omitted when never set.
+        fabric:
+          type: string
+          description: |
+            Public fabric identifier of the fabric the prefix's VLAN
+            belongs to. Omitted when the prefix has no
+            fabric configured, or when the fabric has no registry
+            mapping - the internal location name is never exposed.
+          example: "montreal-a"
+        metro:
+          type: string
+          description: |
+            Public metro name of the prefix's fabric (as served by the
+            fabrics listing). Omitted together with `fabric`.
+          example: "Montreal"
+        vlanId:
+          type: integer
+          description: |
+            The 802.1Q VLAN ID the prefix is attached to - the only VLAN
+            detail this API exposes, matching `vlanId` on the network.
+            Omitted when the prefix has no VLAN - a valid state, never
+            `null`.
+          example: 3042
+        routerIps:
+          type: array
+          items:
+            type: string
+          description: |
+            Router IP addresses serving the prefix. Omitted / empty when
+            no routers are recorded against the prefix.
+        gatewayIp:
+          type: string
+          description: |
+            Gateway IP address for the prefix. Omitted when the prefix
+            has no gateway - valid for a reserved prefix, and for a
+            private prefix, which carries addressing only.
+          example: "10.0.0.1"
+        connectivity:
+          allOf:
+            - $ref: '#/components/schemas/PrefixConnectivity'
+          description: |
+            Connectivity class of the prefix, in the same two values a
+            network uses. Omitted - never `null` - while the prefix is
+            still `provisioning`: the class is read from the live
+            prefix, never guessed.
+        networkId:
+          type: string
+          format: uuid
+          description: |
+            UUID of the network that provisioned this prefix. Present
+            only when i3D.net has a record mapping the prefix to a
+            network.
+            A legacy prefix sitting on the same VLAN - and therefore
+            matching `filters[networkId][eq]` - omits it: the field
+            asserts provenance, the filter asserts VLAN membership.
+          example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+        retention:
+          allOf:
+            - $ref: '#/components/schemas/RetentionAttribute'
+          description: |
+            Resolved retention of the prefix (`persistent` or
+            `ephemeral`). OMITTED - never `null` - when no
+            resolved-retention record exists for the prefix: absence
+            means "created before retention existed", NOT "ephemeral";
+            it is never defaulted on the read side.
+          example: "persistent"
+        contractId:
+          type: string
+          description: |
+            Contract the prefix is billed under, recorded at
+            create and never changed. Read from the same record as
+            `retention` (or from the accepted request while the prefix
+            is provisioning). OMITTED, never `null`, when none is
+            recorded: an `ephemeral` prefix, or a prefix created before
+            contract attribution existed. Never derived on the read side.
+          example: "PD-2026-000481"
+        created:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2026-07-27T09:00:00Z"
+        lastUpdated:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-07-27T09:02:11Z"
+        links:
+          $ref: '#/components/schemas/PrefixLinks'
+
+    PrefixListResponse:
+      type: object
+      description: |
+        Cursor-paginated page of prefixes. No
+        page numbers, no total counts - and NO availability counters:
+        read a single prefix (`GET /prefixes/{prefixId}`) for
+        `capacity`/`allocated`/`available`.
+      required:
+        - items
+        - links
+      properties:
+        items:
+          type: array
+          description: The page of prefixes (`[]` when empty, never `null`).
+          items:
+            $ref: '#/components/schemas/PrefixResponse'
+        links:
+          $ref: '#/components/schemas/CursorPageLinks'
+
+    PrefixDetailResponse:
+      description: |
+        The prefix representation extended with availability
+        counters - served by `GET /prefixes/{prefixId}` only. The
+        counters follow the same definitions as the IP-address listing
+        under the prefix.
+      allOf:
+        - $ref: '#/components/schemas/PrefixResponse'
+        - type: object
+          required:
+            - capacity
+            - allocated
+            - available
+          properties:
+            capacity:
+              type: integer
+              format: int64
+              description: |
+                Total usable addresses in the prefix, from the mask
+                (minus network/broadcast where applicable per family).
+                Saturates at the maximum int64 value for very large
+                IPv6 prefixes.
+              example: 254
+            allocated:
+              type: integer
+              format: int64
+              description: Count of ALL IP address objects under the prefix.
+              example: 5
+            available:
+              type: integer
+              format: int64
+              description: |
+                `capacity` - `allocated` - unmaterialized positional
+                reservations: the number of addresses that can still be
+                allocated. Never negative; saturates together with
+                `capacity` for very large IPv6 prefixes.
+              example: 249
+
+    PrefixDeleteAccepted:
+      type: object
+      description: |
+        Acceptance body for an asynchronous prefix delete. The operation
+        reference tracks the teardown; when it completes, the prefix
+        reads as `404` and the completed operation is your
+        confirmation.
+      required:
+        - id
+        - links
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID of the prefix being deleted.
+          example: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+        links:
+          type: object
+          required:
+            - operation
+          properties:
+            operation:
+              allOf:
+                - $ref: '#/components/schemas/Link'
+              description: The operation reference for the teardown.
+
+    IPAddressResponse:
+      type: object
+      description: |
+        An IP address object under a prefix, as returned by the
+        ip-addresses endpoints - an allocated address or an
+        infrastructure address alike. Fields without a value are
+        omitted, never sent as `null`. Timestamps are RFC 3339 UTC.
+      required:
+        - id
+        - address
+        - family
+        - prefixId
+        - links
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: |
+            UUID identity of the IP address (canonical lowercase).
+          example: "01984f2e-aa01-7bb2-8c11-1f27adccf111"
+        address:
+          type: string
+          description: The IP address, without prefix length.
+          example: "10.0.0.10"
+        family:
+          type: integer
+          enum: [4, 6]
+          description: IP family (4 for IPv4, 6 for IPv6).
+          example: 4
+        prefixId:
+          type: string
+          format: uuid
+          description: UUID of the prefix this address was resolved under.
+          example: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+        role:
+          type: string
+          description: |
+            Infrastructure role of the address, present only when the
+            it is recorded as one: `gateway` for the prefix's
+            gateway address, `router-ip` for a router address - derived
+            by the same rules as the prefix's `gatewayIp`/`routerIps`
+            fields - and `reserved` for a materialized positional
+            reservation (one of the first usable addresses, held for
+            future infrastructure). Omitted for addresses without an
+            infrastructure role (never `null`). This is NOT a closed
+            set: tolerate values you do not know without failing.
+          example: "gateway"
+        created:
+          type: string
+          format: date-time
+          description: Creation timestamp (RFC 3339 UTC).
+          example: "2026-07-27T09:00:00Z"
+        links:
+          type: object
+          description: |
+            Hypermedia links. `self` is always present and points at the
+            address under its prefix
+            (`/prefixes/{prefixId}/ip-addresses/{ipId}`). The same
+            address is also readable by UUID alone at
+            `/ip-addresses/{ipId}`.
+          required:
+            - self
+          properties:
+            self:
+              allOf:
+                - $ref: '#/components/schemas/Link'
+              description: Link to the canonical IP address resource.
+
+    IPAddressListResponse:
+      type: object
+      description: |
+        Cursor-paginated listing of ALL IP address objects under a
+        prefix, with availability counters as
+        top-level members next to `items`. `allocated` counts all IP
+        address objects under the prefix (allocated and infrastructure
+        alike - the total of `items` across all pages equals
+        `allocated`), `capacity` derives from the prefix mask (minus
+        network/broadcast where applicable per family), and `available`
+        = `capacity` - `allocated` - the positionally reserved addresses
+        not yet materialized as IP objects (the number of addresses that
+        can still be allocated). Free addresses are never enumerated. For
+        very large IPv6 prefixes `capacity` and `available` saturate at
+        the maximum int64 value instead of overflowing.
+      required:
+        - items
+        - capacity
+        - allocated
+        - available
+        - links
+      properties:
+        items:
+          type: array
+          description: The page of IP address objects (`[]` when empty, never `null`).
+          items:
+            $ref: '#/components/schemas/IPAddressResponse'
+        capacity:
+          type: integer
+          format: int64
+          description: |
+            Total usable addresses in the prefix, from the mask (minus
+            network/broadcast where applicable per family). Saturates at
+            the maximum int64 value for very large IPv6 prefixes.
+          example: 254
+        allocated:
+          type: integer
+          format: int64
+          description: Count of ALL IP address objects under the prefix.
+          example: 5
+        available:
+          type: integer
+          format: int64
+          description: |
+            `capacity` - `allocated` - unmaterialized positional
+            reservations: the number of addresses that can still be
+            allocated. Never negative; saturates together with `capacity` for very
+            large IPv6 prefixes.
+          example: 249
+        links:
+          $ref: '#/components/schemas/CursorPageLinks'
+
+    NetworkIPAddressListResponse:
+      type: object
+      description: |
+        Cursor-paginated listing of ALL IP address objects under a
+        network's non-pool prefixes, with
+        aggregated availability counters as top-level members next to
+        `items`. Items are the same `IPAddressResponse` objects the
+        prefix-scoped listing serves - each carries its `prefixId` and
+        its canonical `links.self`. Counters sum the
+        per-prefix truth across ALL the network's non-pool prefixes and
+        BOTH address families (address pools contribute nothing); the
+        per-family view is the prefix-scoped listing. The total of
+        `items` across all pages equals `allocated`. Free addresses are
+        never enumerated.
+      required:
+        - items
+        - capacity
+        - allocated
+        - available
+        - links
+      properties:
+        items:
+          type: array
+          description: The page of IP address objects (`[]` when empty, never `null`).
+          items:
+            $ref: '#/components/schemas/IPAddressResponse'
+        capacity:
+          type: integer
+          format: int64
+          description: |
+            Total usable addresses summed across the network's non-pool
+            prefixes, both families. Per-prefix saturation carries into
+            the sum: saturates at the maximum int64 value.
+          example: 508
+        allocated:
+          type: integer
+          format: int64
+          description: |
+            Count of ALL IP address objects under the network's
+            non-pool prefixes - allocated and infrastructure alike.
+          example: 8
+        available:
+          type: integer
+          format: int64
+          description: |
+            Sum of the per-prefix `available` counters (positional
+            reservations excluded whether or not materialized): the
+            number of addresses that can still be allocated under the
+            network. Never negative; saturates at the maximum int64
+            value.
+          example: 494
+        links:
+          $ref: '#/components/schemas/CursorPageLinks'
+
+    FabricResponse:
+      type: object
+      description: |
+        A public fabric - an i3D.net location a network can be placed
+        in. The `slug` is the machine-readable identifier
+        used everywhere this API takes or returns a location;
+        internal location names never appear.
+      required:
+        - slug
+        - displayName
+        - metro
+      properties:
+        slug:
+          type: string
+          description: |
+            Public fabric identifier - the value to use in `fabric` fields
+            and filters.
+          example: "montreal-a"
+        displayName:
+          type: string
+          description: Human-readable fabric name for display.
+          example: "Montreal A"
+        metro:
+          type: string
+          description: Metro area the fabric belongs to.
+          example: "Montreal"
+
+    FabricListResponse:
+      type: object
+      description: |
+        Cursor-paginated page of public fabrics. No page numbers, no
+        total counts.
+      required:
+        - items
+        - links
+      properties:
+        items:
+          type: array
+          description: The page of fabrics (`[]` when empty, never `null`).
+          items:
+            $ref: '#/components/schemas/FabricResponse'
+        links:
+          $ref: '#/components/schemas/CursorPageLinks'
+
+
+
+
+
+
+
+
+
+
+    UsageResponse:
+      type: object
+      description: |
+        Your current usage report. NOT paginated: it is a single report
+        of bounded size (resource types × fabrics) and is only useful as
+        one consistent snapshot (see the `GET /usage` description).
+      required:
+        - items
+        - links
+      properties:
+        items:
+          type: array
+          description: |
+            The report rows (`[]` when you hold nothing and no
+            customer-specific limit is defined; never `null`).
+          items:
+            $ref: '#/components/schemas/UsageItem'
+        links:
+          type: object
+          description: Links for this report.
+          required:
+            - self
+          properties:
+            self:
+              allOf:
+                - $ref: '#/components/schemas/Link'
+              description: This report.
+
+    UsageItem:
+      type: object
+      description: |
+        One usage row: counts and, when defined, the account-specific
+        limit for one resource type at one grain. The grain is the
+        `fabric` value: present = per-fabric row, absent = customer-wide
+        aggregate (used when the limit is defined customer-wide). A row
+        is emitted when you hold at least one resource at that
+        grain or a customer-specific limit is defined there.
+      required:
+        - resourceType
+        - held
+        - persistent
+      properties:
+        resourceType:
+          type: string
+          description: |
+            The resource type this row reports on, named after the
+            corresponding collection on this API. Types whose usage
+            is accounted per address family carry a `-v4` / `-v6`
+            suffix, because the ceilings differ per family: IPv4 usage is
+            counted in addresses, IPv6 usage is counted in prefixes. NOT
+            a closed set: tolerate values you do not know. Current values are
+            `networks`, `prefixes-v4`, `prefixes-v6` and
+            `ip-addresses-v4`. There is deliberately no
+            `ip-addresses-v6` row: IPv6 usage is prefix-based, so an
+            IPv6 address allocated inside a prefix you already
+            holds consumes no ceiling. New resource types (e.g. routing
+            domains) MAY appear additively.
+          example: "networks"
+        fabric:
+          type: string
+          description: |
+            Public fabric identifier (the same vocabulary as
+            `GET /fabrics`) this row is scoped to. Omitted on a
+            customer-wide aggregate row.
+          example: "montreal-a"
+        held:
+          type: integer
+          minimum: 0
+          description: |
+            Number of resources of this type you currently hold
+            at this grain. Counts exactly what the corresponding listing
+            returns for the same account and fabric,
+            restricted to the row's address family on family-suffixed
+            types (deleted resources never count) - the report and the
+            listings never diverge.
+          example: 3
+        persistent:
+          type: integer
+          minimum: 0
+          description: |
+            How many of `held` have `retention: persistent`. This is
+            the count quota enforcement charges against `limit` -
+            ephemeral resources are never counted - so with this field
+            the report is checkable: `remaining` is `limit` minus
+            `persistent`, floored at 0. Always at most `held`.
+          example: 3
+        billable:
+          type: integer
+          minimum: 0
+          description: |
+            How many of `held` are currently billable: persistent
+            prefixes under a contract. It is computed by the same rule
+            and from the same source as your invoice, never by a second
+            calculation. Present only on `prefixes-v4` and `prefixes-v6` rows,
+            and only when at least one resource is billable. Counts only -
+            no prices and no currency. A new prefix can take a few
+            minutes to appear here.
+          example: 1
+        limit:
+          type: integer
+          minimum: 0
+          description: |
+            The limit that applies to your account for this row's
+            resource type and grain - a per-resource-type default or a
+            per-customer override, resolved by the quota module. Present
+            ONLY when such an account-specific limit is defined; absent
+            means no customer limit applies at this grain.
+            Platform-internal ceilings are never exposed here, and
+            neither is a ceiling that only authorises without capping a
+            count at this grain. This is the number quota enforcement
+            applies: at the grains this report carries (customer-wide
+            and per-fabric), a create rejected over-limit and this
+            report always agree. Ceilings enforced at finer grains (per
+            network) are not repeated here - the rejection itself names
+            them.
+
+            Never present on `prefixes-v4`, `prefixes-v6` and
+            `ip-addresses-v4` rows: those ceilings are held per contract,
+            and a row covers every contract you hold, so no single limit
+            is true for it. A per-contract ceiling is named by the
+            rejection it causes, never repeated here. The agreement rule
+            above holds trivially for these rows.
+          example: 5
+        remaining:
+          type: integer
+          minimum: 0
+          description: |
+            Headroom left under `limit`: the limit minus `persistent`
+            (the count quota enforcement charges against it), floored
+            at 0. Present exactly when `limit` is present.
+            `remaining: 0` with `persistent` above `limit` is possible
+            for resources that already existed when the limit was set
+            (counted, reported, never retroactively rejected).
+          example: 2
+        subscription:
+          $ref: '#/components/schemas/UsageSubscription'
+
+    UsageSubscription:
+      type: object
+      description: |
+        The FACT that a subscription-based charge applies to this row's
+        resource type (and fabric, when the row is fabric-scoped): its
+        existence and start moment only - never the subscribed value,
+        price or currency (finance systems own money).
+
+        Present exactly when `billable` is present.
+      required:
+        - startedAt
+      properties:
+        startedAt:
+          type: string
+          format: date-time
+          description: |
+            When the subscription started (RFC 3339, UTC): the moment
+            the earliest of the row's billable resources became
+            billable.
+          example: "2026-09-17T14:00:00Z"
