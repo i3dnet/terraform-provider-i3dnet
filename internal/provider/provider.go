@@ -142,6 +142,8 @@ func (p *i3dnetProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewFlexvmNodeDataSource,
 		NewFlexvmNodesDataSource,
 		NewFabricsDataSource,
+		NewNetworkDataSource,
+		NewNetworksDataSource,
 	}
 }
 

@@ -12,9 +12,7 @@ import (
 	"terraform-provider-i3dnet/internal/network_api"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -23,29 +21,9 @@ import (
 func readFabrics(t *testing.T, handler http.HandlerFunc) *datasource.ReadResponse {
 	t.Helper()
 
-	ctx := context.Background()
-
-	srv := httptest.NewServer(handler)
-	t.Cleanup(srv.Close)
-
-	api, err := network_api.NewAPI("key", srv.URL)
-	if err != nil {
-		t.Fatalf("NewAPI: %v", err)
-	}
-	d := &fabricsDataSource{client: api}
-
-	var schemaResp datasource.SchemaResponse
-	d.Schema(ctx, datasource.SchemaRequest{}, &schemaResp)
-	if schemaResp.Diagnostics.HasError() {
-		t.Fatalf("Schema: %v", schemaResp.Diagnostics)
-	}
-	s := schemaResp.Schema
-	null := tftypes.NewValue(s.Type().TerraformType(ctx), nil)
-
-	resp := &datasource.ReadResponse{State: tfsdk.State{Schema: s, Raw: null}}
-	d.Read(ctx, datasource.ReadRequest{Config: tfsdk.Config{Schema: s, Raw: null}}, resp)
-
-	return resp
+	return readDataSource(t, func(api *network_api.ClientWithResponses) datasource.DataSource {
+		return &fabricsDataSource{client: api}
+	}, nil, handler)
 }
 
 func writeFabricsPage(w http.ResponseWriter, next string, items ...string) {
