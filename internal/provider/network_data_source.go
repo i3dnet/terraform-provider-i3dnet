@@ -3,16 +3,15 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
-	"regexp"
 
 	"terraform-provider-i3dnet/internal/network_api"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 var (
@@ -20,8 +19,28 @@ var (
 	_ datasource.DataSourceWithConfigure = (*networkDataSource)(nil)
 )
 
-// uuidPattern matches a UUID in its canonical 8-4-4-12 hex form.
-var uuidPattern = regexp.MustCompile(`^(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+// uuidV7Validator accepts only version 7 UUIDs: every network id is one,
+// whether the network was created through the API or set up by i3D.net.
+type uuidV7Validator struct{}
+
+func (uuidV7Validator) Description(context.Context) string {
+	return "must be a version 7 UUID"
+}
+
+func (v uuidV7Validator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v uuidV7Validator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	u, err := uuid.Parse(req.ConfigValue.ValueString())
+	if err != nil || u.Version() != 7 || u.Variant() != uuid.RFC4122 {
+		resp.Diagnostics.AddAttributeError(req.Path, "Invalid network id",
+			fmt.Sprintf("%q %s.", req.ConfigValue.ValueString(), v.Description(ctx)))
+	}
+}
 
 func NewNetworkDataSource() datasource.DataSource {
 	return &networkDataSource{}
@@ -46,7 +65,7 @@ func (d *networkDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 		MarkdownDescription: "ID (UUID) of the network to read.",
 		Required:            true,
 		Validators: []validator.String{
-			stringvalidator.RegexMatches(uuidPattern, "must be a UUID"),
+			uuidV7Validator{},
 		},
 	}
 
@@ -65,8 +84,8 @@ func (d *networkDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	var id openapi_types.UUID
-	if err := id.UnmarshalText([]byte(config.ID.ValueString())); err != nil {
+	id, err := uuid.Parse(config.ID.ValueString())
+	if err != nil {
 		resp.Diagnostics.AddError("Invalid network id", err.Error())
 		return
 	}

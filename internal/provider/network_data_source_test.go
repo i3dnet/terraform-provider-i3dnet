@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	dsNetworkID         = "0b9c2f7e-4d51-4a8e-9f3a-1c2d3e4f5a6b"
+	dsNetworkID         = "01984f2e-1c3a-7d21-9d10-3542f27adccf"
 	testRoutingDomainID = "7f1e2d3c-4b5a-4968-8776-655443322110"
 )
 
@@ -269,34 +269,42 @@ data "i3dnet_network" "legacy" {
 	}
 }
 
-func TestNetworkDataSourceRejectsAnInvalidID(t *testing.T) {
-	var calls atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
-		w.WriteHeader(http.StatusTeapot)
-	}))
-	t.Cleanup(srv.Close)
+func TestNetworkDataSourceRejectsAnIDThatIsNotAVersion7UUID(t *testing.T) {
+	for name, id := range map[string]string{
+		"not a UUID":               "not-a-uuid",
+		"version 4 UUID":           "0b9c2f7e-4d51-4a8e-9f3a-1c2d3e4f5a6b",
+		"version 7, wrong variant": "01984f2e-1c3a-7d21-1d10-3542f27adccf",
+	} {
+		t.Run(name, func(t *testing.T) {
+			var calls atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				w.WriteHeader(http.StatusTeapot)
+			}))
+			t.Cleanup(srv.Close)
 
-	resource.UnitTest(t, resource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(`
+			resource.UnitTest(t, resource.TestCase{
+				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+				Steps: []resource.TestStep{
+					{
+						Config: fmt.Sprintf(`
 provider "i3dnet" {
   api_key  = "unit-test-key"
   base_url = %q
 }
 
 data "i3dnet_network" "bad" {
-  id = "not-a-uuid"
+  id = %q
 }
-`, srv.URL),
-				ExpectError: regexp.MustCompile(`must be a UUID`),
-			},
-		},
-	})
+`, srv.URL, id),
+						ExpectError: regexp.MustCompile(`must be a version 7 UUID`),
+					},
+				},
+			})
 
-	if n := calls.Load(); n != 0 {
-		t.Errorf("made %d requests, want none for an invalid id", n)
+			if n := calls.Load(); n != 0 {
+				t.Errorf("made %d requests, want none for an invalid id", n)
+			}
+		})
 	}
 }
