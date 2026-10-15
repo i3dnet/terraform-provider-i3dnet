@@ -24,20 +24,12 @@ const (
 	filterName   = "filters[name][contains]"
 )
 
-func readNetworks(t *testing.T, set map[string]string, handler http.HandlerFunc) *datasource.ReadResponse {
+func readNetworks(t *testing.T, set map[string]any, handler http.HandlerFunc) *datasource.ReadResponse {
 	t.Helper()
 
 	return readDataSource(t, func(api *network_api.ClientWithResponses) datasource.DataSource {
 		return &networksDataSource{client: api}
 	}, set, handler)
-}
-
-func writeNetworksPage(w http.ResponseWriter, next string, items ...string) {
-	links := `"self":{"href":"/networks?limit=100"}`
-	if next != "" {
-		links += fmt.Sprintf(`,"next":{"href":%q}`, next)
-	}
-	writeJSON(w, fmt.Sprintf(`{"items":[%s],"links":{%s}}`, strings.Join(items, ","), links))
 }
 
 // isolatedNetworkJSON is a private isolated network with no name.
@@ -73,7 +65,7 @@ func TestNetworksDataSourceSendsTheFiltersOnEveryPage(t *testing.T) {
 		mu   sync.Mutex
 		reqs []*url.URL
 	)
-	resp := readNetworks(t, map[string]string{
+	resp := readNetworks(t, map[string]any{
 		"fabric":        "rotterdam-a",
 		"state":         "active",
 		"name_contains": "db",
@@ -88,11 +80,11 @@ func TestNetworksDataSourceSendsTheFiltersOnEveryPage(t *testing.T) {
 
 		switch n {
 		case 1:
-			writeNetworksPage(w, "/networks?limit=100&cursor=o%3D100", routedNetworkJSON(id1, "rotterdam-a", "db-1"))
+			writeListPage(w, "/networks?limit=100&cursor=o%3D100", routedNetworkJSON(id1, "rotterdam-a", "db-1"))
 		case 2:
-			writeNetworksPage(w, "/networks?limit=100&cursor=o%3D200", routedNetworkJSON(id2, "rotterdam-a", "db-2"))
+			writeListPage(w, "/networks?limit=100&cursor=o%3D200", routedNetworkJSON(id2, "rotterdam-a", "db-2"))
 		case 3:
-			writeNetworksPage(w, "", routedNetworkJSON(id3, "rotterdam-a", "db-3"))
+			writeListPage(w, "", routedNetworkJSON(id3, "rotterdam-a", "db-3"))
 		default:
 			t.Errorf("request %d (%s) past the last page", n, r.URL)
 			w.WriteHeader(http.StatusTeapot)
@@ -158,7 +150,7 @@ func TestNetworksDataSourceSendsNoFilterWhenNoneIsSet(t *testing.T) {
 		if got := q.Get("limit"); got != "100" {
 			t.Errorf("limit = %q, want 100", got)
 		}
-		writeNetworksPage(w, "", isolatedNetworkJSON(id, "tokyo-a"))
+		writeListPage(w, "", isolatedNetworkJSON(id, "tokyo-a"))
 	})
 
 	if resp.Diagnostics.HasError() {
@@ -176,8 +168,8 @@ func TestNetworksDataSourceSendsNoFilterWhenNoneIsSet(t *testing.T) {
 func TestNetworksDataSourceReadsNoMatchAsAnEmptyList(t *testing.T) {
 	t.Parallel()
 
-	resp := readNetworks(t, map[string]string{"name_contains": "nothing-matches"}, func(w http.ResponseWriter, r *http.Request) {
-		writeNetworksPage(w, "")
+	resp := readNetworks(t, map[string]any{"name_contains": "nothing-matches"}, func(w http.ResponseWriter, r *http.Request) {
+		writeListPage(w, "")
 	})
 
 	if resp.Diagnostics.HasError() {
@@ -194,9 +186,9 @@ func TestNetworksDataSourceReportsAnErrorOnALaterPageWithoutPartialState(t *test
 	t.Parallel()
 
 	var calls atomic.Int32
-	resp := readNetworks(t, map[string]string{"fabric": "rotterdam-a"}, func(w http.ResponseWriter, r *http.Request) {
+	resp := readNetworks(t, map[string]any{"fabric": "rotterdam-a"}, func(w http.ResponseWriter, r *http.Request) {
 		if calls.Add(1) == 1 {
-			writeNetworksPage(w, "/networks?limit=100&cursor=o%3D100",
+			writeListPage(w, "/networks?limit=100&cursor=o%3D100",
 				isolatedNetworkJSON("55555555-5555-4555-8555-555555555555", "rotterdam-a"))
 			return
 		}
@@ -239,7 +231,7 @@ func TestNetworksDataSourceThroughTheProvider(t *testing.T) {
 			w.WriteHeader(http.StatusTeapot)
 			return
 		}
-		writeNetworksPage(w, "", routedNetworkJSON(id, "rotterdam-a", "db-main"))
+		writeListPage(w, "", routedNetworkJSON(id, "rotterdam-a", "db-main"))
 	}))
 	t.Cleanup(srv.Close)
 

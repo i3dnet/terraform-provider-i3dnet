@@ -25,8 +25,9 @@ const (
 )
 
 // configWith builds a config value for schema s: every attribute null except
-// the string attributes in set.
-func configWith(t *testing.T, ctx context.Context, s datasource.SchemaResponse, set map[string]string) tftypes.Value {
+// the attributes in set, each built with its schema type (a Number takes a Go
+// int or int64).
+func configWith(t *testing.T, ctx context.Context, s datasource.SchemaResponse, set map[string]any) tftypes.Value {
 	t.Helper()
 
 	objType, ok := s.Schema.Type().TerraformType(ctx).(tftypes.Object)
@@ -39,17 +40,18 @@ func configWith(t *testing.T, ctx context.Context, s datasource.SchemaResponse, 
 		values[name] = tftypes.NewValue(ty, nil)
 	}
 	for name, v := range set {
-		if _, ok := objType.AttributeTypes[name]; !ok {
+		ty, ok := objType.AttributeTypes[name]
+		if !ok {
 			t.Fatalf("schema has no attribute %q", name)
 		}
-		values[name] = tftypes.NewValue(tftypes.String, v)
+		values[name] = tftypes.NewValue(ty, v)
 	}
 
 	return tftypes.NewValue(objType, values)
 }
 
-// readDataSource runs d.Read with the string arguments in set against handler.
-func readDataSource(t *testing.T, newDS func(*network_api.ClientWithResponses) datasource.DataSource, set map[string]string, handler http.HandlerFunc) *datasource.ReadResponse {
+// readDataSource runs d.Read with the arguments in set against handler.
+func readDataSource(t *testing.T, newDS func(*network_api.ClientWithResponses) datasource.DataSource, set map[string]any, handler http.HandlerFunc) *datasource.ReadResponse {
 	t.Helper()
 
 	ctx := context.Background()
@@ -82,7 +84,7 @@ func readNetwork(t *testing.T, id string, handler http.HandlerFunc) *datasource.
 
 	return readDataSource(t, func(api *network_api.ClientWithResponses) datasource.DataSource {
 		return &networkDataSource{client: api}
-	}, map[string]string{"id": id}, handler)
+	}, map[string]any{"id": id}, handler)
 }
 
 // routedNetworkJSON is a private routed network i3D.net set up for the account.
@@ -97,6 +99,16 @@ func routedNetworkJSON(id, fabric, name string) string {
 func writeJSON(w http.ResponseWriter, body string) {
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(body))
+}
+
+// writeListPage writes one page of a list response; next is the next-page
+// href, or "" on the last page. self is neutral: the pager never reads it.
+func writeListPage(w http.ResponseWriter, next string, items ...string) {
+	links := `"self":{"href":"/"}`
+	if next != "" {
+		links += fmt.Sprintf(`,"next":{"href":%q}`, next)
+	}
+	writeJSON(w, fmt.Sprintf(`{"items":[%s],"links":{%s}}`, strings.Join(items, ","), links))
 }
 
 func TestNetworkDataSourceReadsTheNetwork(t *testing.T) {
