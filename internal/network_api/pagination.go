@@ -76,3 +76,22 @@ func (c *ClientWithResponses) ListAllFabrics(ctx context.Context) ([]FabricRespo
 		return page.Items, page.Links.Next, nil
 	})
 }
+
+// ListAllNetworks returns every network of the account that matches the
+// filters set in params. Limit and Cursor in params are ignored: every page is
+// requested with PageSize and the same filters.
+func (c *ClientWithResponses) ListAllNetworks(ctx context.Context, params ListNetworksParams) ([]NetworkResponse, error) {
+	return WalkPages(ctx, func(ctx context.Context, cursor *string) ([]NetworkResponse, *Link, error) {
+		limit := PageSize
+		pageParams := params
+		pageParams.Limit = &limit
+		pageParams.Cursor = cursor
+
+		page, err := Do[NetworkListResponse](c.ListNetworks(ctx, &pageParams))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return page.Items, page.Links.Next, nil
+	})
+}
