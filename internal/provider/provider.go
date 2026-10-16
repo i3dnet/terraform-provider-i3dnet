@@ -145,6 +145,7 @@ func (p *i3dnetProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewNetworkDataSource,
 		NewNetworksDataSource,
 		NewNetworkPrefixesDataSource,
+		NewNetworkIPAddressesDataSource,
 	}
 }
 
