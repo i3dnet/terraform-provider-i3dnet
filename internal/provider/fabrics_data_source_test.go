@@ -26,15 +26,6 @@ func readFabrics(t *testing.T, handler http.HandlerFunc) *datasource.ReadRespons
 	}, nil, handler)
 }
 
-func writeFabricsPage(w http.ResponseWriter, next string, items ...string) {
-	links := `"self":{"href":"/fabrics?limit=100"}`
-	if next != "" {
-		links += fmt.Sprintf(`,"next":{"href":%q}`, next)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = fmt.Fprintf(w, `{"items":[%s],"links":{%s}}`, strings.Join(items, ","), links)
-}
-
 func fabricJSON(slug, displayName, metro string) string {
 	return fmt.Sprintf(`{"slug":%q,"displayName":%q,"metro":%q}`, slug, displayName, metro)
 }
@@ -49,14 +40,14 @@ func TestFabricsDataSourceReadsEveryPage(t *testing.T) {
 		}
 		switch calls.Add(1) {
 		case 1:
-			writeFabricsPage(w, "/fabrics?limit=100&cursor=abc",
+			writeListPage(w, "/fabrics?limit=100&cursor=abc",
 				fabricJSON("rotterdam-a", "Rotterdam A", "Rotterdam"),
 				fabricJSON("rotterdam-b", "Rotterdam B", "Rotterdam"))
 		default:
 			if got := r.URL.Query().Get("cursor"); got != "abc" {
 				t.Errorf("page 2 cursor = %q, want abc", got)
 			}
-			writeFabricsPage(w, "", fabricJSON("tokyo-a", "Tokyo A", "Tokyo"))
+			writeListPage(w, "", fabricJSON("tokyo-a", "Tokyo A", "Tokyo"))
 		}
 	})
 
@@ -93,7 +84,7 @@ func TestFabricsDataSourceReadsAnEmptyListingAsAnEmptyList(t *testing.T) {
 	t.Parallel()
 
 	resp := readFabrics(t, func(w http.ResponseWriter, r *http.Request) {
-		writeFabricsPage(w, "")
+		writeListPage(w, "")
 	})
 
 	if resp.Diagnostics.HasError() {
@@ -157,7 +148,7 @@ func TestFabricsDataSourceThroughTheProvider(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		writeFabricsPage(w, "", fabricJSON("rotterdam-a", "Rotterdam A", "Rotterdam"))
+		writeListPage(w, "", fabricJSON("rotterdam-a", "Rotterdam A", "Rotterdam"))
 	}))
 	t.Cleanup(srv.Close)
 
