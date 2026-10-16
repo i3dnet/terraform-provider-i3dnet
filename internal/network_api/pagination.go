@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // PageSize is the limit every listing requests.
@@ -107,6 +109,34 @@ func (c *ClientWithResponses) ListAllPrefixes(ctx context.Context, params ListPr
 		pageParams.Cursor = cursor
 
 		page, err := Do[PrefixListResponse](c.ListPrefixes(ctx, &pageParams))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return page.Items, page.Links.Next, nil
+	})
+}
+
+// ListAllNetworkIPAddresses returns every IP address under the prefixes of
+// the network. Every page is requested with PageSize.
+func (c *ClientWithResponses) ListAllNetworkIPAddresses(ctx context.Context, networkID openapi_types.UUID) ([]IPAddressResponse, error) {
+	return WalkPages(ctx, func(ctx context.Context, cursor *string) ([]IPAddressResponse, *Link, error) {
+		limit := PageSize
+		page, err := Do[NetworkIPAddressListResponse](c.ListNetworkIPAddresses(ctx, networkID, &ListNetworkIPAddressesParams{Limit: &limit, Cursor: cursor}))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return page.Items, page.Links.Next, nil
+	})
+}
+
+// ListAllPrefixIPAddresses returns every IP address under the prefix. Every
+// page is requested with PageSize.
+func (c *ClientWithResponses) ListAllPrefixIPAddresses(ctx context.Context, prefixID openapi_types.UUID) ([]IPAddressResponse, error) {
+	return WalkPages(ctx, func(ctx context.Context, cursor *string) ([]IPAddressResponse, *Link, error) {
+		limit := PageSize
+		page, err := Do[IPAddressListResponse](c.ListPrefixIPAddresses(ctx, prefixID, &ListPrefixIPAddressesParams{Limit: &limit, Cursor: cursor}))
 		if err != nil {
 			return nil, nil, err
 		}
