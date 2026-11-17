@@ -58,7 +58,8 @@ jobs:
       I3D_FLEXVM_API_KEY: ${{ secrets.I3D_FLEXVM_API_KEY }}
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A real FlexMetal delivery alone can take 10+ minutes; leave room above go test's own -timeout 20m.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
