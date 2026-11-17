@@ -1,8 +1,18 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+
+<a name="v1.12.0"></a>
+## [v1.12.0] - 2026-11-17
 ### Chore
 - **ci:** test Terraform 1.0 and the three latest minor versions ([#139](https://github.com/i3dnet/terraform-provider-i3dnet/issues/139))
+- **network:** Re-vendor the Network API spec at networkapi-core v0.55.8 ([#146](https://github.com/i3dnet/terraform-provider-i3dnet/issues/146))
+
+### Docs
+- changelog for v1.7.1 to v1.11.0 ([#145](https://github.com/i3dnet/terraform-provider-i3dnet/issues/145))
+
+### Features
+- **flexmetal-server:** networks on i3dnet_flexmetal_server (FM-5404) ([#144](https://github.com/i3dnet/terraform-provider-i3dnet/issues/144))
 
 
 <a name="v1.11.0"></a>
@@ -304,7 +314,8 @@
 - Add initial code for flexmetal provider
 
 
-[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.12.0...HEAD
+[v1.12.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.11.0...v1.12.0
 [v1.11.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.6...v1.11.0
 [v1.10.6]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.5...v1.10.6
 [v1.10.5]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.4...v1.10.5
