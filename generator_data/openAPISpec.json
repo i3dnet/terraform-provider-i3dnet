@@ -13463,6 +13463,7 @@
                     "instanceType",
                     "os",
                     "ipAddresses",
+                    "networks",
                     "tags",
                     "createdAt",
                     "deliveredAt",
@@ -13530,6 +13531,14 @@
                             "$ref": "#/components/schemas/FlexMetalServerIpAddress"
                         },
                         "description": "Server IP address details.",
+                        "readOnly": true
+                    },
+                    "networks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexMetalServerNetwork"
+                        },
+                        "description": "The networks the server is attached to, with its addresses in each. For a server created with `networks`, in the same order as the request.",
                         "readOnly": true
                     },
                     "tags": {
@@ -13684,6 +13693,13 @@
                         "type": "boolean",
                         "example": true,
                         "description": "If true, the server will be created even if the location is at commited capacity. Default is false."
+                    },
+                    "networks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexMetalNetworkRequest"
+                        },
+                        "description": "The networks to attach the server to, in this order: untagged or as tagged VLANs, with addresses from the prefixes you choose, or without addresses. Omit it for the default network and addresses. Create the networks and prefixes first with the Dedicated Networks API."
                     }
                 },
                 "additionalProperties": false,
@@ -18946,6 +18962,192 @@
                         "type": "string",
                         "format": "",
                         "description": "Wifi Password",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexMetalNetworkRequest": {
+                "type": "object",
+                "required": [
+                    "networkId"
+                ],
+                "properties": {
+                    "networkId": {
+                        "type": "string",
+                        "format": "",
+                        "example": "0b6f3c2e-6a1d-4f2b-9a51-3c8e2f7d1a10",
+                        "description": "ID of a network you created with the Dedicated Networks API, in the same fabric as the server's location. Each network at most once."
+                    },
+                    "tagged": {
+                        "type": "boolean",
+                        "example": false,
+                        "description": "false (default): the network is untagged on the server's interface; true: a tagged 802.1Q VLAN. At most one network may be untagged."
+                    },
+                    "ipAllocations": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexMetalIpAllocationRequest"
+                        },
+                        "description": "The addresses the server gets in this network. Omit it for the default addresses; send [] for none (layer 2 only). At most 8 across all networks."
+                    }
+                },
+                "additionalProperties": false,
+                "description": "A network to attach the server to. The network and its prefixes must already exist: create them with the Dedicated Networks API."
+            },
+            "FlexMetalIpAllocationRequest": {
+                "type": "object",
+                "properties": {
+                    "family": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 4,
+                        "description": "4 or 6."
+                    },
+                    "prefixId": {
+                        "type": "string",
+                        "format": "",
+                        "example": "a3c71e5f-8b24-4d6a-9e13-2f5b8c0d7e32",
+                        "description": "ID of a prefix in the network."
+                    }
+                },
+                "additionalProperties": false,
+                "description": "One address in a network: either `family`, for an address from a prefix of that family in the network, or `prefixId`, for an address from that prefix."
+            },
+            "FlexMetalServerNetwork": {
+                "type": "object",
+                "required": [
+                    "networkId",
+                    "tagged",
+                    "name",
+                    "vlanId",
+                    "fabric",
+                    "connectivity",
+                    "ipAllocations"
+                ],
+                "properties": {
+                    "networkId": {
+                        "type": "string",
+                        "format": "",
+                        "example": "0b6f3c2e-6a1d-4f2b-9a51-3c8e2f7d1a10",
+                        "description": "Network ID.",
+                        "readOnly": true
+                    },
+                    "tagged": {
+                        "type": "boolean",
+                        "example": false,
+                        "description": "Whether the network is a tagged 802.1Q VLAN on the server's interface.",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "format": "",
+                        "example": "alice-public",
+                        "description": "Network name. Null when unknown.",
+                        "readOnly": true
+                    },
+                    "vlanId": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 1201,
+                        "description": "VLAN ID. Null when unknown.",
+                        "readOnly": true
+                    },
+                    "fabric": {
+                        "type": "string",
+                        "format": "",
+                        "example": "ams-01",
+                        "description": "Fabric of the network. Null when unknown.",
+                        "readOnly": true
+                    },
+                    "connectivity": {
+                        "type": "string",
+                        "format": "",
+                        "example": "public",
+                        "description": "public or private. Null when unknown.",
+                        "readOnly": true
+                    },
+                    "ipAllocations": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlexMetalServerNetworkIpAllocation"
+                        },
+                        "description": "The server's addresses in this network, in request order. Empty for a layer 2 only network.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false,
+                "description": "A network the server is attached to, with the addresses it got in it. For a server created with `networks`, in the same order as the request."
+            },
+            "FlexMetalServerNetworkIpAllocation": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "family",
+                    "address",
+                    "prefix"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "",
+                        "example": "1f9a7c3e-4b2d-4e6f-8a15-9c3d2e1f0a65",
+                        "description": "IP allocation ID.",
+                        "readOnly": true
+                    },
+                    "family": {
+                        "type": "integer",
+                        "format": "integer",
+                        "example": 4,
+                        "description": "4 or 6.",
+                        "readOnly": true
+                    },
+                    "address": {
+                        "type": "string",
+                        "format": "",
+                        "example": "203.0.113.10",
+                        "description": "The address.",
+                        "readOnly": true
+                    },
+                    "prefix": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FlexMetalServerNetworkPrefix"
+                            }
+                        ],
+                        "description": "The prefix the address is in.",
+                        "readOnly": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FlexMetalServerNetworkPrefix": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "cidr",
+                    "gateway"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "",
+                        "example": "7b2e5d1a-3c4f-4a8e-b9d6-0e1f2a3b4c76",
+                        "description": "Prefix ID.",
+                        "readOnly": true
+                    },
+                    "cidr": {
+                        "type": "string",
+                        "format": "",
+                        "example": "203.0.113.0/26",
+                        "description": "Prefix in CIDR notation.",
+                        "readOnly": true
+                    },
+                    "gateway": {
+                        "type": "string",
+                        "format": "",
+                        "example": "203.0.113.1",
+                        "description": "Gateway of the prefix. Null when it has none, for example on a private network.",
                         "readOnly": true
                     }
                 },
