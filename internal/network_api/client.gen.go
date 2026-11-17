@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/oapi-codegen/nullable"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -339,7 +340,6 @@ func (e ListPrefixesParamsFiltersFamilyEq) Valid() bool {
 // Defines values for ListPrefixesParamsFiltersStateEq.
 const (
 	Active     ListPrefixesParamsFiltersStateEq = "active"
-	Container  ListPrefixesParamsFiltersStateEq = "container"
 	Deprecated ListPrefixesParamsFiltersStateEq = "deprecated"
 	Reserved   ListPrefixesParamsFiltersStateEq = "reserved"
 )
@@ -348,8 +348,6 @@ const (
 func (e ListPrefixesParamsFiltersStateEq) Valid() bool {
 	switch e {
 	case Active:
-		return true
-	case Container:
 		return true
 	case Deprecated:
 		return true
@@ -510,21 +508,43 @@ type IPAddressResponse struct {
 // IPAddressResponseFamily IP family (4 for IPv4, 6 for IPv6).
 type IPAddressResponseFamily int
 
-// InitialPrefixRequest One initial prefix to provision with the network. You state
-// family and size only - i3D.net selects the concrete subnet.
-// Customers never pick the subnet.
+// InitialPrefixRequest One initial prefix to provision with the network. Each entry
+// states exactly ONE of two forms:
+//   - `cidr`: the exact subnet you want, e.g. `10.20.30.0/24`.
+//     Private networks only: IPv4 inside 10.0.0.0/8, 172.16.0.0/12
+//     or 192.168.0.0/16 with a mask from /24 to /29; IPv6 inside
+//     fd00::/8 with a mask from /48 to /64. State the network
+//     address: a value with host bits set is a `422` that names the
+//     network address, it is never rewritten. On a `public` network
+//     a `cidr` is a `422`: i3D.net selects public subnets.
+//   - `family` + `size`: i3D.net selects the subnet for you.
+//
+// A `cidr` together with `family` or `size`, or an entry with
+// neither form, is a `422` (code E020001) naming the one-of rule.
+// Entries of one request may mix forms. Prefixes of one request
+// must not overlap each other (`422` naming both positions).
+// Whether the subnet you state is still free is not checked at
+// acceptance: a collision fails the operation after `202`.
 type InitialPrefixRequest struct {
-	// Family IP family (4 for IPv4, 6 for IPv6).
-	Family InitialPrefixRequestFamily `json:"family"`
+	// Cidr Exact private subnet in CIDR notation (network address).
+	// One-of with `family` + `size`; family and size are derived
+	// from it and recorded.
+	Cidr *string `json:"cidr,omitempty"`
+
+	// Family IP family (4 for IPv4, 6 for IPv6). Required together with
+	// `size` when the entry states no `cidr`.
+	Family *InitialPrefixRequestFamily `json:"family,omitempty"`
 
 	// Size Prefix size as a CIDR mask length (e.g. `24` for a /24).
-	// The largest block you can ask for is a /24: a request for a
-	// larger block (a smaller mask number) is a `422` stating the
-	// cap.
-	Size int `json:"size"`
+	// Required together with `family` when the entry states no
+	// `cidr`. The largest block you can ask for is a /24: a
+	// request for a larger block (a smaller mask number) is a
+	// `422` stating the cap.
+	Size *int `json:"size,omitempty"`
 }
 
-// InitialPrefixRequestFamily IP family (4 for IPv4, 6 for IPv6).
+// InitialPrefixRequestFamily IP family (4 for IPv4, 6 for IPv6). Required together with
+// `size` when the entry states no `cidr`.
 type InitialPrefixRequestFamily int
 
 // Link A single hypermedia link. `href` is a path relative to the API
@@ -543,7 +563,9 @@ type Link struct {
 //   - `source: provider` (default): i3D.net supplies the address
 //     space. Public networks MUST state `prefixes[]` explicitly (no
 //     default public prefix); private networks may omit `prefixes[]`
-//     and receive exactly one derived /24.
+//     and receive exactly one derived /24. A private entry may state
+//     `cidr` instead of `family` + `size` (see `InitialPrefixRequest`);
+//     i3D.net selects the subnet for every entry without one.
 //   - `source: none`: no provider addressing - zero prefixes are
 //     provisioned (private only; `public` with `source: none` is a
 //     `422` naming the contradiction). A non-empty `prefixes[]`
@@ -625,7 +647,9 @@ type NetworkCreateRequest struct {
 	// - `source: provider` (default): i3D.net supplies the address
 	//   space. Public networks MUST state `prefixes[]` explicitly (no
 	//   default public prefix); private networks may omit `prefixes[]`
-	//   and receive exactly one derived /24.
+	//   and receive exactly one derived /24. A private entry may state
+	//   `cidr` instead of `family` + `size` (see `InitialPrefixRequest`);
+	//   i3D.net selects the subnet for every entry without one.
 	// - `source: none`: no provider addressing - zero prefixes are
 	//   provisioned (private only; `public` with `source: none` is a
 	//   `422` naming the contradiction). A non-empty `prefixes[]`
@@ -638,18 +662,10 @@ type NetworkCreateRequest struct {
 	// carry `NetworkConnectivityResponse`, which adds the routing state.
 	Connectivity NetworkConnectivity `json:"connectivity"`
 
-	// ContractId Contract every bootstrap prefix is billed under; the
-	// network itself exposes none. REQUIRED when `retention` resolves
-	// to `persistent` and `addressing.source` to `provider`; FORBIDDEN
-	// with `addressing.source: none` or a resolved `ephemeral`
-	// retention; each refusal is a `422` naming `contractId`. Not in
-	// `required` because the rule is conditional. Matched exactly
-	// against the pattern; only the format is verified, never
-	// existence. The contract must authorise the type of every
-	// declared prefix for your account, or the create is a `409`
-	// E020031. Part of the recorded create request (a different
-	// value on replay is a `409` E020003); a network recorded before
-	// this field existed accepts any value on replay.
+	// ContractId Billing attribution only; never quota selection. New persistent intent
+	// requires an explicitly selected registered owned contract (E020049);
+	// absence is 422 E020001. Original identical retries retain their recorded
+	// billing contract without reselecting it. Format is verbatim.
 	ContractId *string `json:"contractId,omitempty"`
 
 	// Fabric Public fabric identifier. Internal location names are never
@@ -801,7 +817,7 @@ type NetworkPatchRequest struct {
 	// The 100-character limit applies to the TRIMMED value, with the
 	// same documented `maxLength` deviation as
 	// `NetworkCreateRequest.name`.
-	Name *string `json:"name,omitempty"`
+	Name nullable.Nullable[string] `json:"name,omitempty"`
 }
 
 // NetworkResponse A network as i3D.net recorded it. Locations are public fabric
@@ -996,9 +1012,14 @@ type PrefixConnectivityType string
 // provisioned, the prefix is discoverable via
 // `filters[networkId][eq]` on the prefix listing.
 type PrefixCreateAccepted struct {
+	// Cidr The private subnet you stated, as recorded (canonical CIDR
+	// notation). OMITTED when you stated `family` + `size`: i3D.net
+	// then selects the subnet during provisioning.
+	Cidr *string `json:"cidr,omitempty"`
+
 	// ContractId Contract the prefix is billed under, as recorded at create.
 	// OMITTED, never `null`, when none was recorded:
-	// the prefix resolved to `ephemeral`.
+	// the prefix predates explicit contract allocation.
 	ContractId *string `json:"contractId,omitempty"`
 
 	// CreatedAt Creation timestamp.
@@ -1027,8 +1048,8 @@ type PrefixCreateAccepted struct {
 	// Retention The RESOLVED retention value stored at create time.
 	Retention RetentionAttribute `json:"retention"`
 
-	// Size Requested prefix size as a CIDR mask length; the concrete
-	// subnet is selected by i3D.net during provisioning.
+	// Size Requested prefix size as a CIDR mask length; derived from
+	// `cidr` when you stated one.
 	Size *int `json:"size,omitempty"`
 
 	// State Prefix lifecycle state: `provisioning` → `active` |
@@ -1045,36 +1066,42 @@ type PrefixCreateAccepted struct {
 type PrefixCreateAcceptedFamily int
 
 // PrefixCreateRequest Declarative create request for a day-2 prefix in an existing
-// network. The prefix shape is `family` + `size`: the concrete
-// subnet is selected by i3D.net during provisioning -
-// customers never pick the subnet. A request naming an
-// explicit `cidr` is a `422` with guidance; an explicit-cidr
-// capability, if ever ratified, is a separate contract change.
+// network. The request states exactly ONE of two forms:
+//   - `cidr`: the exact subnet you want, e.g. `10.20.31.0/24`.
+//     Private networks only: IPv4 inside 10.0.0.0/8, 172.16.0.0/12
+//     or 192.168.0.0/16 with a mask from /24 to /29; IPv6 inside
+//     fd00::/8 with a mask from /48 to /64. State the network
+//     address: a value with host bits set is a `422` that names the
+//     network address, it is never rewritten. On a `public` network
+//     a `cidr` is a `422`: i3D.net selects public subnets.
+//   - `family` + `size`: i3D.net selects the subnet for you.
+//
+// A `cidr` together with `family` or `size`, a request with
+// neither form, or only one of `family` and `size` is a `422`
+// (code E020001) naming the one-of rule. Whether the subnet you
+// state is still free is not checked at acceptance: a subnet you
+// already hold settles the prefix as `failed` after `202`. `PUT`
+// never replaces an existing prefix.
 // The request body is recorded: an identical replay of the same
 // `PUT` is idempotent, while the same UUID with a different body
-// is a `409`.
+// (including a different `cidr`, or a `cidr` where the recorded
+// request stated `family` + `size`) is a `409`.
 type PrefixCreateRequest struct {
-	// ContractId Contract the prefix is billed under. The rule is
-	// decided on the RESOLVED `retention`, never on who is calling:
-	// REQUIRED when it resolves to `persistent` (omitting it is a
-	// `422` naming `contractId`), FORBIDDEN when it resolves to
-	// `ephemeral` (a value is a `422` naming the contradiction).
-	// Deliberately NOT listed in `required`: the rule is
-	// conditional, which JSON Schema cannot express, so the
-	// handler decides. Matched exactly against the pattern, with
-	// no trimming and no case folding; a value outside it is a
-	// `422` stating the pattern. The contract is never checked for
-	// existence; it must authorise the prefix's type for your
-	// account, or the create is a `409` E020031.
-	// Recorded per prefix at create and immutable afterwards; a
-	// replay with a different value is a `409` (E020003). The
-	// value is an opaque identifier minted by billing operations
-	// and mirrored verbatim, a documented deviation from the
-	// lowercase-UUID rule for client-supplied identifiers.
+	// Cidr Exact private subnet in CIDR notation (network address).
+	// One-of with `family` + `size`; family and size are derived
+	// from it and recorded.
+	Cidr *string `json:"cidr,omitempty"`
+
+	// ContractId Billing attribution only. New persistent intent requires an explicitly
+	// selected registered owned contract (E020049), which may differ from the
+	// parent contract; absence is 422 E020001. Both retentions consume one
+	// parent capacity grant. Identical retries retain original attribution.
+	// Format is verbatim.
 	ContractId *string `json:"contractId,omitempty"`
 
-	// Family IP family (4 for IPv4, 6 for IPv6).
-	Family PrefixCreateRequestFamily `json:"family"`
+	// Family IP family (4 for IPv4, 6 for IPv6). Required together with
+	// `size` when the request states no `cidr`.
+	Family *PrefixCreateRequestFamily `json:"family,omitempty"`
 
 	// NetworkId UUID of the network that owns the prefix (MUST be v7). Required;
 	// the network must already exist on your account (unknown →
@@ -1089,14 +1116,16 @@ type PrefixCreateRequest struct {
 	// network - such a request is a `422`.
 	Retention *RetentionAttribute `json:"retention,omitempty"`
 
-	// Size Prefix size as a CIDR mask length (e.g. `24` for a /24) -
-	// i3D.net then selects the concrete subnet. The largest block
+	// Size Prefix size as a CIDR mask length (e.g. `24` for a /24).
+	// Required together with `family` when the request states no
+	// `cidr`; i3D.net then selects the concrete subnet. The largest block
 	// you can ask for is a /24: a request for a larger block (a
 	// smaller mask number) is a `422` stating the cap.
-	Size int `json:"size"`
+	Size *int `json:"size,omitempty"`
 }
 
-// PrefixCreateRequestFamily IP family (4 for IPv4, 6 for IPv6).
+// PrefixCreateRequestFamily IP family (4 for IPv4, 6 for IPv6). Required together with
+// `size` when the request states no `cidr`.
 type PrefixCreateRequestFamily int
 
 // PrefixDeleteAccepted Acceptance body for an asynchronous prefix delete. The operation
@@ -1130,8 +1159,9 @@ type PrefixDetailResponse struct {
 	Capacity int64 `json:"capacity"`
 
 	// Cidr The prefix in CIDR notation. Sent as an EMPTY string (not
-	// omitted) while the prefix is still `provisioning`: i3D.net
-	// has not selected the concrete subnet yet.
+	// omitted) while the prefix is still `provisioning`, unless
+	// you stated a `cidr` on the create, in which case that value
+	// is shown: i3D.net has not selected the concrete subnet yet.
 	Cidr string `json:"cidr"`
 
 	// Connectivity Connectivity class of the prefix, in the same two values a
@@ -1151,7 +1181,9 @@ type PrefixDetailResponse struct {
 	// Created Creation timestamp.
 	Created *time.Time `json:"created,omitempty"`
 
-	// CustomerDescription Customer-editable description. Omitted when never set.
+	// CustomerDescription Your description of the prefix, set through
+	// `PATCH /prefixes/{prefixId}`. Omitted when never set or
+	// cleared.
 	CustomerDescription *string `json:"customerDescription,omitempty"`
 
 	// Fabric Public fabric identifier of the fabric the prefix's VLAN
@@ -1206,9 +1238,9 @@ type PrefixDetailResponse struct {
 	// State Resource state: `provisioning` and `failed` while a create
 	// is in flight or has failed, then the status of the live
 	// prefix - `active` in service, `reserved` held but not
-	// in service, `container` a parent block, `deprecated` on its
-	// way out. This field is NOT a closed set: tolerate values you
-	// do not know.
+	// in service, `deprecated` on its way out. Parent blocks
+	// (`container`) are not exposed on this API. This field is
+	// NOT a closed set: tolerate values you do not know.
 	State string `json:"state"`
 
 	// VlanId The 802.1Q VLAN ID the prefix is attached to - the only VLAN
@@ -1252,6 +1284,20 @@ type PrefixListResponse struct {
 	Links CursorPageLinks `json:"links"`
 }
 
+// PrefixPatchRequest JSON Merge Patch body for `PATCH /prefixes/{prefixId}`. The only
+// patchable member is `customerDescription`: a string sets it,
+// `null` clears it, an omitted member leaves it unchanged, and `{}`
+// is a no-op. Any other member - including `description`, which is
+// maintained by i3D.net - is a `422` (code E020001) naming it.
+type PrefixPatchRequest struct {
+	// CustomerDescription New description of the prefix, or `null` to clear it. The API
+	// trims the value; a present-but-empty (after trim) value, a
+	// value longer than 200 characters (Unicode code points), or a
+	// value containing control characters (newline, tab, ...) is a
+	// `422` (code E020001).
+	CustomerDescription nullable.Nullable[string] `json:"customerDescription,omitempty"`
+}
+
 // PrefixResponse A prefix on your account: the location is the public fabric
 // slug and metro name, the VLAN appears only as the
 // integer 802.1Q `vlanId`, and prefixes provisioned through a
@@ -1263,8 +1309,9 @@ type PrefixListResponse struct {
 // not have a gateway assigned yet.
 type PrefixResponse struct {
 	// Cidr The prefix in CIDR notation. Sent as an EMPTY string (not
-	// omitted) while the prefix is still `provisioning`: i3D.net
-	// has not selected the concrete subnet yet.
+	// omitted) while the prefix is still `provisioning`, unless
+	// you stated a `cidr` on the create, in which case that value
+	// is shown: i3D.net has not selected the concrete subnet yet.
 	Cidr string `json:"cidr"`
 
 	// Connectivity Connectivity class of the prefix, in the same two values a
@@ -1284,7 +1331,9 @@ type PrefixResponse struct {
 	// Created Creation timestamp.
 	Created *time.Time `json:"created,omitempty"`
 
-	// CustomerDescription Customer-editable description. Omitted when never set.
+	// CustomerDescription Your description of the prefix, set through
+	// `PATCH /prefixes/{prefixId}`. Omitted when never set or
+	// cleared.
 	CustomerDescription *string `json:"customerDescription,omitempty"`
 
 	// Fabric Public fabric identifier of the fabric the prefix's VLAN
@@ -1339,9 +1388,9 @@ type PrefixResponse struct {
 	// State Resource state: `provisioning` and `failed` while a create
 	// is in flight or has failed, then the status of the live
 	// prefix - `active` in service, `reserved` held but not
-	// in service, `container` a parent block, `deprecated` on its
-	// way out. This field is NOT a closed set: tolerate values you
-	// do not know.
+	// in service, `deprecated` on its way out. Parent blocks
+	// (`container`) are not exposed on this API. This field is
+	// NOT a closed set: tolerate values you do not know.
 	State string `json:"state"`
 
 	// VlanId The 802.1Q VLAN ID the prefix is attached to - the only VLAN
@@ -1435,8 +1484,8 @@ type PrefixState string
 //     occurs for that operation.
 //   - E020019: the resource is managed by i3D.net - it was set up on the
 //     account's behalf and i3D.net owns its lifecycle, so on this API
-//     it is read-only. Returned by the network rename, the network
-//     delete and the prefix delete.
+//     it is read-only. Returned by the network rename, the prefix
+//     description edit, the network delete and the prefix delete.
 //     Nothing is changed, no operation record is written and no teardown
 //     is started.
 //     Distinct from E020017/E020018, whose trigger is a missing contract:
@@ -1459,6 +1508,20 @@ type PrefixState string
 //     that loss.
 //   - E020023: the path does not support this method. The response
 //     carries an `Allow` header listing the methods it does support.
+//   - E020024: operation pending - an edit was refused because an
+//     operation is still pending on the resource: its create has not
+//     finished, its last operation failed and the resource is still
+//     retained, or a delete is in progress. The detail says which.
+//     Returned by the prefix description edit. Nothing is changed.
+//     State-dependent, hence 409: once an in-flight create finishes
+//     the same request succeeds; a failed resource is never editable
+//     (delete it or create a new one), and after a delete the
+//     resource is gone.
+//     Distinct from E020007, which is about the NETWORK's state on a
+//     claim or a prefix create, and from E020003, which is an
+//     idempotency conflict on a create. The remedy: poll the operation
+//     (`links.operation` on the resource), then retry once it has
+//     finished.
 //   - E020031: the contract does not authorise this resource - the
 //     contract the refused resource would be held under does not
 //     authorise this resource type for your account. That contract is
@@ -1498,6 +1561,24 @@ type PrefixState string
 //     is not checked. Re-driving a teardown that was ALREADY accepted
 //     is not refused, on the same terms as E020018.
 //
+// - E020038: explicit quota allocation missing (409).
+// - E020039: contract differs from the immutable network allocation (409).
+// - E020040: occupying networks need explicit contract attribution (409).
+// - E020041: explicit contract slots or exact network address capacity exceeded (409).
+// - E020042: parent unavailable for new resources, including a pending delete (409).
+// - E020043: destructive retention ownership refusal (409); reserved for machine callers.
+// - E020046: owner-associated prefix billing contract unavailable (409; billing-contract-unavailable).
+// - E020047: persistent resource targets DEFAULT allocation (409; default-retention).
+// - E020048: public/gateway resource mutation lacks explicit owned contract registration (409).
+// - E020049: selected billing contract for new persistent network/prefix or promotion is not registered for owner (409).
+// - E020050: shared client/fabric slots or owned network exact capacity would be exceeded (409).
+// - E020052: shared census includes live networks without verified capacity grants (409).
+// - E020044: prefix mutation has no verified owned parent association (409).
+//
+// E020016, E020017, E020018, E020031 and E020032 keep their registered
+// meanings but no longer gate create, claim or cleanup.
+// Identical retries of earlier requests remain valid.
+//
 // Codes are stable: a code's meaning never changes. New codes may
 // be added over time, so treat an unknown code as a generic failure
 // of its HTTP status. E020031 and E020032 were added this way: on
@@ -1512,6 +1593,18 @@ type ProblemDetails struct {
 	// Generic and safe for display - never leaks internal system
 	// details.
 	Detail *string `json:"detail,omitempty"`
+
+	// Limit Exact decimal allocation limit, including IPv6 counts.
+	Limit *string `json:"limit,omitempty"`
+
+	// Projected Exact decimal post-acceptance usage before rollback.
+	Projected *string `json:"projected,omitempty"`
+
+	// Reason Safe allocation refusal reason; clients must tolerate new values.
+	Reason *string `json:"reason,omitempty"`
+
+	// Resource Public unit limited by this allocation refusal.
+	Resource *string `json:"resource,omitempty"`
 
 	// Status The HTTP status code of this response.
 	Status int `json:"status"`
@@ -1537,7 +1630,15 @@ type PublicError struct {
 	// `PREFIX_NETWORK_CONFIGURATION_FAILED`,
 	// `PREFIX_ADDRESSING_FAILED`, `PREFIX_TEARDOWN_FAILED`,
 	// `VLAN_NETWORK_CONFIGURATION_FAILED`,
-	// `PREFIX_NOT_PROVISIONED`. NOT a closed set: new codes may be
+	// `PREFIX_NOT_PROVISIONED`, `PREFIX_CIDR_IN_USE`,
+	// `PREFIX_NO_FREE_SUBNET`, `PREFIX_CAPACITY_EXCEEDED`.
+	// `PREFIX_CIDR_IN_USE`: the requested private subnet is already
+	// in use in your address space, choose a different `cidr`.
+	// `PREFIX_NO_FREE_SUBNET`: no free private subnet of the
+	// requested size is available, state a `cidr` or free a prefix.
+	// `PREFIX_CAPACITY_EXCEEDED`: the network already holds the
+	// maximum usable addresses for that address family, add the
+	// prefix to a new network. NOT a closed set: new codes may be
 	// added, so treat an unknown one as a generic failure.
 	Code string `json:"code"`
 
@@ -1558,12 +1659,10 @@ type PublicError struct {
 // never re-derived after creation.
 type RetentionAttribute string
 
-// UsageItem One usage row: counts and, when defined, the account-specific
-// limit for one resource type at one grain. The grain is the
-// `fabric` value: present = per-fabric row, absent = customer-wide
-// aggregate (used when the limit is defined customer-wide). A row
-// is emitted when you hold at least one resource at that
-// grain or a customer-specific limit is defined there.
+// UsageItem Resource counts at one grain across all of the caller's contracts.
+// Fabric is present for a per-fabric row and absent for a customer-wide
+// aggregate. Only rows with held > 0 are emitted. These facts do not
+// describe admission availability or an unlimited allowance.
 type UsageItem struct {
 	// Billable How many of `held` are currently billable: persistent
 	// prefixes under a contract. It is computed by the same rule
@@ -1574,67 +1673,37 @@ type UsageItem struct {
 	// minutes to appear here.
 	Billable *int `json:"billable,omitempty"`
 
-	// Fabric Public fabric identifier (the same vocabulary as
+	// Fabric Public fabric identifier (ADR-018 slug, same vocabulary as
 	// `GET /fabrics`) this row is scoped to. Omitted on a
 	// customer-wide aggregate row.
 	Fabric *string `json:"fabric,omitempty"`
 
-	// Held Number of resources of this type you currently hold
-	// at this grain. Counts exactly what the corresponding listing
-	// returns for the same account and fabric,
-	// restricted to the row's address family on family-suffixed
-	// types (deleted resources never count) - the report and the
-	// listings never diverge.
+	// Held Number of resources held at this grain. Networks exclude all
+	// failed and deleted rows, independent of VLAN presence. Other
+	// resource types follow their listing selection for the same tenant
+	// and fabric, restricted to the row's address family where applicable.
+	// Deleted resources never count.
 	Held int `json:"held"`
 
-	// Limit The limit that applies to your account for this row's
-	// resource type and grain - a per-resource-type default or a
-	// per-customer override, resolved by the quota module. Present
-	// ONLY when such an account-specific limit is defined; absent
-	// means no customer limit applies at this grain.
-	// Platform-internal ceilings are never exposed here, and
-	// neither is a ceiling that only authorises without capping a
-	// count at this grain. This is the number quota enforcement
-	// applies: at the grains this report carries (customer-wide
-	// and per-fabric), a create rejected over-limit and this
-	// report always agree. Ceilings enforced at finer grains (per
-	// network) are not repeated here - the rejection itself names
-	// them.
-	//
-	// Never present on `prefixes-v4`, `prefixes-v6` and
-	// `ip-addresses-v4` rows: those ceilings are held per contract,
-	// and a row covers every contract you hold, so no single limit
-	// is true for it. A per-contract ceiling is named by the
-	// rejection it causes, never repeated here. The agreement rule
-	// above holds trivially for these rows.
-	Limit *int `json:"limit,omitempty"`
-
-	// Persistent How many of `held` have `retention: persistent`. This is
-	// the count quota enforcement charges against `limit` -
-	// ephemeral resources are never counted - so with this field
-	// the report is checkable: `remaining` is `limit` minus
-	// `persistent`, floored at 0. Always at most `held`.
+	// Persistent Persistent resources within held, using resource-specific
+	// eligibility. Networks count explicit persistent retention among
+	// nonfailed, nondeleted networks, independent of VLAN presence.
+	// Prefixes exclude containers and include eligible persistent
+	// accepted create intents. IPv4 addresses count role-less claims
+	// inside persistent prefixes, excluding infrastructure-role
+	// addresses. Always at most held.
 	Persistent int `json:"persistent"`
 
-	// Remaining Headroom left under `limit`: the limit minus `persistent`
-	// (the count quota enforcement charges against it), floored
-	// at 0. Present exactly when `limit` is present.
-	// `remaining: 0` with `persistent` above `limit` is possible
-	// for resources that already existed when the limit was set
-	// (counted, reported, never retroactively rejected).
-	Remaining *int `json:"remaining,omitempty"`
-
 	// ResourceType The resource type this row reports on, named after the
-	// corresponding collection on this API. Types whose usage
+	// corresponding collection on this surface. Types whose usage
 	// is accounted per address family carry a `-v4` / `-v6`
-	// suffix, because the ceilings differ per family: IPv4 usage is
-	// counted in addresses, IPv6 usage is counted in prefixes. NOT
-	// a closed set: tolerate values you do not know. Current values are
+	// suffix, to distinguish their resource counts. NOT a closed enum (shared-api-standards §2):
+	// clients MUST tolerate unknown values. Current values are
 	// `networks`, `prefixes-v4`, `prefixes-v6` and
 	// `ip-addresses-v4`. There is deliberately no
 	// `ip-addresses-v6` row: IPv6 usage is prefix-based, so an
-	// IPv6 address allocated inside a prefix you already
-	// holds consumes no ceiling. New resource types (e.g. routing
+	// IPv6 address claim inside a prefix the caller already holds
+	// consumes no ceiling. New resource types (e.g. routing
 	// domains) MAY appear additively.
 	ResourceType string `json:"resourceType"`
 
@@ -1647,12 +1716,12 @@ type UsageItem struct {
 	Subscription *UsageSubscription `json:"subscription,omitempty"`
 }
 
-// UsageResponse Your current usage report. NOT paginated: it is a single report
-// of bounded size (resource types × fabrics) and is only useful as
+// UsageResponse The caller's current-state usage report. NOT paginated — written
+// exemption per shared-api-standards §8: a singleton report of
+// bounded cardinality (resource types × fabrics), only useful as
 // one consistent snapshot (see the `GET /usage` description).
 type UsageResponse struct {
-	// Items The report rows (`[]` when you hold nothing and no
-	// customer-specific limit is defined; never `null`).
+	// Items Nonempty usage rows across all contracts; [] when nothing is held.
 	Items []UsageItem `json:"items"`
 
 	// Links Links for this report.
@@ -1756,8 +1825,8 @@ type Limit = int
 //     occurs for that operation.
 //   - E020019: the resource is managed by i3D.net - it was set up on the
 //     account's behalf and i3D.net owns its lifecycle, so on this API
-//     it is read-only. Returned by the network rename, the network
-//     delete and the prefix delete.
+//     it is read-only. Returned by the network rename, the prefix
+//     description edit, the network delete and the prefix delete.
 //     Nothing is changed, no operation record is written and no teardown
 //     is started.
 //     Distinct from E020017/E020018, whose trigger is a missing contract:
@@ -1780,6 +1849,20 @@ type Limit = int
 //     that loss.
 //   - E020023: the path does not support this method. The response
 //     carries an `Allow` header listing the methods it does support.
+//   - E020024: operation pending - an edit was refused because an
+//     operation is still pending on the resource: its create has not
+//     finished, its last operation failed and the resource is still
+//     retained, or a delete is in progress. The detail says which.
+//     Returned by the prefix description edit. Nothing is changed.
+//     State-dependent, hence 409: once an in-flight create finishes
+//     the same request succeeds; a failed resource is never editable
+//     (delete it or create a new one), and after a delete the
+//     resource is gone.
+//     Distinct from E020007, which is about the NETWORK's state on a
+//     claim or a prefix create, and from E020003, which is an
+//     idempotency conflict on a create. The remedy: poll the operation
+//     (`links.operation` on the resource), then retry once it has
+//     finished.
 //   - E020031: the contract does not authorise this resource - the
 //     contract the refused resource would be held under does not
 //     authorise this resource type for your account. That contract is
@@ -1818,6 +1901,24 @@ type Limit = int
 //     Returned by the prefix delete. A prefix with no recorded contract
 //     is not checked. Re-driving a teardown that was ALREADY accepted
 //     is not refused, on the same terms as E020018.
+//
+// - E020038: explicit quota allocation missing (409).
+// - E020039: contract differs from the immutable network allocation (409).
+// - E020040: occupying networks need explicit contract attribution (409).
+// - E020041: explicit contract slots or exact network address capacity exceeded (409).
+// - E020042: parent unavailable for new resources, including a pending delete (409).
+// - E020043: destructive retention ownership refusal (409); reserved for machine callers.
+// - E020046: owner-associated prefix billing contract unavailable (409; billing-contract-unavailable).
+// - E020047: persistent resource targets DEFAULT allocation (409; default-retention).
+// - E020048: public/gateway resource mutation lacks explicit owned contract registration (409).
+// - E020049: selected billing contract for new persistent network/prefix or promotion is not registered for owner (409).
+// - E020050: shared client/fabric slots or owned network exact capacity would be exceeded (409).
+// - E020052: shared census includes live networks without verified capacity grants (409).
+// - E020044: prefix mutation has no verified owned parent association (409).
+//
+// E020016, E020017, E020018, E020031 and E020032 keep their registered
+// meanings but no longer gate create, claim or cleanup.
+// Identical retries of earlier requests remain valid.
 //
 // Codes are stable: a code's meaning never changes. New codes may
 // be added over time, so treat an unknown code as a generic failure
@@ -1902,8 +2003,8 @@ type InternalError = ProblemDetails
 //     occurs for that operation.
 //   - E020019: the resource is managed by i3D.net - it was set up on the
 //     account's behalf and i3D.net owns its lifecycle, so on this API
-//     it is read-only. Returned by the network rename, the network
-//     delete and the prefix delete.
+//     it is read-only. Returned by the network rename, the prefix
+//     description edit, the network delete and the prefix delete.
 //     Nothing is changed, no operation record is written and no teardown
 //     is started.
 //     Distinct from E020017/E020018, whose trigger is a missing contract:
@@ -1926,6 +2027,20 @@ type InternalError = ProblemDetails
 //     that loss.
 //   - E020023: the path does not support this method. The response
 //     carries an `Allow` header listing the methods it does support.
+//   - E020024: operation pending - an edit was refused because an
+//     operation is still pending on the resource: its create has not
+//     finished, its last operation failed and the resource is still
+//     retained, or a delete is in progress. The detail says which.
+//     Returned by the prefix description edit. Nothing is changed.
+//     State-dependent, hence 409: once an in-flight create finishes
+//     the same request succeeds; a failed resource is never editable
+//     (delete it or create a new one), and after a delete the
+//     resource is gone.
+//     Distinct from E020007, which is about the NETWORK's state on a
+//     claim or a prefix create, and from E020003, which is an
+//     idempotency conflict on a create. The remedy: poll the operation
+//     (`links.operation` on the resource), then retry once it has
+//     finished.
 //   - E020031: the contract does not authorise this resource - the
 //     contract the refused resource would be held under does not
 //     authorise this resource type for your account. That contract is
@@ -1964,6 +2079,24 @@ type InternalError = ProblemDetails
 //     Returned by the prefix delete. A prefix with no recorded contract
 //     is not checked. Re-driving a teardown that was ALREADY accepted
 //     is not refused, on the same terms as E020018.
+//
+// - E020038: explicit quota allocation missing (409).
+// - E020039: contract differs from the immutable network allocation (409).
+// - E020040: occupying networks need explicit contract attribution (409).
+// - E020041: explicit contract slots or exact network address capacity exceeded (409).
+// - E020042: parent unavailable for new resources, including a pending delete (409).
+// - E020043: destructive retention ownership refusal (409); reserved for machine callers.
+// - E020046: owner-associated prefix billing contract unavailable (409; billing-contract-unavailable).
+// - E020047: persistent resource targets DEFAULT allocation (409; default-retention).
+// - E020048: public/gateway resource mutation lacks explicit owned contract registration (409).
+// - E020049: selected billing contract for new persistent network/prefix or promotion is not registered for owner (409).
+// - E020050: shared client/fabric slots or owned network exact capacity would be exceeded (409).
+// - E020052: shared census includes live networks without verified capacity grants (409).
+// - E020044: prefix mutation has no verified owned parent association (409).
+//
+// E020016, E020017, E020018, E020031 and E020032 keep their registered
+// meanings but no longer gate create, claim or cleanup.
+// Identical retries of earlier requests remain valid.
 //
 // Codes are stable: a code's meaning never changes. New codes may
 // be added over time, so treat an unknown code as a generic failure
@@ -2048,8 +2181,8 @@ type MalformedPathParameter = ProblemDetails
 //     occurs for that operation.
 //   - E020019: the resource is managed by i3D.net - it was set up on the
 //     account's behalf and i3D.net owns its lifecycle, so on this API
-//     it is read-only. Returned by the network rename, the network
-//     delete and the prefix delete.
+//     it is read-only. Returned by the network rename, the prefix
+//     description edit, the network delete and the prefix delete.
 //     Nothing is changed, no operation record is written and no teardown
 //     is started.
 //     Distinct from E020017/E020018, whose trigger is a missing contract:
@@ -2072,6 +2205,20 @@ type MalformedPathParameter = ProblemDetails
 //     that loss.
 //   - E020023: the path does not support this method. The response
 //     carries an `Allow` header listing the methods it does support.
+//   - E020024: operation pending - an edit was refused because an
+//     operation is still pending on the resource: its create has not
+//     finished, its last operation failed and the resource is still
+//     retained, or a delete is in progress. The detail says which.
+//     Returned by the prefix description edit. Nothing is changed.
+//     State-dependent, hence 409: once an in-flight create finishes
+//     the same request succeeds; a failed resource is never editable
+//     (delete it or create a new one), and after a delete the
+//     resource is gone.
+//     Distinct from E020007, which is about the NETWORK's state on a
+//     claim or a prefix create, and from E020003, which is an
+//     idempotency conflict on a create. The remedy: poll the operation
+//     (`links.operation` on the resource), then retry once it has
+//     finished.
 //   - E020031: the contract does not authorise this resource - the
 //     contract the refused resource would be held under does not
 //     authorise this resource type for your account. That contract is
@@ -2110,6 +2257,24 @@ type MalformedPathParameter = ProblemDetails
 //     Returned by the prefix delete. A prefix with no recorded contract
 //     is not checked. Re-driving a teardown that was ALREADY accepted
 //     is not refused, on the same terms as E020018.
+//
+// - E020038: explicit quota allocation missing (409).
+// - E020039: contract differs from the immutable network allocation (409).
+// - E020040: occupying networks need explicit contract attribution (409).
+// - E020041: explicit contract slots or exact network address capacity exceeded (409).
+// - E020042: parent unavailable for new resources, including a pending delete (409).
+// - E020043: destructive retention ownership refusal (409); reserved for machine callers.
+// - E020046: owner-associated prefix billing contract unavailable (409; billing-contract-unavailable).
+// - E020047: persistent resource targets DEFAULT allocation (409; default-retention).
+// - E020048: public/gateway resource mutation lacks explicit owned contract registration (409).
+// - E020049: selected billing contract for new persistent network/prefix or promotion is not registered for owner (409).
+// - E020050: shared client/fabric slots or owned network exact capacity would be exceeded (409).
+// - E020052: shared census includes live networks without verified capacity grants (409).
+// - E020044: prefix mutation has no verified owned parent association (409).
+//
+// E020016, E020017, E020018, E020031 and E020032 keep their registered
+// meanings but no longer gate create, claim or cleanup.
+// Identical retries of earlier requests remain valid.
 //
 // Codes are stable: a code's meaning never changes. New codes may
 // be added over time, so treat an unknown code as a generic failure
@@ -2194,8 +2359,8 @@ type MethodNotAllowed = ProblemDetails
 //     occurs for that operation.
 //   - E020019: the resource is managed by i3D.net - it was set up on the
 //     account's behalf and i3D.net owns its lifecycle, so on this API
-//     it is read-only. Returned by the network rename, the network
-//     delete and the prefix delete.
+//     it is read-only. Returned by the network rename, the prefix
+//     description edit, the network delete and the prefix delete.
 //     Nothing is changed, no operation record is written and no teardown
 //     is started.
 //     Distinct from E020017/E020018, whose trigger is a missing contract:
@@ -2218,6 +2383,20 @@ type MethodNotAllowed = ProblemDetails
 //     that loss.
 //   - E020023: the path does not support this method. The response
 //     carries an `Allow` header listing the methods it does support.
+//   - E020024: operation pending - an edit was refused because an
+//     operation is still pending on the resource: its create has not
+//     finished, its last operation failed and the resource is still
+//     retained, or a delete is in progress. The detail says which.
+//     Returned by the prefix description edit. Nothing is changed.
+//     State-dependent, hence 409: once an in-flight create finishes
+//     the same request succeeds; a failed resource is never editable
+//     (delete it or create a new one), and after a delete the
+//     resource is gone.
+//     Distinct from E020007, which is about the NETWORK's state on a
+//     claim or a prefix create, and from E020003, which is an
+//     idempotency conflict on a create. The remedy: poll the operation
+//     (`links.operation` on the resource), then retry once it has
+//     finished.
 //   - E020031: the contract does not authorise this resource - the
 //     contract the refused resource would be held under does not
 //     authorise this resource type for your account. That contract is
@@ -2256,6 +2435,24 @@ type MethodNotAllowed = ProblemDetails
 //     Returned by the prefix delete. A prefix with no recorded contract
 //     is not checked. Re-driving a teardown that was ALREADY accepted
 //     is not refused, on the same terms as E020018.
+//
+// - E020038: explicit quota allocation missing (409).
+// - E020039: contract differs from the immutable network allocation (409).
+// - E020040: occupying networks need explicit contract attribution (409).
+// - E020041: explicit contract slots or exact network address capacity exceeded (409).
+// - E020042: parent unavailable for new resources, including a pending delete (409).
+// - E020043: destructive retention ownership refusal (409); reserved for machine callers.
+// - E020046: owner-associated prefix billing contract unavailable (409; billing-contract-unavailable).
+// - E020047: persistent resource targets DEFAULT allocation (409; default-retention).
+// - E020048: public/gateway resource mutation lacks explicit owned contract registration (409).
+// - E020049: selected billing contract for new persistent network/prefix or promotion is not registered for owner (409).
+// - E020050: shared client/fabric slots or owned network exact capacity would be exceeded (409).
+// - E020052: shared census includes live networks without verified capacity grants (409).
+// - E020044: prefix mutation has no verified owned parent association (409).
+//
+// E020016, E020017, E020018, E020031 and E020032 keep their registered
+// meanings but no longer gate create, claim or cleanup.
+// Identical retries of earlier requests remain valid.
 //
 // Codes are stable: a code's meaning never changes. New codes may
 // be added over time, so treat an unknown code as a generic failure
@@ -2340,8 +2537,8 @@ type NetworkNotFound = ProblemDetails
 //     occurs for that operation.
 //   - E020019: the resource is managed by i3D.net - it was set up on the
 //     account's behalf and i3D.net owns its lifecycle, so on this API
-//     it is read-only. Returned by the network rename, the network
-//     delete and the prefix delete.
+//     it is read-only. Returned by the network rename, the prefix
+//     description edit, the network delete and the prefix delete.
 //     Nothing is changed, no operation record is written and no teardown
 //     is started.
 //     Distinct from E020017/E020018, whose trigger is a missing contract:
@@ -2364,6 +2561,20 @@ type NetworkNotFound = ProblemDetails
 //     that loss.
 //   - E020023: the path does not support this method. The response
 //     carries an `Allow` header listing the methods it does support.
+//   - E020024: operation pending - an edit was refused because an
+//     operation is still pending on the resource: its create has not
+//     finished, its last operation failed and the resource is still
+//     retained, or a delete is in progress. The detail says which.
+//     Returned by the prefix description edit. Nothing is changed.
+//     State-dependent, hence 409: once an in-flight create finishes
+//     the same request succeeds; a failed resource is never editable
+//     (delete it or create a new one), and after a delete the
+//     resource is gone.
+//     Distinct from E020007, which is about the NETWORK's state on a
+//     claim or a prefix create, and from E020003, which is an
+//     idempotency conflict on a create. The remedy: poll the operation
+//     (`links.operation` on the resource), then retry once it has
+//     finished.
 //   - E020031: the contract does not authorise this resource - the
 //     contract the refused resource would be held under does not
 //     authorise this resource type for your account. That contract is
@@ -2402,6 +2613,24 @@ type NetworkNotFound = ProblemDetails
 //     Returned by the prefix delete. A prefix with no recorded contract
 //     is not checked. Re-driving a teardown that was ALREADY accepted
 //     is not refused, on the same terms as E020018.
+//
+// - E020038: explicit quota allocation missing (409).
+// - E020039: contract differs from the immutable network allocation (409).
+// - E020040: occupying networks need explicit contract attribution (409).
+// - E020041: explicit contract slots or exact network address capacity exceeded (409).
+// - E020042: parent unavailable for new resources, including a pending delete (409).
+// - E020043: destructive retention ownership refusal (409); reserved for machine callers.
+// - E020046: owner-associated prefix billing contract unavailable (409; billing-contract-unavailable).
+// - E020047: persistent resource targets DEFAULT allocation (409; default-retention).
+// - E020048: public/gateway resource mutation lacks explicit owned contract registration (409).
+// - E020049: selected billing contract for new persistent network/prefix or promotion is not registered for owner (409).
+// - E020050: shared client/fabric slots or owned network exact capacity would be exceeded (409).
+// - E020052: shared census includes live networks without verified capacity grants (409).
+// - E020044: prefix mutation has no verified owned parent association (409).
+//
+// E020016, E020017, E020018, E020031 and E020032 keep their registered
+// meanings but no longer gate create, claim or cleanup.
+// Identical retries of earlier requests remain valid.
 //
 // Codes are stable: a code's meaning never changes. New codes may
 // be added over time, so treat an unknown code as a generic failure
@@ -2486,8 +2715,8 @@ type PrefixNotFound = ProblemDetails
 //     occurs for that operation.
 //   - E020019: the resource is managed by i3D.net - it was set up on the
 //     account's behalf and i3D.net owns its lifecycle, so on this API
-//     it is read-only. Returned by the network rename, the network
-//     delete and the prefix delete.
+//     it is read-only. Returned by the network rename, the prefix
+//     description edit, the network delete and the prefix delete.
 //     Nothing is changed, no operation record is written and no teardown
 //     is started.
 //     Distinct from E020017/E020018, whose trigger is a missing contract:
@@ -2510,6 +2739,20 @@ type PrefixNotFound = ProblemDetails
 //     that loss.
 //   - E020023: the path does not support this method. The response
 //     carries an `Allow` header listing the methods it does support.
+//   - E020024: operation pending - an edit was refused because an
+//     operation is still pending on the resource: its create has not
+//     finished, its last operation failed and the resource is still
+//     retained, or a delete is in progress. The detail says which.
+//     Returned by the prefix description edit. Nothing is changed.
+//     State-dependent, hence 409: once an in-flight create finishes
+//     the same request succeeds; a failed resource is never editable
+//     (delete it or create a new one), and after a delete the
+//     resource is gone.
+//     Distinct from E020007, which is about the NETWORK's state on a
+//     claim or a prefix create, and from E020003, which is an
+//     idempotency conflict on a create. The remedy: poll the operation
+//     (`links.operation` on the resource), then retry once it has
+//     finished.
 //   - E020031: the contract does not authorise this resource - the
 //     contract the refused resource would be held under does not
 //     authorise this resource type for your account. That contract is
@@ -2548,6 +2791,24 @@ type PrefixNotFound = ProblemDetails
 //     Returned by the prefix delete. A prefix with no recorded contract
 //     is not checked. Re-driving a teardown that was ALREADY accepted
 //     is not refused, on the same terms as E020018.
+//
+// - E020038: explicit quota allocation missing (409).
+// - E020039: contract differs from the immutable network allocation (409).
+// - E020040: occupying networks need explicit contract attribution (409).
+// - E020041: explicit contract slots or exact network address capacity exceeded (409).
+// - E020042: parent unavailable for new resources, including a pending delete (409).
+// - E020043: destructive retention ownership refusal (409); reserved for machine callers.
+// - E020046: owner-associated prefix billing contract unavailable (409; billing-contract-unavailable).
+// - E020047: persistent resource targets DEFAULT allocation (409; default-retention).
+// - E020048: public/gateway resource mutation lacks explicit owned contract registration (409).
+// - E020049: selected billing contract for new persistent network/prefix or promotion is not registered for owner (409).
+// - E020050: shared client/fabric slots or owned network exact capacity would be exceeded (409).
+// - E020052: shared census includes live networks without verified capacity grants (409).
+// - E020044: prefix mutation has no verified owned parent association (409).
+//
+// E020016, E020017, E020018, E020031 and E020032 keep their registered
+// meanings but no longer gate create, claim or cleanup.
+// Identical retries of earlier requests remain valid.
 //
 // Codes are stable: a code's meaning never changes. New codes may
 // be added over time, so treat an unknown code as a generic failure
@@ -2641,8 +2902,10 @@ type ListPrefixesParams struct {
 
 	// FiltersStateEq Filter by prefix state. `provisioning` and `failed` are set
 	// while a create is in flight or has failed and are not
-	// filterable. When omitted, prefixes in all states are
-	// returned.
+	// filterable. When omitted, prefixes in all listable states
+	// are returned. Parent blocks (inventory state `container`)
+	// are not part of this API: they never appear in the listing
+	// and `container` is not a valid filter value (`422`).
 	FiltersStateEq *ListPrefixesParamsFiltersStateEq `form:"filters[state][eq],omitempty" json:"filters[state][eq],omitempty"`
 
 	// FiltersConnectivityEq Filter by the connectivity class of the prefix, matching
@@ -2683,7 +2946,7 @@ type ListPrefixIPAddressesParams struct {
 type GetUsageParams struct {
 	// FiltersFabricEq Restrict the report to one public fabric identifier. Customer-wide rows (no `fabric`) are not
 	// returned when this filter is set - and resource types
-	// whose ceilings are customer-wide today (prefixes, IP
+	// that report customer-wide facts (prefixes, IP
 	// addresses) report ONLY customer-wide rows, so this filter
 	// narrows the report to the fabric-scoped rows (`networks`).
 	// An identifier not in the
@@ -2705,6 +2968,9 @@ type PatchNetworkApplicationMergePatchPlusJSONRequestBody = NetworkPatchRequest
 
 // CreateNetworkJSONRequestBody defines body for CreateNetwork for application/json ContentType.
 type CreateNetworkJSONRequestBody = NetworkCreateRequest
+
+// PatchPrefixApplicationMergePatchPlusJSONRequestBody defines body for PatchPrefix for application/merge-patch+json ContentType.
+type PatchPrefixApplicationMergePatchPlusJSONRequestBody = PrefixPatchRequest
 
 // CreatePrefixJSONRequestBody defines body for CreatePrefix for application/json ContentType.
 type CreatePrefixJSONRequestBody = PrefixCreateRequest
@@ -2888,6 +3154,11 @@ type ClientInterface interface {
 	// GetPrefixById request
 	GetPrefixById(ctx context.Context, prefixId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PatchPrefixWithBody request with any body
+	PatchPrefixWithBody(ctx context.Context, prefixId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PatchPrefixWithApplicationMergePatchPlusJSONBody(ctx context.Context, prefixId openapi_types.UUID, body PatchPrefixApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreatePrefixWithBody request with any body
 	CreatePrefixWithBody(ctx context.Context, prefixId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3064,6 +3335,30 @@ func (c *Client) DeletePrefix(ctx context.Context, prefixId openapi_types.UUID, 
 
 func (c *Client) GetPrefixById(ctx context.Context, prefixId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPrefixByIdRequest(c.Server, prefixId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchPrefixWithBody(ctx context.Context, prefixId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchPrefixRequestWithBody(c.Server, prefixId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchPrefixWithApplicationMergePatchPlusJSONBody(ctx context.Context, prefixId openapi_types.UUID, body PatchPrefixApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchPrefixRequestWithApplicationMergePatchPlusJSONBody(c.Server, prefixId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3835,6 +4130,53 @@ func NewGetPrefixByIdRequest(server string, prefixId openapi_types.UUID) (*http.
 	return req, nil
 }
 
+// NewPatchPrefixRequestWithApplicationMergePatchPlusJSONBody calls the generic PatchPrefix builder with application/merge-patch+json body
+func NewPatchPrefixRequestWithApplicationMergePatchPlusJSONBody(server string, prefixId openapi_types.UUID, body PatchPrefixApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPatchPrefixRequestWithBody(server, prefixId, "application/merge-patch+json", bodyReader)
+}
+
+// NewPatchPrefixRequestWithBody generates requests for PatchPrefix with any type of body
+func NewPatchPrefixRequestWithBody(server string, prefixId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "prefixId", prefixId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/prefixes/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreatePrefixRequest calls the generic CreatePrefix builder with application/json body
 func NewCreatePrefixRequest(server string, prefixId openapi_types.UUID, body CreatePrefixJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -4178,6 +4520,11 @@ type ClientWithResponsesInterface interface {
 
 	// GetPrefixByIdWithResponse request
 	GetPrefixByIdWithResponse(ctx context.Context, prefixId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPrefixByIdResponse, error)
+
+	// PatchPrefixWithBodyWithResponse request with any body
+	PatchPrefixWithBodyWithResponse(ctx context.Context, prefixId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchPrefixResponse, error)
+
+	PatchPrefixWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, prefixId openapi_types.UUID, body PatchPrefixApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchPrefixResponse, error)
 
 	// CreatePrefixWithBodyWithResponse request with any body
 	CreatePrefixWithBodyWithResponse(ctx context.Context, prefixId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePrefixResponse, error)
@@ -4621,6 +4968,43 @@ func (r GetPrefixByIdResponse) ContentType() string {
 	return ""
 }
 
+type PatchPrefixResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *PrefixDetailResponse
+	ApplicationproblemJSON400 *ProblemDetails
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *PrefixNotFound
+	ApplicationproblemJSON405 *MethodNotAllowed
+	ApplicationproblemJSON409 *ProblemDetails
+	ApplicationproblemJSON422 *ProblemDetails
+	ApplicationproblemJSON500 *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchPrefixResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchPrefixResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PatchPrefixResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreatePrefixResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
@@ -4918,6 +5302,23 @@ func (c *ClientWithResponses) GetPrefixByIdWithResponse(ctx context.Context, pre
 		return nil, err
 	}
 	return ParseGetPrefixByIdResponse(rsp)
+}
+
+// PatchPrefixWithBodyWithResponse request with arbitrary body returning *PatchPrefixResponse
+func (c *ClientWithResponses) PatchPrefixWithBodyWithResponse(ctx context.Context, prefixId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchPrefixResponse, error) {
+	rsp, err := c.PatchPrefixWithBody(ctx, prefixId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchPrefixResponse(rsp)
+}
+
+func (c *ClientWithResponses) PatchPrefixWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, prefixId openapi_types.UUID, body PatchPrefixApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchPrefixResponse, error) {
+	rsp, err := c.PatchPrefixWithApplicationMergePatchPlusJSONBody(ctx, prefixId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchPrefixResponse(rsp)
 }
 
 // CreatePrefixWithBodyWithResponse request with arbitrary body returning *CreatePrefixResponse
@@ -5716,6 +6117,81 @@ func ParseGetPrefixByIdResponse(rsp *http.Response) (*GetPrefixByIdResponse, err
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest MalformedPathParameter
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchPrefixResponse parses an HTTP response from a PatchPrefixWithResponse call
+func ParsePatchPrefixResponse(rsp *http.Response) (*PatchPrefixResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchPrefixResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PrefixDetailResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ProblemDetails
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest PrefixNotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 405:
+		var dest MethodNotAllowed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON405 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ProblemDetails
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ProblemDetails
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

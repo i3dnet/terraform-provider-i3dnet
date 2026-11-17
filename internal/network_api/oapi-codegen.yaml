@@ -6,3 +6,7 @@ generate:
   models: true
   client: true
 output: ../internal/network_api/client.gen.go
+output-options:
+  # A nullable field (e.g. customerDescription on PATCH /prefixes/{id}) becomes nullable.Nullable[T], so a merge
+  # patch can tell "leave unchanged" (omitted) from "clear" (null) and "set" (a value).
+  nullable-type: true

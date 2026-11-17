@@ -1,7 +1,7 @@
 # Vendored copy of the public Network API contract. Do not edit by hand.
 # Source repository: i3dnet/networkapi-core
 # Source path: openapi/networkv3/public/v1/openapi.yaml
-# Source commit: f4d904cd2271eea2bd4997a35ac90949baf30f43
+# Source commit: efd83ecb80c7202aaac375b894b49697bfb90c92 (v0.55.8)
 # Re-vendor by copying the file at a newer commit, updating this header, and running make generate.
 openapi: 3.0.3
 info:
@@ -12,8 +12,9 @@ info:
     i3D.net.
 
     You declare what you want - a network in a location, a prefix of a
-    given size - and i3D.net provisions it. You never pick a VLAN, a
-    subnet or a router: those are chosen for you.
+    given size or, on a private network, the exact private subnet from
+    your own address plan - and i3D.net provisions it. You never pick a
+    VLAN or a router, and public subnets are always chosen for you.
 
     **Base path.** The paths in this document are relative to the API
     base URL. `/networks/{networkId}` means
@@ -29,6 +30,19 @@ info:
     provisioned and releases them when it is torn down. This API shows
     you the result: `GET` on the network-, prefix- and address-level
     listings and reads.
+
+    **Self-service access.** Every public resource PUT/PATCH/DELETE, including
+    retries, requires at least one explicit owned contract registration (E020048).
+    Each NEW persistent network/prefix additionally selects an owned registered
+    billing contract (E020049). Contracts never select or add technical quota;
+    all contracts and both retentions share client/fabric limits. Internal ephemeral
+    creation requires no contract and remains subject to the shared limits.
+
+    **Availability.** Active and provisioning networks occupy a slot in
+    their client and location, shared across both retentions and all billing contracts. Terminally failed
+    creation does not occupy a slot. New prefixes require an active network;
+    failed networks remain readable and can be cleaned up where permitted.
+    Existing UUID retries retain their recorded operation behavior.
 
     **Asynchronous work.** Creating and deleting a network or a prefix
     returns `202` with a link to an operation resource. Poll that
@@ -54,7 +68,8 @@ info:
     header. `If-Match` is not required. `PUT` only ever creates (it never
     replaces an existing resource), so there is no lost-update risk
     there. `PATCH /networks/{networkId}` changes one label, `name`, and
-    is last-write-wins: the next read shows the result, so a lost update
+    `PATCH /prefixes/{prefixId}` one label, `customerDescription`; both
+    are last-write-wins: the next read shows the result, so a lost update
     is visible and easy to repair without a precondition.
 
     **Permissions.** Each operation names the permission it needs under
@@ -264,6 +279,12 @@ paths:
     put:
       summary: Create a network (idempotent, create-only)
       description: |
+        On public/gateway mounts every resource write, including retries, requires an explicit owned
+        contract registration (409 E020048). Internal operations retain their existing authorization
+        rules. Ownership, managed-resource and lifecycle guards remain. Only NEW persistent intent
+        on either surface additionally requires the selected registered billing contract (E020049).
+        Quota is shared across all contracts and retentions (E020050); incomplete verified
+        membership is E020052. Immutable replay does not reserve quota again or reselect billing.
         Declares a network. Acceptance returns `202` with an operation
         reference; the network record is created with `state=provisioning`
         and one orchestration provisions the underlying segment and the
@@ -273,10 +294,20 @@ paths:
         - `public` networks MUST state `addressing.prefixes[]` explicitly -
           a public prefix is billable and geo-pinned, so there is no
           default; a public create without `prefixes[]` is a `422`.
-        - `private` networks take `addressing.prefixes[]` when given,
-          otherwise exactly one /24 is derived, carved so it does not
-          overlap any private prefix you already hold.
+        - `private` networks support IPv4 prefixes from /24 through /29 and
+          IPv6 (ULA) prefixes from /48 through /64. A private entry may
+          state `cidr` instead of `family` + `size` (see
+          `InitialPrefixRequest`); i3D.net selects the subnet for every
+          entry without one. They take `addressing.prefixes[]` when given,
+          otherwise exactly one IPv4 /24 is allocated in your private
+          address space. Other private masks are rejected with a `422`.
         - `addressing.source: none` provisions zero prefixes.
+
+        Every NEW persistent network requires an explicitly selected registered owned
+        contract (E020049), including addressing.source none; absence is 422 E020001.
+        All billing contracts and both retentions share client/fabric slots and parent
+        capacity grants (E020050). Missing verified grants refuse with E020052.
+        Historical identical replay keeps original attribution without reserving again.
 
         **Idempotency.** The path UUID is the
         idempotency key. An identical replay returns `202` with the SAME
@@ -313,12 +344,27 @@ paths:
                         size: 24
                   contractId: "PD-2026-000481"
               privateWithDerivedPrefix:
-                summary: Private network, subnet derived (one /24, no prefixes[] needed)
+                summary: Private network, subnet derived (one IPv4 /24, no prefixes[] needed)
                 value:
                   connectivity:
                     type: "private"
                   fabric: "montreal-a"
                   name: "db tier"
+                  retention: "persistent"
+                  contractId: "PD-2026-000481"
+              privateWithStatedCidr:
+                summary: Private network with the subnet you state (cidr form)
+                value:
+                  connectivity:
+                    type: "private"
+                  fabric: "montreal-a"
+                  name: "db tier"
+                  addressing:
+                    source: "provider"
+                    prefixes:
+                      - cidr: "10.20.30.0/24"
+                      - family: 6
+                        size: 64
                   retention: "persistent"
                   contractId: "PD-2026-000481"
               privateStandaloneNoAddressing:
@@ -329,6 +375,7 @@ paths:
                   fabric: "rotterdam-a"
                   addressing:
                     source: "none"
+                  contractId: "PD-2026-000481"
       responses:
         '202':
           description: |
@@ -379,22 +426,24 @@ paths:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
           description: |
-            Conflict. Either this UUID already denotes a network created with
-            a different body (code E020003) - `PUT` never replaces an
-            existing network - or the create would exceed your account's
-            network limit for the fabric, or the prefix limit for the
-            initial prefixes it declares (code E020016), or the account is
-            not authorised for self-serve creation of networks at all
-            because no contract covers it (code E020017), or the
-            `contractId` does not authorise the type of a declared initial
-            prefix (code E020031). The network itself is checked first, so
-            an account refused both ways answers E020017. In every case
-            nothing is created and no operation is started.
+            UUID conflict E020003, unregistered self-service E020048, selected billing unavailable E020049, shared slot/capacity exceeded E020050, or missing verified grants E020052. No acceptance or operation survives refusal.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               examples:
+                allocationLimit:
+                  summary: Exact shared capacity exceeded
+                  value:
+                    title: "Shared quota exceeded"
+                    status: 409
+                    detail: "release capacity or ask operations to increase the client quota"
+                    code: "E020050"
+                    reason: "limit-exceeded"
+                    resource: "ipv6-addresses"
+                    limit: "1208925819614629174706176"
+                    projected: "2417851639229258349412352"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
                 sameUuidDifferentBody:
                   summary: Same UUID, different body
                   value:
@@ -402,38 +451,6 @@ paths:
                     status: 409
                     detail: "network 01984f2e-1c3a-7d21-9d10-3542f27adccf exists with a different create request; PUT never replaces an existing network - use a new UUID for a new network"
                     code: "E020003"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                networkQuotaExceeded:
-                  summary: Network limit for the fabric reached
-                  value:
-                    title: "Quota exceeded"
-                    status: 409
-                    detail: "your limit of 5 networks in fabric 'montreal-a' has been reached (5 in use); release one you no longer need, or contact i3D.net support to request a higher limit"
-                    code: "E020016"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                contractRequired:
-                  summary: No contract covers self-serve creation for this account
-                  value:
-                    title: "Contract required"
-                    status: 409
-                    detail: "creating networks on this account requires a contract with i3D.net; contact i3D.net support to arrange one"
-                    code: "E020017"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                contractNotAuthorised:
-                  summary: The contractId does not authorise a declared initial prefix
-                  value:
-                    title: "Contract does not authorise this resource"
-                    status: 409
-                    detail: "contract PD-2026-000481 does not authorise creating IPv6 addresses and prefixes on this account; use a contract that covers this resource type, or contact i3D.net support to have it added to the contract"
-                    code: "E020031"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                initialPrefixQuotaExceeded:
-                  summary: Prefix limit under one contract reached by the declared initial prefixes
-                  value:
-                    title: "Quota exceeded"
-                    status: 409
-                    detail: "your limit of 2 prefixes under contract PD-2026-000481 has been reached (1 in use); this request asked for 3 more; contact i3D.net support to request a higher limit"
-                    code: "E020016"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
         '422':
           headers:
@@ -502,23 +519,23 @@ paths:
                   value:
                     title: "Validation failure"
                     status: 422
-                    detail: "contractId is required for a persistent resource: name the contract it is billed under (pattern ^[A-Za-z0-9][A-Za-z0-9_-]{3,19}$)"
+                    detail: "contractId is required for a new network allocation"
                     code: "E020001"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
-                contractWithSourceNone:
-                  summary: contractId supplied with addressing.source none
+                cidrWithSize:
+                  summary: cidr together with family or size (one-of rule)
                   value:
                     title: "Validation failure"
                     status: 422
-                    detail: "contractId must be omitted when addressing.source is 'none': no prefix is created, so there is nothing to attribute to a contract"
+                    detail: "addressing.prefixes[0]: state either 'cidr' or 'family' and 'size', not both; remove family and size to keep the cidr"
                     code: "E020001"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
-                contractOnEphemeral:
-                  summary: contractId supplied on a network resolving to ephemeral
+                cidrOnPublicNetwork:
+                  summary: cidr on a public network
                   value:
                     title: "Validation failure"
                     status: 422
-                    detail: "contractId must be omitted for an ephemeral resource: ephemeral resources are not attributed to a contract"
+                    detail: "addressing.prefixes[0].cidr is not accepted on a public network: i3D.net selects public subnets; state family and size"
                     code: "E020001"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
         '500':
@@ -635,6 +652,9 @@ paths:
     patch:
       summary: Rename a network
       description: |
+        On public/gateway mounts every resource write, including retries, requires an explicit owned
+        contract registration (409 E020048). Internal operations retain their existing authorization
+        rules. Ownership, managed-resource and lifecycle guards remain.
         Changes the network's `name`. The body is a JSON Merge Patch
         (`application/merge-patch+json`) with one patchable member,
         `name`: a string sets the name (trimmed; empty after trim, or
@@ -746,6 +766,7 @@ paths:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
           description: |
+            Public mutation without explicit owned registration is E020048.
             Conflict - the network is managed by i3D.net and is read-only
             here (code E020019). Answered after the tenancy check (a
             network that is not yours stays a `404`) and before
@@ -816,6 +837,9 @@ paths:
     delete:
       summary: Delete a network (guarded, asynchronous)
       description: |
+        On public/gateway mounts every resource write, including retries, requires an explicit owned
+        contract registration (409 E020048). Internal operations retain their existing authorization
+        rules. Ownership, managed-resource and lifecycle guards remain. Cleanup adds no contract input.
         Tears down the network and its children. Refused with `409` (code
         E020004) while ANY IP address is still in use under the network's
         prefixes, whatever its retention. Addresses are released when the
@@ -884,26 +908,8 @@ paths:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
           description: |
-            Conflict - the network is managed by i3D.net and is read-only
-            here (code E020019), or the account is not authorised to remove
-            resources it provisioned for itself because no contract covers
-            them (code E020018), or the delete is blocked because IP
-            addresses are still in use under the network's prefixes (code
-            E020004).
-            They are answered in that order, and both refusals ahead of
-            E020004 for the same reason: someone who cannot clear the
-            blocking addresses must not be told to clear them. A network with
-            no contract AND managed by i3D.net answers E020019, because
-            arranging a contract would not make the request succeed.
-            E020019 also covers a network the account owns whose prefixes
-            include one managed by i3D.net - deleting the network would tear
-            that prefix down with it. That variant's detail is about the
-            NETWORK ("this network holds a prefix that was set up by
-            i3D.net ..."), not about the prefix: the request named a network.
-            It names no prefix id; `retention` on the prefix listing is where
-            the blocking prefix is identified.
-            Re-driving a teardown that was already accepted is never refused
-            by E020018 or E020019.
+            Public mutation without explicit owned registration is E020048.
+            Managed-resource protection E020019, pending parent E020042, or existing IP addresses E020004. Cleanup requires no numeric allocation; public self-service registration remains required. Accepted teardown retries preserve their operation.
           content:
             application/problem+json:
               schema:
@@ -916,14 +922,6 @@ paths:
                     status: 409
                     detail: "this network was set up by i3D.net on your behalf and is managed by i3D.net. It is removed automatically; it cannot be changed or deleted here, and prefixes cannot be added to it. Contact i3D.net support if you need it changed or removed."
                     code: "E020019"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                contractRequired:
-                  summary: No contract covers this account's self-serve resources
-                  value:
-                    title: "Contract required"
-                    status: 409
-                    detail: "removing networks on this account requires a contract with i3D.net; contact i3D.net support to arrange one"
-                    code: "E020018"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
                 addressesInUse:
                   summary: Delete blocked by IP addresses in use
@@ -1243,12 +1241,14 @@ paths:
           description: |
             Filter by prefix state. `provisioning` and `failed` are set
             while a create is in flight or has failed and are not
-            filterable. When omitted, prefixes in all states are
-            returned.
+            filterable. When omitted, prefixes in all listable states
+            are returned. Parent blocks (inventory state `container`)
+            are not part of this API: they never appear in the listing
+            and `container` is not a valid filter value (`422`).
           required: false
           schema:
             type: string
-            enum: [container, active, reserved, deprecated]
+            enum: [active, reserved, deprecated]
           example: "active"
         - in: query
           name: filters[connectivity][eq]
@@ -1399,7 +1399,7 @@ paths:
         description: |
           Client-generated UUID of the prefix. On `PUT` it MUST be a v7
           (time-ordered) UUID and is also the idempotency key: retries of
-          the same logical create MUST reuse it. `GET` and `DELETE` take
+          the same logical create MUST reuse it. `GET`, `PATCH` and `DELETE` take
           any well-formed UUID - the version is not re-checked on an
           existing identity, and a UUID that names nothing readable for
           your account is a `404` like any other unknown one.
@@ -1411,6 +1411,12 @@ paths:
     put:
       summary: Create a prefix in a network (idempotent, create-only)
       description: |
+        On public/gateway mounts every resource write, including retries, requires an explicit owned
+        contract registration (409 E020048). Internal operations retain their existing authorization
+        rules. Ownership, managed-resource and lifecycle guards remain. Only NEW persistent intent
+        on either surface additionally requires the selected registered billing contract (E020049).
+        Quota is shared across all contracts and retentions (E020050); incomplete verified
+        membership is E020052. Immutable replay does not reserve quota again or reselect billing.
         Declares an additional prefix in an existing network - the day-2
         grow step for a network that is running out of addresses.
         Acceptance returns `202` with an operation reference;
@@ -1420,15 +1426,28 @@ paths:
         The request names the owning network by `networkId` (required).
         A `networkId` that does not exist on your account - including
         another account's network - is a `422` with guidance; a network
-        is never auto-created as a side effect. The prefix shape is
-        `family` + `size` (both required): the concrete subnet is
-        selected by i3D.net during provisioning - customers never
-        pick the subnet. A request naming an explicit `cidr`
-        is a `422` with guidance; an explicit-cidr capability, if ever
-        ratified, would be a separate contract change.
+        is never auto-created as a side effect. You state the prefix
+        in exactly ONE of two forms (see `PrefixCreateRequest`):
+        - `cidr`: the exact private subnet you want, e.g.
+          `10.20.31.0/24`. Private networks only: IPv4 inside
+          10.0.0.0/8, 172.16.0.0/12 or 192.168.0.0/16 with a mask from
+          /24 to /29; IPv6 inside fd00::/8 with a mask from /48 to /64.
+          State the network address: a value with host bits set is a
+          `422` that names the network address, it is never rewritten.
+          On a `public` network a `cidr` is a `422`: i3D.net selects
+          public subnets.
+        - `family` + `size`: i3D.net selects the subnet for you during
+          provisioning.
+        A `cidr` together with `family` or `size`, a request with
+        neither form, or only one of `family` and `size` is a `422`
+        (code E020001) naming the one-of rule. Whether the subnet you
+        state is still free is not checked at acceptance: a subnet you
+        already hold settles the prefix as `failed` after `202`, and an
+        existing prefix is never replaced.
 
-        For private networks the concrete subnet is carved so that it
-        does not overlap any private prefix you already hold.
+        For private networks without a `cidr` the concrete subnet is
+        carved so that it does not overlap any private prefix you
+        already hold.
 
         `retention` MAY be omitted: it defaults to the owning network's
         retention; an explicit value overrides the default. The
@@ -1436,15 +1455,12 @@ paths:
         can never end up `ephemeral`, whether you declared it or it came
         from the network (such a request is a `422`).
 
-        `contractId` names the contract the prefix is billed under. It
-        is decided on the RESOLVED `retention`: REQUIRED for
-        `persistent`, FORBIDDEN for `ephemeral`; each refusal is a
-        `422` naming
-        `contractId` in `detail`. Only the format is verified, never
-        the contract's existence. The value is recorded per prefix and
-        is immutable. Because validation runs before the idempotency
-        settlement, a replay whose body omits `contractId` for a
-        `persistent` prefix is a `422`, not a `409`.
+        contractId is billing attribution only. New persistent intent on either surface
+        requires an explicitly selected owned registered contract (409 E020049), which
+        may differ from the parent contract; absence is 422 E020001. Internal ephemeral
+        intent carries no contract. Exact capacity consumes the single parent grant
+        across both retentions (E020050); missing verified grants refuse with E020052.
+        Historical identical retries preserve recorded intent without reselecting billing.
 
         **Idempotency.** The path UUID is the
         idempotency key. An identical replay returns `202` with the
@@ -1478,6 +1494,12 @@ paths:
                   networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
                   family: 4
                   size: 24
+                  contractId: "PD-2026-000481"
+              dayTwoByCidr:
+                summary: Day-2 private prefix with the subnet you state (cidr form)
+                value:
+                  networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                  cidr: "10.20.31.0/24"
                   contractId: "PD-2026-000481"
               declaredPersistent:
                 summary: Day-2 prefix with declared persistent retention
@@ -1531,36 +1553,42 @@ paths:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
           description: |
-            Conflict. This UUID cannot denote a new prefix (code
-            E020003 for both branches):
-            - the UUID already denotes a prefix created with a
-              different body - `PUT` never replaces an existing prefix;
-              nothing is changed;
-            - a delete operation is in progress (or has failed) for
-              this UUID - a deleted identity is never re-created and
-              the recorded create request is not compared; a new prefix
-              needs a NEW UUID.
-
-            Or the referenced network is one i3D.net manages, so it takes no
-            customer prefixes (code E020019). Or the referenced network
-            cannot take a prefix in its
-            current state (code E020007) - it is not `active`, or its DELETE has
-            already been accepted, which its `state` does not yet show
-            because a network is not marked `deleted` until its teardown
-            fully succeeds; a prefix added then would be destroyed while
-            still provisioning or stranded on a deleted network, so the
-            remedy is a different network rather than a retry. Or the
-            create would exceed your
-            prefix limit for the network or for the contract (code
-            E020016), or the `contractId` does not authorise the prefix's
-            type for your account (code E020031; never E020017, which is
-            returned only for networks).
-            In every case nothing is created and no operation is started.
+            Public mutation without explicit owned registration is E020048.
+            UUID conflict E020003, managed parent E020019, missing verified capacity E020052, selected billing unavailable E020049, shared exact capacity exceeded E020050, or unavailable/deleting parent E020042. No acceptance survives refusal.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               examples:
+                billingContractUnavailable:
+                  summary: New prefix billing contract is not associated with the owner
+                  value:
+                    title: "Billing contract unavailable"
+                    status: 409
+                    detail: "use a billing contract associated with this owner"
+                    code: "E020049"
+                    reason: "billing-contract-unavailable"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                missingVerifiedGrant:
+                  summary: Live network lacks verified capacity attribution
+                  value:
+                    title: "Quota membership unavailable"
+                    status: 409
+                    detail: "existing network capacity requires verified adoption"
+                    code: "E020052"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                allocationLimit:
+                  summary: Exact shared capacity exceeded
+                  value:
+                    title: "Shared quota exceeded"
+                    status: 409
+                    detail: "release capacity or ask operations to increase the client quota"
+                    code: "E020050"
+                    reason: "limit-exceeded"
+                    resource: "ipv6-addresses"
+                    limit: "1208925819614629174706176"
+                    projected: "2417851639229258349412352"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
                 sameUuidDifferentBody:
                   summary: Same UUID, different body
                   value:
@@ -1576,30 +1604,6 @@ paths:
                     status: 409
                     detail: "a delete operation is in progress or has failed for prefix 01984f2e-bb02-7cc3-9d22-2f27adccf222; a deleted identity is never re-created - use a new UUID for a new prefix"
                     code: "E020003"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                quotaExceededInNetwork:
-                  summary: Prefix limit for the network reached
-                  value:
-                    title: "Quota exceeded"
-                    status: 409
-                    detail: "your limit of 4 prefixes in this network under contract PD-2026-000481 has been reached (4 in use); release one you no longer need from contract PD-2026-000481 in this network, or contact i3D.net support to request a higher limit"
-                    code: "E020016"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                quotaExceededForAccount:
-                  summary: Prefix limit under one contract reached
-                  value:
-                    title: "Quota exceeded"
-                    status: 409
-                    detail: "your limit of 100 prefixes under contract PD-2026-000481 has been reached (100 in use); release one you no longer need from contract PD-2026-000481, or contact i3D.net support to request a higher limit"
-                    code: "E020016"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                contractNotAuthorised:
-                  summary: The contractId does not authorise this prefix type
-                  value:
-                    title: "Contract does not authorise this resource"
-                    status: 409
-                    detail: "contract PD-2026-000481 does not authorise creating prefixes on this account; use a contract that covers this resource type, or contact i3D.net support to have it added to the contract"
-                    code: "E020031"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
         '422':
           headers:
@@ -1621,12 +1625,36 @@ paths:
                     detail: "network 01984f2e-1c3a-7d21-9d10-3542f27ad999 does not exist; create the network first - it is never created as a side effect"
                     code: "E020001"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
-                explicitCidrNotSupported:
-                  summary: Explicit cidr is not supported (provider selects the subnet)
+                cidrWithSize:
+                  summary: cidr together with family or size (one-of rule)
                   value:
                     title: "Validation failure"
                     status: 422
-                    detail: "an explicit cidr is not supported: the provider selects the concrete subnet during provisioning; state a 'size' instead"
+                    detail: "state either 'cidr' or 'family' and 'size', not both; remove family and size to keep the cidr"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                cidrOnPublicNetwork:
+                  summary: cidr on a public network
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "cidr is not accepted on a public network: i3D.net selects public subnets; state family and size"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                cidrNotPrivate:
+                  summary: cidr outside the private ranges
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "cidr 100.64.0.0/24 is outside the private ranges; accepted: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (IPv4) and fd00::/8 (IPv6)"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                cidrHostBits:
+                  summary: cidr with host bits set (not a network address)
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "cidr 10.20.31.5/24 is not a network address; state 10.20.31.0/24"
                     code: "E020001"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
                 sizeAboveCap:
@@ -1650,7 +1678,7 @@ paths:
                   value:
                     title: "Validation failure"
                     status: 422
-                    detail: "contractId is required for a persistent resource: name the contract it is billed under (pattern ^[A-Za-z0-9][A-Za-z0-9_-]{3,19}$)"
+                    detail: "contractId is required for a new prefix allocation"
                     code: "E020001"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
                 contractMalformed:
@@ -1659,14 +1687,6 @@ paths:
                     title: "Validation failure"
                     status: 422
                     detail: "contractId must match ^[A-Za-z0-9][A-Za-z0-9_-]{3,19}$ (4-20 characters: letters, digits, '_' or '-', starting with a letter or digit; no surrounding whitespace)"
-                    code: "E020001"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                contractOnEphemeral:
-                  summary: contractId supplied on a prefix resolving to ephemeral
-                  value:
-                    title: "Validation failure"
-                    status: 422
-                    detail: "contractId must be omitted for an ephemeral resource: ephemeral resources are not attributed to a contract"
                     code: "E020001"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
         '500':
@@ -1765,9 +1785,244 @@ paths:
           $ref: '#/components/responses/MalformedPathParameter'
         '500':
           $ref: '#/components/responses/InternalError'
+    patch:
+      summary: Edit a prefix's description
+      description: |
+        On public/gateway mounts every resource write, including retries, requires an explicit owned
+        contract registration (409 E020048). Internal operations retain their existing authorization
+        rules. Ownership, managed-resource and lifecycle guards remain.
+        Changes the prefix's `customerDescription`. The body is a JSON
+        Merge Patch (`application/merge-patch+json`) with one patchable
+        member, `customerDescription`: a string sets it (trimmed; empty
+        after trim, longer than 200 characters, or containing control
+        characters is a `422`, code E020001), `null` clears it (the
+        response omits `customerDescription`), and an omitted member
+        leaves it unchanged, so `{}` is a valid no-op that returns the
+        current representation. Any other member is a `422` (code
+        E020001) naming it, and nothing changes. The `description`
+        member is maintained by i3D.net and cannot be edited here: a body
+        carrying it is a `422` like any other unknown member.
+
+        Synchronous: `200` with the prefix as it reads after the edit,
+        in the same representation `GET /prefixes/{prefixId}` serves
+        (availability counters included), with `links.self` only and a
+        fresh `ETag`; there is no operation to poll and nothing changes
+        on your servers or the network.
+
+        Refusals, in order: a prefix that does not exist on your account
+        is a `404` (code E020002). A prefix i3D.net manages (`retention:
+        ephemeral`) is read-only and answers `409` (code E020019). A
+        prefix with an operation still pending - a create that has not
+        finished, a failed create that is still retained, or a delete in
+        progress - answers `409` (code E020024) saying which. Only an
+        in-flight create is worth waiting for: once it finishes, the same
+        edit succeeds. A failed prefix cannot be edited (delete it or
+        create a new one), and after a delete the prefix is gone.
+        Validation runs after these refusals. Last-write-wins: no `If-Match` precondition is
+        required, see the caching note in this document's description.
+      operationId: patchPrefix
+      x-required-permission: network:prefix:update
+      x-required-permission-description: Edit the description of a prefix on your account.
+      x-audience: customer-facing
+      tags:
+        - Prefixes
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/PrefixPatchRequest'
+            examples:
+              describe:
+                summary: Set a new description
+                value:
+                  customerDescription: "edge pool, EU traffic"
+              clear:
+                summary: Clear the description
+                value:
+                  customerDescription: null
+              noop:
+                summary: Empty patch (no-op)
+                value: {}
+      responses:
+        '200':
+          description: |
+            OK - the prefix as it reads after the edit, with its
+            availability counters and a fresh strong `ETag`.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrefixDetailResponse'
+              examples:
+                described:
+                  summary: Prefix with its new description
+                  value:
+                    id: "01984f2e-bb02-7cc3-9d22-2f27adccf222"
+                    cidr: "10.0.0.0/24"
+                    family: 4
+                    state: "active"
+                    fabric: "montreal-a"
+                    metro: "Montreal"
+                    customerDescription: "edge pool, EU traffic"
+                    vlanId: 3042
+                    gatewayIp: "10.0.0.1"
+                    routerIps:
+                      - "10.0.0.2"
+                      - "10.0.0.3"
+                    connectivity:
+                      type: public
+                    networkId: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+                    retention: "persistent"
+                    contractId: "PD-2026-000481"
+                    created: "2026-07-27T09:00:00Z"
+                    lastUpdated: "2026-07-28T14:30:05Z"
+                    capacity: 254
+                    allocated: 5
+                    available: 249
+                    links:
+                      self:
+                        href: "/prefixes/01984f2e-bb02-7cc3-9d22-2f27adccf222"
+        '400':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Bad Request - the request body does not parse as JSON (code
+            E020001). A body that parses but is not a JSON object, or
+            carries a member other than `customerDescription`, is a `422`
+            instead.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                malformedJson:
+                  summary: Body is not valid JSON
+                  value:
+                    title: "Validation failure"
+                    status: 400
+                    detail: "request body is not valid JSON"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/PrefixNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Public mutation without explicit owned registration is E020048.
+            Conflict - the prefix is managed by i3D.net and is read-only
+            here (code E020019), or an operation is pending on the prefix
+            (code E020024): its create has not finished, its last
+            operation failed and the prefix is still retained, or a
+            delete is in progress. Answered in that order, after the
+            tenancy check (a prefix that is not yours stays a `404`) and
+            before validation. The description is unchanged.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                platformManaged:
+                  summary: The prefix is managed by i3D.net
+                  value:
+                    title: "Resource is managed by i3D.net"
+                    status: 409
+                    detail: "this prefix was set up by i3D.net on your behalf and is managed by i3D.net. It is removed automatically, and cannot be changed, deleted or claimed into here. Contact i3D.net support if you need it changed or removed."
+                    code: "E020019"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                provisioning:
+                  summary: The prefix is still being provisioned
+                  value:
+                    title: "Operation pending"
+                    status: 409
+                    detail: "this prefix is being provisioned and cannot be changed yet; wait for the operation to finish, then retry"
+                    code: "E020024"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                deleteInProgress:
+                  summary: A delete is in progress
+                  value:
+                    title: "Operation pending"
+                    status: 409
+                    detail: "this prefix has a delete in progress and cannot be changed; once the delete completes the prefix no longer exists"
+                    code: "E020024"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                createFailed:
+                  summary: The last operation failed
+                  value:
+                    title: "Operation pending"
+                    status: 409
+                    detail: "the last operation on this prefix failed and the prefix cannot be changed; check its operation for the reason, then delete it or create a new prefix"
+                    code: "E020024"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          description: |
+            Unprocessable Content - the body parses but is not a valid
+            patch, or `prefixId` is not a well-formed UUID; nothing
+            changes (code E020001). `detail` names the member or
+            parameter: `customerDescription` is empty after trimming,
+            longer than 200 characters, or contains control characters;
+            `customerDescription` is not a string or `null`; or the body
+            carries a member other than `customerDescription` (including
+            `description`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                emptyDescription:
+                  summary: Whitespace-only description
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "customerDescription must not be empty or whitespace-only; send null to clear the description or a non-empty value to set it"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                descriptionTooLong:
+                  summary: Description longer than 200 characters
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "customerDescription must be at most 200 characters"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                opsDescription:
+                  summary: The description member cannot be edited here
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "description is not patchable; the only patchable member is customerDescription"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+                malformedPrefixId:
+                  summary: prefixId is not a UUID
+                  value:
+                    title: "Validation failure"
+                    status: 422
+                    detail: "prefixId is not a valid UUID"
+                    code: "E020001"
+                    traceId: "0af7651916cd43dd8448eb211c80319c"
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       summary: Delete a prefix (guarded, asynchronous)
       description: |
+        On public/gateway mounts every resource write, including retries, requires an explicit owned
+        contract registration (409 E020048). Internal operations retain their existing authorization
+        rules. Ownership, managed-resource and lifecycle guards remain. Cleanup adds no contract input.
         Tears down the prefix: the records (the prefix, its
         VLAN-scoped gateway objects, and its reserved addresses) are
         removed and the routers are deconfigured. Refused with `409`
@@ -1845,21 +2100,8 @@ paths:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
           description: |
-            Conflict - the prefix is managed by i3D.net and is read-only
-            here (code E020019), or the contract the prefix is held under
-            does not authorise its type for your account (code E020032), or
-            the delete is blocked because customer IP addresses are still in
-            use under the prefix (code E020014).
-            They are answered in that order, for the same reasons as on the
-            network delete: someone who cannot clear the blocking addresses
-            must not be told to clear them, and a contract does not make a
-            managed prefix deletable.
-            The check uses the prefix's OWN recorded contract, never your
-            account's other contracts; a prefix with no recorded contract is
-            not checked. Never E020018, which is returned only by the network
-            delete.
-            Re-driving an already accepted teardown is never refused by
-            E020032 or E020019.
+            Public mutation without explicit owned registration is E020048.
+            Managed-resource protection E020019, missing verified parent association E020044, pending create E020024, parent unavailable E020042, or existing IP addresses E020014. Accepted teardown retries need no allocation or fresh inventory.
           content:
             application/problem+json:
               schema:
@@ -1872,14 +2114,6 @@ paths:
                     status: 409
                     detail: "this prefix was set up by i3D.net on your behalf and is managed by i3D.net. It is removed automatically, and cannot be changed, deleted or claimed into here. Contact i3D.net support if you need it changed or removed."
                     code: "E020019"
-                    traceId: "0af7651916cd43dd8448eb211c80319c"
-                contractNotAuthorised:
-                  summary: The prefix's contract does not authorise its type
-                  value:
-                    title: "Contract does not authorise removing this resource"
-                    status: 409
-                    detail: "contract PD-2026-000481 does not authorise removing prefixes on this account; contact i3D.net support to have this resource type added to the contract"
-                    code: "E020032"
                     traceId: "0af7651916cd43dd8448eb211c80319c"
                 addressesInUse:
                   summary: Delete blocked by IP addresses in use
@@ -2420,60 +2654,46 @@ paths:
 
   /usage:
     get:
-      summary: Get current usage and limits
+      summary: Get current resource usage
       description: |
-        Your current usage report: one view answering
-        "what do I hold?", "what of it is billable?" and "how much
-        headroom do I have?" per resource type and fabric. Current
-        state only - this is NOT a historical or billing time-series
-        view (prices, currency and invoices are owned by finance
-        systems; this API exposes facts).
+        Current resource and billing facts across all of the caller's
+        contracts. This report answers "what do I hold?" and "what is
+        billable?". It does not report admission headroom. Network creation
+        uses a shared client/fabric quota; prefix creation consumes a per-network
+        capacity grant. Both retentions and all contracts share those technical
+        limits.
 
-        **Rows.** One row per `(resourceType, fabric)` pair; a row
-        without `fabric` is a customer-wide aggregate (emitted when a
-        limit is defined customer-wide rather than per fabric).
-        Resource types whose usage is accounted per address family
-        are split into `-v4` / `-v6` typed rows (see
-        `UsageItem.resourceType`), so an IPv4 limit and an IPv6 limit
-        never land on one row. A row
-        appears when you hold at least one resource at that
-        grain OR a customer-specific limit is defined there - so a
-        customer sees their headroom before creating the first
-        resource.
+        **Rows.** One row per `(resourceType, fabric)` pair. A row without
+        `fabric` is a customer-wide aggregate. Networks have customer-wide
+        and per-fabric rows; prefixes and IPv4 addresses have customer-wide
+        rows, separated by address family where applicable. Only rows with
+        `held > 0` are emitted. An empty report does not indicate permission to create.
 
-        **Semantics (frozen in the field descriptions of `UsageItem`):**
-        - `held` counts exactly the resources the corresponding
-          listing returns for the same account and
-          fabric (restricted to the row's address family on
-          family-suffixed types) - the two views never diverge.
-        - `persistent` is the subset of `held` with
-          `retention: persistent` - the count quota enforcement
-          charges against the limit; ephemeral resources are never
-          counted.
-        - `billable` counts how many of `held` are currently
-          billable. It is computed by the same rule and from the same
-          source as your invoice, never by a second calculation. Only
-          prefix rows carry it, and only when something is billable.
-        - `limit` / `remaining` come from the quota module and are
-          present ONLY when a limit specific to your account
-          applies (a per-resource-type default or a per-customer
-          override). Platform-internal ceilings are never shown. The
-          numbers are the ones quota enforcement applies at the grains
-          this report carries (customer-wide and per-fabric): at those
-          grains a create rejected over-limit and this report always
-          agree. A ceiling enforced at a finer grain (the prefix limit
-          per network) is not a row here - the rejection itself names
-          it.
-        - Prefix and IP address rows (`prefixes-v4`, `prefixes-v6`,
-          `ip-addresses-v4`) never carry `limit` / `remaining`. Their
-          ceilings are held per contract, a row here covers every
-          contract you hold, and no single number would be true for all
-          of them; `held` and `persistent` count across all your
-          contracts, and such a row appears only when you hold at least
-          one resource of that type. The agreement above holds trivially
-          for these rows, because they show no limit: a create refused
-          on a contract's ceiling names that limit and usage in the
-          rejection itself.
+        **Facts.** Network `held` counts networks that are neither failed nor
+        deleted, including ephemeral networks and accepted provisioning
+        networks. Network `persistent` counts those with persistent retention.
+        VLAN presence does not affect either count. Failed networks remain
+        available on the network listing for diagnostics but are excluded
+        from this report. Other resource counts follow their listing selection.
+        Prefix `persistent` excludes
+        containers and includes eligible persistent accepted create intents.
+        IPv4 address `persistent` counts role-less claims inside persistent
+        prefixes; infrastructure-role addresses contribute only to `held`.
+        These are resource counts, not prefix-space admission quantities.
+        Failed networks do not appear here or occupy current quota.
+
+        `billable` and `subscription`, when present, come from the billing
+        foundation using the same selection rule as the usage export, only
+        on prefix rows. This is not a historical billing time series and
+        exposes no prices, currency or invoices.
+
+        **Contract change.** The historical `limit` and `remaining` fields
+        have been removed. They described legacy customer-wide ceilings,
+        not current contract or network grants. Clients must not interpret
+        their absence as unlimited capacity. Existing endpoint publication
+        is retained as an explicitly approved correction; consumers of the
+        removed fields must adapt before deployment (shared-api-standards
+        section 10 deviation).
 
         **Filters** use the `filters[field][op]` syntax - supported:
         `filters[fabric][eq]`, `filters[resourceType][eq]`. An unknown
@@ -2489,7 +2709,7 @@ paths:
         resource, not retrofitted here.
       operationId: getUsage
       x-required-permission: network:usage:read
-      x-required-permission-description: Read your resource usage and limits.
+      x-required-permission-description: Read your resource usage and billing facts.
       x-audience: customer-facing
       tags:
         - Usage
@@ -2499,7 +2719,7 @@ paths:
           description: |
             Restrict the report to one public fabric identifier. Customer-wide rows (no `fabric`) are not
             returned when this filter is set - and resource types
-            whose ceilings are customer-wide today (prefixes, IP
+            that report customer-wide facts (prefixes, IP
             addresses) report ONLY customer-wide rows, so this filter
             narrows the report to the fabric-scoped rows (`networks`).
             An identifier not in the
@@ -2536,15 +2756,13 @@ paths:
                 $ref: '#/components/schemas/UsageResponse'
               examples:
                 report:
-                  summary: Usage report with limited and unlimited rows
+                  summary: Current holdings and billing facts
                   value:
                     items:
                       - resourceType: "networks"
                         fabric: "montreal-a"
                         held: 3
                         persistent: 3
-                        limit: 5
-                        remaining: 2
                       - resourceType: "prefixes-v4"
                         held: 4
                         persistent: 3
@@ -2560,16 +2778,10 @@ paths:
                     links:
                       self:
                         href: "/usage"
-                headroomBeforeFirstCreate:
-                  summary: Limit visible with nothing held yet
+                emptyReport:
+                  summary: No resources held
                   value:
-                    items:
-                      - resourceType: "networks"
-                        fabric: "montreal-a"
-                        held: 0
-                        persistent: 0
-                        limit: 5
-                        remaining: 5
+                    items: []
                     links:
                       self:
                         href: "/usage"
@@ -2644,9 +2856,9 @@ components:
       description: |
         Strong entity tag of this representation, returned on every
         response body. `If-Match` is not required: `PUT` only ever
-        creates, and the one label edit (`PATCH /networks/{networkId}`)
-        is last-write-wins; see the caching note in this document's
-        description.
+        creates, and the label edits (`PATCH /networks/{networkId}`,
+        `PATCH /prefixes/{prefixId}`) are last-write-wins; see the
+        caching note in this document's description.
       schema:
         type: string
       example: "\"5d41402abc4b2a76b9719d911017c592\""
@@ -2910,8 +3122,8 @@ components:
           occurs for that operation.
         - E020019: the resource is managed by i3D.net - it was set up on the
           account's behalf and i3D.net owns its lifecycle, so on this API
-          it is read-only. Returned by the network rename, the network
-          delete and the prefix delete.
+          it is read-only. Returned by the network rename, the prefix
+          description edit, the network delete and the prefix delete.
           Nothing is changed, no operation record is written and no teardown
           is started.
           Distinct from E020017/E020018, whose trigger is a missing contract:
@@ -2934,6 +3146,20 @@ components:
           that loss.
         - E020023: the path does not support this method. The response
           carries an `Allow` header listing the methods it does support.
+        - E020024: operation pending - an edit was refused because an
+          operation is still pending on the resource: its create has not
+          finished, its last operation failed and the resource is still
+          retained, or a delete is in progress. The detail says which.
+          Returned by the prefix description edit. Nothing is changed.
+          State-dependent, hence 409: once an in-flight create finishes
+          the same request succeeds; a failed resource is never editable
+          (delete it or create a new one), and after a delete the
+          resource is gone.
+          Distinct from E020007, which is about the NETWORK's state on a
+          claim or a prefix create, and from E020003, which is an
+          idempotency conflict on a create. The remedy: poll the operation
+          (`links.operation` on the resource), then retry once it has
+          finished.
         - E020031: the contract does not authorise this resource - the
           contract the refused resource would be held under does not
           authorise this resource type for your account. That contract is
@@ -2974,6 +3200,24 @@ components:
           is not refused, on the same terms as E020018.
 
 
+        - E020038: explicit quota allocation missing (409).
+        - E020039: contract differs from the immutable network allocation (409).
+        - E020040: occupying networks need explicit contract attribution (409).
+        - E020041: explicit contract slots or exact network address capacity exceeded (409).
+        - E020042: parent unavailable for new resources, including a pending delete (409).
+        - E020043: destructive retention ownership refusal (409); reserved for machine callers.
+        - E020046: owner-associated prefix billing contract unavailable (409; billing-contract-unavailable).
+        - E020047: persistent resource targets DEFAULT allocation (409; default-retention).
+        - E020048: public/gateway resource mutation lacks explicit owned contract registration (409).
+        - E020049: selected billing contract for new persistent network/prefix or promotion is not registered for owner (409).
+        - E020050: shared client/fabric slots or owned network exact capacity would be exceeded (409).
+        - E020052: shared census includes live networks without verified capacity grants (409).
+        - E020044: prefix mutation has no verified owned parent association (409).
+
+        E020016, E020017, E020018, E020031 and E020032 keep their registered
+        meanings but no longer gate create, claim or cleanup.
+        Identical retries of earlier requests remain valid.
+
         Codes are stable: a code's meaning never changes. New codes may
         be added over time, so treat an unknown code as a generic failure
         of its HTTP status. E020031 and E020032 were added this way: on
@@ -3012,6 +3256,20 @@ components:
             Tracing ID of the request, matching the request trace, for
             correlating with server-side logs and traces.
           example: "0af7651916cd43dd8448eb211c80319c"
+        reason:
+          type: string
+          description: Safe allocation refusal reason; clients must tolerate new values.
+        resource:
+          type: string
+          description: Public unit limited by this allocation refusal.
+        limit:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+          description: Exact decimal allocation limit, including IPv6 counts.
+        projected:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+          description: Exact decimal post-acceptance usage before rollback.
 
     Link:
       type: object
@@ -3146,25 +3404,45 @@ components:
     InitialPrefixRequest:
       type: object
       description: |
-        One initial prefix to provision with the network. You state
-        family and size only - i3D.net selects the concrete subnet.
-        Customers never pick the subnet.
-      required:
-        - family
-        - size
+        One initial prefix to provision with the network. Each entry
+        states exactly ONE of two forms:
+        - `cidr`: the exact subnet you want, e.g. `10.20.30.0/24`.
+          Private networks only: IPv4 inside 10.0.0.0/8, 172.16.0.0/12
+          or 192.168.0.0/16 with a mask from /24 to /29; IPv6 inside
+          fd00::/8 with a mask from /48 to /64. State the network
+          address: a value with host bits set is a `422` that names the
+          network address, it is never rewritten. On a `public` network
+          a `cidr` is a `422`: i3D.net selects public subnets.
+        - `family` + `size`: i3D.net selects the subnet for you.
+        A `cidr` together with `family` or `size`, or an entry with
+        neither form, is a `422` (code E020001) naming the one-of rule.
+        Entries of one request may mix forms. Prefixes of one request
+        must not overlap each other (`422` naming both positions).
+        Whether the subnet you state is still free is not checked at
+        acceptance: a collision fails the operation after `202`.
       properties:
+        cidr:
+          type: string
+          description: |
+            Exact private subnet in CIDR notation (network address).
+            One-of with `family` + `size`; family and size are derived
+            from it and recorded.
+          example: "10.20.30.0/24"
         family:
           type: integer
           enum: [4, 6]
-          description: IP family (4 for IPv4, 6 for IPv6).
+          description: |
+            IP family (4 for IPv4, 6 for IPv6). Required together with
+            `size` when the entry states no `cidr`.
           example: 4
         size:
           type: integer
           description: |
             Prefix size as a CIDR mask length (e.g. `24` for a /24).
-            The largest block you can ask for is a /24: a request for a
-            larger block (a smaller mask number) is a `422` stating the
-            cap.
+            Required together with `family` when the entry states no
+            `cidr`. The largest block you can ask for is a /24: a
+            request for a larger block (a smaller mask number) is a
+            `422` stating the cap.
           example: 24
 
     NetworkAddressingRequest:
@@ -3174,7 +3452,9 @@ components:
         - `source: provider` (default): i3D.net supplies the address
           space. Public networks MUST state `prefixes[]` explicitly (no
           default public prefix); private networks may omit `prefixes[]`
-          and receive exactly one derived /24.
+          and receive exactly one derived /24. A private entry may state
+          `cidr` instead of `family` + `size` (see `InitialPrefixRequest`);
+          i3D.net selects the subnet for every entry without one.
         - `source: none`: no provider addressing - zero prefixes are
           provisioned (private only; `public` with `source: none` is a
           `422` naming the contradiction). A non-empty `prefixes[]`
@@ -3251,22 +3531,15 @@ components:
           minLength: 4
           maxLength: 20
           description: |
-            Contract every bootstrap prefix is billed under; the
-            network itself exposes none. REQUIRED when `retention` resolves
-            to `persistent` and `addressing.source` to `provider`; FORBIDDEN
-            with `addressing.source: none` or a resolved `ephemeral`
-            retention; each refusal is a `422` naming `contractId`. Not in
-            `required` because the rule is conditional. Matched exactly
-            against the pattern; only the format is verified, never
-            existence. The contract must authorise the type of every
-            declared prefix for your account, or the create is a `409`
-            E020031. Part of the recorded create request (a different
-            value on replay is a `409` E020003); a network recorded before
-            this field existed accepts any value on replay.
+            Billing attribution only; never quota selection. New persistent intent
+            requires an explicitly selected registered owned contract (E020049);
+            absence is 422 E020001. Original identical retries retain their recorded
+            billing contract without reselecting it. Format is verbatim.
           example: "PD-2026-000481"
 
     NetworkPatchRequest:
       type: object
+      additionalProperties: false
       description: |
         JSON Merge Patch body for `PATCH /networks/{networkId}`. The only
         patchable member is `name`: a string sets it, `null` clears it, an
@@ -3286,6 +3559,28 @@ components:
             same documented `maxLength` deviation as
             `NetworkCreateRequest.name`.
           example: "db tier"
+
+    PrefixPatchRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        JSON Merge Patch body for `PATCH /prefixes/{prefixId}`. The only
+        patchable member is `customerDescription`: a string sets it,
+        `null` clears it, an omitted member leaves it unchanged, and `{}`
+        is a no-op. Any other member - including `description`, which is
+        maintained by i3D.net - is a `422` (code E020001) naming it.
+      properties:
+        customerDescription:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: |
+            New description of the prefix, or `null` to clear it. The API
+            trims the value; a present-but-empty (after trim) value, a
+            value longer than 200 characters (Unicode code points), or a
+            value containing control characters (newline, tab, ...) is a
+            `422` (code E020001).
+          example: "edge pool, EU traffic"
 
     NetworkState:
       type: string
@@ -3498,7 +3793,15 @@ components:
             `PREFIX_NETWORK_CONFIGURATION_FAILED`,
             `PREFIX_ADDRESSING_FAILED`, `PREFIX_TEARDOWN_FAILED`,
             `VLAN_NETWORK_CONFIGURATION_FAILED`,
-            `PREFIX_NOT_PROVISIONED`. NOT a closed set: new codes may be
+            `PREFIX_NOT_PROVISIONED`, `PREFIX_CIDR_IN_USE`,
+            `PREFIX_NO_FREE_SUBNET`, `PREFIX_CAPACITY_EXCEEDED`.
+            `PREFIX_CIDR_IN_USE`: the requested private subnet is already
+            in use in your address space, choose a different `cidr`.
+            `PREFIX_NO_FREE_SUBNET`: no free private subnet of the
+            requested size is available, state a `cidr` or free a prefix.
+            `PREFIX_CAPACITY_EXCEEDED`: the network already holds the
+            maximum usable addresses for that address family, add the
+            prefix to a new network. NOT a closed set: new codes may be
             added, so treat an unknown one as a generic failure.
           example: "NETWORK_BOOTSTRAP_FAILED"
         message:
@@ -3612,18 +3915,27 @@ components:
       type: object
       description: |
         Declarative create request for a day-2 prefix in an existing
-        network. The prefix shape is `family` + `size`: the concrete
-        subnet is selected by i3D.net during provisioning -
-        customers never pick the subnet. A request naming an
-        explicit `cidr` is a `422` with guidance; an explicit-cidr
-        capability, if ever ratified, is a separate contract change.
+        network. The request states exactly ONE of two forms:
+        - `cidr`: the exact subnet you want, e.g. `10.20.31.0/24`.
+          Private networks only: IPv4 inside 10.0.0.0/8, 172.16.0.0/12
+          or 192.168.0.0/16 with a mask from /24 to /29; IPv6 inside
+          fd00::/8 with a mask from /48 to /64. State the network
+          address: a value with host bits set is a `422` that names the
+          network address, it is never rewritten. On a `public` network
+          a `cidr` is a `422`: i3D.net selects public subnets.
+        - `family` + `size`: i3D.net selects the subnet for you.
+        A `cidr` together with `family` or `size`, a request with
+        neither form, or only one of `family` and `size` is a `422`
+        (code E020001) naming the one-of rule. Whether the subnet you
+        state is still free is not checked at acceptance: a subnet you
+        already hold settles the prefix as `failed` after `202`. `PUT`
+        never replaces an existing prefix.
         The request body is recorded: an identical replay of the same
         `PUT` is idempotent, while the same UUID with a different body
-        is a `409`.
+        (including a different `cidr`, or a `cidr` where the recorded
+        request stated `family` + `size`) is a `409`.
       required:
         - networkId
-        - family
-        - size
       properties:
         networkId:
           type: string
@@ -3633,16 +3945,26 @@ components:
             the network must already exist on your account (unknown →
             `422`; a network is never auto-created as a side effect).
           example: "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+        cidr:
+          type: string
+          description: |
+            Exact private subnet in CIDR notation (network address).
+            One-of with `family` + `size`; family and size are derived
+            from it and recorded.
+          example: "10.20.31.0/24"
         family:
           type: integer
           enum: [4, 6]
-          description: IP family (4 for IPv4, 6 for IPv6).
+          description: |
+            IP family (4 for IPv4, 6 for IPv6). Required together with
+            `size` when the request states no `cidr`.
           example: 4
         size:
           type: integer
           description: |
-            Prefix size as a CIDR mask length (e.g. `24` for a /24) -
-            i3D.net then selects the concrete subnet. The largest block
+            Prefix size as a CIDR mask length (e.g. `24` for a /24).
+            Required together with `family` when the request states no
+            `cidr`; i3D.net then selects the concrete subnet. The largest block
             you can ask for is a /24: a request for a larger block (a
             smaller mask number) is a `422` stating the cap.
           example: 24
@@ -3662,23 +3984,11 @@ components:
           minLength: 4
           maxLength: 20
           description: |
-            Contract the prefix is billed under. The rule is
-            decided on the RESOLVED `retention`, never on who is calling:
-            REQUIRED when it resolves to `persistent` (omitting it is a
-            `422` naming `contractId`), FORBIDDEN when it resolves to
-            `ephemeral` (a value is a `422` naming the contradiction).
-            Deliberately NOT listed in `required`: the rule is
-            conditional, which JSON Schema cannot express, so the
-            handler decides. Matched exactly against the pattern, with
-            no trimming and no case folding; a value outside it is a
-            `422` stating the pattern. The contract is never checked for
-            existence; it must authorise the prefix's type for your
-            account, or the create is a `409` E020031.
-            Recorded per prefix at create and immutable afterwards; a
-            replay with a different value is a `409` (E020003). The
-            value is an opaque identifier minted by billing operations
-            and mirrored verbatim, a documented deviation from the
-            lowercase-UUID rule for client-supplied identifiers.
+            Billing attribution only. New persistent intent requires an explicitly
+            selected registered owned contract (E020049), which may differ from the
+            parent contract; absence is 422 E020001. Both retentions consume one
+            parent capacity grant. Identical retries retain original attribution.
+            Format is verbatim.
           example: "PD-2026-000481"
 
     PrefixState:
@@ -3728,9 +4038,16 @@ components:
         size:
           type: integer
           description: |
-            Requested prefix size as a CIDR mask length; the concrete
-            subnet is selected by i3D.net during provisioning.
+            Requested prefix size as a CIDR mask length; derived from
+            `cidr` when you stated one.
           example: 24
+        cidr:
+          type: string
+          description: |
+            The private subnet you stated, as recorded (canonical CIDR
+            notation). OMITTED when you stated `family` + `size`: i3D.net
+            then selects the subnet during provisioning.
+          example: "10.20.31.0/24"
         retention:
           allOf:
             - $ref: '#/components/schemas/RetentionAttribute'
@@ -3740,7 +4057,7 @@ components:
           description: |
             Contract the prefix is billed under, as recorded at create.
             OMITTED, never `null`, when none was recorded:
-            the prefix resolved to `ephemeral`.
+            the prefix predates explicit contract allocation.
           example: "PD-2026-000481"
         createdAt:
           type: string
@@ -3839,8 +4156,9 @@ components:
           type: string
           description: |
             The prefix in CIDR notation. Sent as an EMPTY string (not
-            omitted) while the prefix is still `provisioning`: i3D.net
-            has not selected the concrete subnet yet.
+            omitted) while the prefix is still `provisioning`, unless
+            you stated a `cidr` on the create, in which case that value
+            is shown: i3D.net has not selected the concrete subnet yet.
           example: "10.0.0.0/24"
         family:
           type: integer
@@ -3853,14 +4171,16 @@ components:
             Resource state: `provisioning` and `failed` while a create
             is in flight or has failed, then the status of the live
             prefix - `active` in service, `reserved` held but not
-            in service, `container` a parent block, `deprecated` on its
-            way out. This field is NOT a closed set: tolerate values you
-            do not know.
+            in service, `deprecated` on its way out. Parent blocks
+            (`container`) are not exposed on this API. This field is
+            NOT a closed set: tolerate values you do not know.
           example: "active"
         customerDescription:
           type: string
           description: |
-            Customer-editable description. Omitted when never set.
+            Your description of the prefix, set through
+            `PATCH /prefixes/{prefixId}`. Omitted when never set or
+            cleared.
         fabric:
           type: string
           description: |
@@ -3971,8 +4291,8 @@ components:
     PrefixDetailResponse:
       description: |
         The prefix representation extended with availability
-        counters - served by `GET /prefixes/{prefixId}` only. The
-        counters follow the same definitions as the IP-address listing
+        counters - served by `GET /prefixes/{prefixId}` and returned by
+        `PATCH /prefixes/{prefixId}`. The counters follow the same definitions as the IP-address listing
         under the prefix.
       allOf:
         - $ref: '#/components/schemas/PrefixResponse'
@@ -4262,8 +4582,9 @@ components:
     UsageResponse:
       type: object
       description: |
-        Your current usage report. NOT paginated: it is a single report
-        of bounded size (resource types × fabrics) and is only useful as
+        The caller's current-state usage report. NOT paginated — written
+        exemption per shared-api-standards §8: a singleton report of
+        bounded cardinality (resource types × fabrics), only useful as
         one consistent snapshot (see the `GET /usage` description).
       required:
         - items
@@ -4272,8 +4593,7 @@ components:
         items:
           type: array
           description: |
-            The report rows (`[]` when you hold nothing and no
-            customer-specific limit is defined; never `null`).
+            Nonempty usage rows across all contracts; [] when nothing is held.
           items:
             $ref: '#/components/schemas/UsageItem'
         links:
@@ -4290,12 +4610,10 @@ components:
     UsageItem:
       type: object
       description: |
-        One usage row: counts and, when defined, the account-specific
-        limit for one resource type at one grain. The grain is the
-        `fabric` value: present = per-fabric row, absent = customer-wide
-        aggregate (used when the limit is defined customer-wide). A row
-        is emitted when you hold at least one resource at that
-        grain or a customer-specific limit is defined there.
+        Resource counts at one grain across all of the caller's contracts.
+        Fabric is present for a per-fabric row and absent for a customer-wide
+        aggregate. Only rows with held > 0 are emitted. These facts do not
+        describe admission availability or an unlimited allowance.
       required:
         - resourceType
         - held
@@ -4305,22 +4623,21 @@ components:
           type: string
           description: |
             The resource type this row reports on, named after the
-            corresponding collection on this API. Types whose usage
+            corresponding collection on this surface. Types whose usage
             is accounted per address family carry a `-v4` / `-v6`
-            suffix, because the ceilings differ per family: IPv4 usage is
-            counted in addresses, IPv6 usage is counted in prefixes. NOT
-            a closed set: tolerate values you do not know. Current values are
+            suffix, to distinguish their resource counts. NOT a closed enum (shared-api-standards §2):
+            clients MUST tolerate unknown values. Current values are
             `networks`, `prefixes-v4`, `prefixes-v6` and
             `ip-addresses-v4`. There is deliberately no
             `ip-addresses-v6` row: IPv6 usage is prefix-based, so an
-            IPv6 address allocated inside a prefix you already
-            holds consumes no ceiling. New resource types (e.g. routing
+            IPv6 address claim inside a prefix the caller already holds
+            consumes no ceiling. New resource types (e.g. routing
             domains) MAY appear additively.
           example: "networks"
         fabric:
           type: string
           description: |
-            Public fabric identifier (the same vocabulary as
+            Public fabric identifier (ADR-018 slug, same vocabulary as
             `GET /fabrics`) this row is scoped to. Omitted on a
             customer-wide aggregate row.
           example: "montreal-a"
@@ -4328,22 +4645,23 @@ components:
           type: integer
           minimum: 0
           description: |
-            Number of resources of this type you currently hold
-            at this grain. Counts exactly what the corresponding listing
-            returns for the same account and fabric,
-            restricted to the row's address family on family-suffixed
-            types (deleted resources never count) - the report and the
-            listings never diverge.
+            Number of resources held at this grain. Networks exclude all
+            failed and deleted rows, independent of VLAN presence. Other
+            resource types follow their listing selection for the same tenant
+            and fabric, restricted to the row's address family where applicable.
+            Deleted resources never count.
           example: 3
         persistent:
           type: integer
           minimum: 0
           description: |
-            How many of `held` have `retention: persistent`. This is
-            the count quota enforcement charges against `limit` -
-            ephemeral resources are never counted - so with this field
-            the report is checkable: `remaining` is `limit` minus
-            `persistent`, floored at 0. Always at most `held`.
+            Persistent resources within held, using resource-specific
+            eligibility. Networks count explicit persistent retention among
+            nonfailed, nondeleted networks, independent of VLAN presence.
+            Prefixes exclude containers and include eligible persistent
+            accepted create intents. IPv4 addresses count role-less claims
+            inside persistent prefixes, excluding infrastructure-role
+            addresses. Always at most held.
           example: 3
         billable:
           type: integer
@@ -4357,42 +4675,6 @@ components:
             no prices and no currency. A new prefix can take a few
             minutes to appear here.
           example: 1
-        limit:
-          type: integer
-          minimum: 0
-          description: |
-            The limit that applies to your account for this row's
-            resource type and grain - a per-resource-type default or a
-            per-customer override, resolved by the quota module. Present
-            ONLY when such an account-specific limit is defined; absent
-            means no customer limit applies at this grain.
-            Platform-internal ceilings are never exposed here, and
-            neither is a ceiling that only authorises without capping a
-            count at this grain. This is the number quota enforcement
-            applies: at the grains this report carries (customer-wide
-            and per-fabric), a create rejected over-limit and this
-            report always agree. Ceilings enforced at finer grains (per
-            network) are not repeated here - the rejection itself names
-            them.
-
-            Never present on `prefixes-v4`, `prefixes-v6` and
-            `ip-addresses-v4` rows: those ceilings are held per contract,
-            and a row covers every contract you hold, so no single limit
-            is true for it. A per-contract ceiling is named by the
-            rejection it causes, never repeated here. The agreement rule
-            above holds trivially for these rows.
-          example: 5
-        remaining:
-          type: integer
-          minimum: 0
-          description: |
-            Headroom left under `limit`: the limit minus `persistent`
-            (the count quota enforcement charges against it), floored
-            at 0. Present exactly when `limit` is present.
-            `remaining: 0` with `persistent` above `limit` is possible
-            for resources that already existed when the limit was set
-            (counted, reported, never retroactively rejected).
-          example: 2
         subscription:
           $ref: '#/components/schemas/UsageSubscription'
 
