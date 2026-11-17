@@ -85,6 +85,9 @@ jobs:
       - env:
           TF_ACC: "1"
           TF_MAIN: ${{ matrix.terraform.main || 'false' }}
+          # Long-lived networks of the test account for TestAccFlexmetalServerNetworks (FM-5404).
+          I3D_TEST_NETWORK_PUBLIC_ID: ${{ vars.I3D_TEST_NETWORK_PUBLIC_ID }}
+          I3D_TEST_NETWORK_L2_ID: ${{ vars.I3D_TEST_NETWORK_L2_ID }}
           ACCTEST_TIMEOUT: "20m"
         run: go test -v -cover -timeout 20m ./internal/...
         timeout-minutes: 20
