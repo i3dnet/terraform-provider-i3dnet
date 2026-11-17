@@ -29,6 +29,22 @@ type CreateServerReq struct {
 	PostInstallScript string   `json:"postInstallScript"`
 	ContractID        string   `json:"contractId,omitempty"`
 	Overflow          bool     `json:"overflow"`
+	// Networks is left out when nil; an empty list is sent as [] (One API refuses it with a clear message).
+	Networks *[]NetworkReq `json:"networks,omitempty"`
+}
+
+// NetworkReq is a network to attach the server to (FM-5404). The network and its prefixes must already exist.
+type NetworkReq struct {
+	NetworkID string `json:"networkId"`
+	Tagged    bool   `json:"tagged"`
+	// IpAllocations is left out when nil (the default addresses in the network); [] means layer 2 only.
+	IpAllocations *[]IpAllocationReq `json:"ipAllocations,omitempty"`
+}
+
+// IpAllocationReq is one address in a network: either Family (4 or 6) or PrefixID.
+type IpAllocationReq struct {
+	Family   *int64  `json:"family,omitempty"`
+	PrefixID *string `json:"prefixId,omitempty"`
 }
 
 type PatchServerReq struct {
@@ -75,11 +91,39 @@ type Server struct {
 	IpAddresses []struct {
 		IpAddress string `json:"ipAddress"`
 	} `json:"ipAddresses"`
-	Tags        []string `json:"tags"`
-	CreatedAt   int64    `json:"createdAt"`
-	DeliveredAt int64    `json:"deliveredAt"`
-	ReleasedAt  int64    `json:"releasedAt"`
-	ContractID  string   `json:"contractId"`
+	Networks    []ServerNetwork `json:"networks"`
+	Tags        []string        `json:"tags"`
+	CreatedAt   int64           `json:"createdAt"`
+	DeliveredAt int64           `json:"deliveredAt"`
+	ReleasedAt  int64           `json:"releasedAt"`
+	ContractID  string          `json:"contractId"`
+}
+
+// ServerNetwork is a network the server is attached to, with its addresses in it (FM-5404). For a server created with
+// networks, in request order. One API sends null for details it doesn't know.
+type ServerNetwork struct {
+	NetworkID     string                    `json:"networkId"`
+	Tagged        bool                      `json:"tagged"`
+	Name          *string                   `json:"name"`
+	VlanID        *int64                    `json:"vlanId"`
+	Fabric        *string                   `json:"fabric"`
+	Connectivity  *string                   `json:"connectivity"`
+	IpAllocations []ServerNetworkAllocation `json:"ipAllocations"`
+}
+
+// ServerNetworkAllocation is one of the server's addresses in a network, in request order.
+type ServerNetworkAllocation struct {
+	ID      string              `json:"id"`
+	Family  int64               `json:"family"`
+	Address string              `json:"address"`
+	Prefix  ServerNetworkPrefix `json:"prefix"`
+}
+
+// ServerNetworkPrefix is the prefix an address is in. Gateway is nil when the prefix has none.
+type ServerNetworkPrefix struct {
+	ID      string  `json:"id"`
+	Cidr    string  `json:"cidr"`
+	Gateway *string `json:"gateway"`
 }
 
 type ErrorResponse struct {

@@ -58,7 +58,8 @@ jobs:
       I3D_FLEXVM_API_KEY: ${{ secrets.I3D_FLEXVM_API_KEY }}
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A real FlexMetal delivery alone can take 10+ minutes; leave room above go test's own -timeout 20m.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -85,6 +86,9 @@ jobs:
       - env:
           TF_ACC: "1"
           TF_MAIN: ${{ matrix.terraform.main || 'false' }}
+          # Long-lived networks of the test account for TestAccFlexmetalServerNetworks (FM-5404).
+          I3D_TEST_NETWORK_PUBLIC_ID: ${{ vars.I3D_TEST_NETWORK_PUBLIC_ID }}
+          I3D_TEST_NETWORK_L2_ID: ${{ vars.I3D_TEST_NETWORK_L2_ID }}
           ACCTEST_TIMEOUT: "20m"
         run: go test -v -cover -timeout 20m ./internal/...
         timeout-minutes: 20

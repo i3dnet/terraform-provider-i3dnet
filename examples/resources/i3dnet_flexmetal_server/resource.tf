@@ -120,3 +120,47 @@ resource "i3dnet_flexmetal_server" "my-custom-ipxe" {
     ipxeScriptUrl = "https://example.org/custom-ipxe.cfg"
   }
 }
+# Attach a server to networks you created with the Dedicated Networks API (https://docs.i3d.net/connectivity/dedicated-networks-api).
+# The networks and prefixes must already exist; refer to them with data sources. Changing `networks` replaces the server.
+data "i3dnet_network" "prod" {
+  id = "01928f3e-7c4a-7b1e-9d2f-3a5b6c7d8e9f"
+}
+
+data "i3dnet_network" "backend" {
+  id = "01984f2e-1c3a-7d21-9d10-3542f27adccf"
+}
+
+data "i3dnet_network_prefixes" "prod_ipv4" {
+  network_id = data.i3dnet_network.prod.id
+  family     = 4
+}
+
+resource "i3dnet_flexmetal_server" "my-networked-server" {
+  name          = "MyNetworkedServer"
+  location      = "EU: Rotterdam"
+  instance_type = "bm7.std.8"
+  os = {
+    slug = "ubuntu-2404-lts"
+  }
+  ssh_key = ["<YOUR-PUBLIC-SSH-KEY>"]
+  networks = [
+    {
+      # Untagged, with an IPv6 address and an IPv4 address from a chosen prefix
+      network_id = data.i3dnet_network.prod.id
+      ip_allocations = [
+        { family = 6 },
+        { prefix_id = data.i3dnet_network_prefixes.prod_ipv4.prefixes[0].id },
+      ]
+    },
+    {
+      # A tagged 802.1Q VLAN without addresses (layer 2 only)
+      network_id     = data.i3dnet_network.backend.id
+      tagged         = true
+      ip_allocations = []
+    },
+  ]
+}
+
+output "my_networked_server_ipv4" {
+  value = i3dnet_flexmetal_server.my-networked-server.networks[0].ip_allocations[1].address
+}
