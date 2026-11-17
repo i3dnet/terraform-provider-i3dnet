@@ -13,6 +13,9 @@ import (
 // created once in rotterdam-a with the Dedicated Networks API (contract I3DTFTEST) and passed in as
 // I3D_TEST_NETWORK_PUBLIC_ID and I3D_TEST_NETWORK_L2_ID; the prefix is looked up the way a customer would.
 func TestAccFlexmetalServerNetworks(t *testing.T) {
+	// Parallel, so this delivery runs alongside the other acceptance tests instead of adding to the job's 15 minutes.
+	t.Parallel()
+
 	if os.Getenv("TF_MAIN") != "true" {
 		t.Skip("To run this test, set TF_MAIN=true env var")
 	}
