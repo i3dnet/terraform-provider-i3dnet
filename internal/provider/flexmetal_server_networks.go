@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"strings"
 
 	"terraform-provider-i3dnet/internal/one_api"
 	"terraform-provider-i3dnet/internal/provider/resource_flexmetal_server"
@@ -268,4 +269,70 @@ func allocationValue(
 			"prefix":    prefix,
 		},
 	)
+}
+
+// expectsAddresses tells whether the requested networks give the server any address: the default network does, and
+// so does a network with default (left out) or explicit allocations. Only all-layer-2 networks give none.
+func expectsAddresses(networks types.List) bool {
+	if !known(networks) {
+		return true
+	}
+	for _, element := range networks.Elements() {
+		allocations := element.(resource_flexmetal_server.NetworksValue).IpAllocations
+		if !known(allocations) || len(allocations.Elements()) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// networksRefresh is the state on refresh, update and import: what One API reports, so drift shows (networks or
+// addresses added or removed, a changed tagged, family or prefix). Only the spelling of network_id and prefix_id
+// in prior is kept where it's the same ID in another case, so a configured spelling doesn't show as a diff.
+func networksRefresh(ctx context.Context, response []one_api.ServerNetwork, prior types.List) types.List {
+	var priorNetworks []resource_flexmetal_server.NetworksValue
+	if known(prior) {
+		for _, element := range prior.Elements() {
+			priorNetworks = append(priorNetworks, element.(resource_flexmetal_server.NetworksValue))
+		}
+	}
+
+	values := make([]attr.Value, 0, len(response))
+	for i := range response {
+		network := response[i]
+		var priorAllocations []resource_flexmetal_server.IpAllocationsValue
+		if i < len(priorNetworks) {
+			network.NetworkID = sameSpelling(priorNetworks[i].NetworkId, network.NetworkID)
+			if known(priorNetworks[i].IpAllocations) {
+				for _, a := range priorNetworks[i].IpAllocations.Elements() {
+					priorAllocations = append(priorAllocations, a.(resource_flexmetal_server.IpAllocationsValue))
+				}
+			}
+		}
+
+		allocations := make([]attr.Value, 0, len(network.IpAllocations))
+		for j := range network.IpAllocations {
+			allocation := allocationValue(ctx, &network.IpAllocations[j], nil).(resource_flexmetal_server.IpAllocationsValue)
+			if j < len(priorAllocations) {
+				allocation.PrefixId = types.StringValue(sameSpelling(priorAllocations[j].PrefixId, allocation.PrefixId.ValueString()))
+			}
+			allocations = append(allocations, allocation)
+		}
+
+		value := networkValue(ctx, &network, nil).(resource_flexmetal_server.NetworksValue)
+		value.IpAllocations = types.ListValueMust(ipAllocationsElementType(ctx), allocations)
+		values = append(values, value)
+	}
+
+	return types.ListValueMust(networksElementType(ctx), values)
+}
+
+// sameSpelling returns prior's spelling when it is the same ID as returned, ignoring case, else returned.
+func sameSpelling(prior types.String, returned string) string {
+	if known(prior) && strings.EqualFold(prior.ValueString(), returned) {
+		return prior.ValueString()
+	}
+
+	return returned
 }

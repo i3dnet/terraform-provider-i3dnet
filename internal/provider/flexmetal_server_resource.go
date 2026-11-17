@@ -261,6 +261,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	// what was configured rather than against that early, partial answer.
 	plannedNetworks := data.Networks
 	serverRespToPlan(ctx, serverResp.Server, &data)
+	data.Networks = networksRespToPlan(ctx, serverResp.Server.Networks, plannedNetworks)
 
 	// Add resource to TF state earlier to prevent dangling servers
 	// Example: timeout reached, but server is delivered later on
@@ -304,7 +305,8 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	if len(getServerResp.Server.IpAddresses) == 0 {
+	// A server with only layer 2 networks (every ip_allocations = []) has no addresses by design.
+	if len(getServerResp.Server.IpAddresses) == 0 && expectsAddresses(plannedNetworks) {
 		resp.Diagnostics.AddError(
 			"Server creation failed",
 			fmt.Sprintf("Server has no ipAddresses attached.\nServer id: %s", getServerResp.Server.Uuid),
@@ -312,8 +314,9 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	data.Networks = plannedNetworks
 	serverRespToPlan(ctx, getServerResp.Server, &data)
+	// Create keeps what the config set verbatim, so the state matches the plan.
+	data.Networks = networksRespToPlan(ctx, getServerResp.Server.Networks, plannedNetworks)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -364,7 +367,7 @@ func serverRespToPlan(ctx context.Context, server *one_api.Server, data *Flexmet
 		)
 	}
 
-	data.Networks = networksRespToPlan(ctx, server.Networks, data.Networks)
+	data.Networks = networksRefresh(ctx, server.Networks, data.Networks)
 
 	if len(server.Tags) > 0 {
 		var values []attr.Value

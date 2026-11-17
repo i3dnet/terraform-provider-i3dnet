@@ -60,6 +60,12 @@ func (f *fakeOneAPI) handle(w http.ResponseWriter, r *http.Request) {
 		}
 		created["status"], created["networks"], created["ipAddresses"] = "created", []any{}, []any{}
 		_ = json.NewEncoder(w).Encode([]any{created})
+	case r.Method == http.MethodPost && strings.Contains(path, "/tag/"):
+		parts := strings.Split(path, "/")
+		uuid, tag := parts[len(parts)-3], parts[len(parts)-1]
+		server := f.servers[uuid]
+		server["tags"] = append(server["tags"].([]any), tag)
+		_ = json.NewEncoder(w).Encode([]any{server})
 	case strings.Contains(path, "/flexMetal/servers/"):
 		uuid := path[strings.LastIndex(path, "/")+1:]
 		server, ok := f.servers[uuid]
@@ -243,6 +249,51 @@ func TestServerNetworksThroughTheProvider(t *testing.T) {
 	if got := api.lastRequestNetworks(t); got != want {
 		t.Errorf("last create request networks =\n%s\nwant\n%s", got, want)
 	}
+}
+
+// A change outside networks updates the server in place: the computed values inside networks must not make the
+// replace check see a difference.
+func TestServerNetworksDoNotReplaceOnAnUnrelatedChange(t *testing.T) {
+	_, srv := newFakeOneAPI(t)
+	const name = "i3dnet_flexmetal_server.web"
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{Config: serverConfig(srv.URL, configuredNetworks)},
+			{
+				Config: serverConfig(srv.URL, configuredNetworks+`  tags = ["web"]`+"\n"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(name, plancheck.ResourceActionUpdate)},
+				},
+			},
+		},
+	})
+}
+
+// A server with only layer 2 networks has no addresses at all, and is delivered.
+func TestServerWithOnlyLayer2NetworksIsDelivered(t *testing.T) {
+	_, srv := newFakeOneAPI(t)
+	const name = "i3dnet_flexmetal_server.web"
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{{
+			Config: serverConfig(srv.URL, `
+  networks = [
+    {
+      network_id     = "`+netBackend+`"
+      ip_allocations = []
+    },
+  ]
+`),
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr(name, "status", "delivered"),
+				resource.TestCheckResourceAttr(name, "networks.0.ip_allocations.#", "0"),
+				resource.TestCheckResourceAttr(name, "ip_addresses.#", "0"),
+			),
+		}},
+	})
 }
 
 // A server created without networks gets them from the response, with no diff on the next plan.

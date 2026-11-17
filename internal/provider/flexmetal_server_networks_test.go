@@ -265,3 +265,50 @@ func assertString(t *testing.T, name string, got types.String, want string) {
 		t.Errorf("%s = %q, want %q", name, got.ValueString(), want)
 	}
 }
+
+// On refresh, state is what One API reports, so drift shows: added and removed networks, and changed values.
+func TestNetworksRefreshFollowsTheResponse(t *testing.T) {
+	ctx := context.Background()
+	prior := networksRespToPlan(ctx, responseNetworks(), types.ListNull(networksElementType(ctx)))
+
+	// one network fewer, and the remaining one now tagged, with another prefix
+	resp := responseNetworks()[:1]
+	resp[0].Tagged = true
+	resp[0].IpAllocations = resp[0].IpAllocations[:1]
+	resp[0].IpAllocations[0].Prefix.ID = prefixV6
+	resp[0].IpAllocations[0].Family = 6
+
+	networks := elements(t, networksRefresh(ctx, resp, prior))
+
+	if len(networks) != 1 || !networks[0].Tagged.ValueBool() {
+		t.Fatalf("networks = %+v, want the one tagged network the response has", networks)
+	}
+	allocations := allocationElements(t, networks[0].IpAllocations)
+	if len(allocations) != 1 || allocations[0].Family.ValueInt64() != 6 {
+		t.Fatalf("allocations = %+v, want the one IPv6 allocation the response has", allocations)
+	}
+	assertString(t, "prefix_id", allocations[0].PrefixId, prefixV6)
+
+	added := append(responseNetworks(), responseNetworks()[1])
+	if got := len(elements(t, networksRefresh(ctx, added, prior))); got != 3 {
+		t.Errorf("networks = %d, want the 3 the response has", got)
+	}
+}
+
+// The same ID in another case is not drift: the configured spelling stays, so the next plan has no diff.
+func TestNetworksRefreshKeepsTheSpellingOfTheSameIDs(t *testing.T) {
+	ctx := context.Background()
+	upperNetwork, upperPrefix := "0B6F3C2E-6A1D-4F2B-9A51-3C8E2F7D1A10", "A3C71E5F-8B24-4D6A-9E13-2F5B8C0D7E32"
+	prior := networksList(ctx,
+		planNetwork(ctx, upperNetwork, false, ipAllocationsList(ctx,
+			planAllocation(ctx, types.Int64Unknown(), types.StringValue(upperPrefix)),
+		)),
+	)
+
+	networks := elements(t, networksRefresh(ctx, responseNetworks()[:1], prior))
+
+	assertString(t, "network_id", networks[0].NetworkId, upperNetwork)
+	allocations := allocationElements(t, networks[0].IpAllocations)
+	assertString(t, "prefix_id", allocations[0].PrefixId, upperPrefix)
+	assertString(t, "prefix.id from the response", prefixOf(t, allocations[0]).Id, prefixV4)
+}
