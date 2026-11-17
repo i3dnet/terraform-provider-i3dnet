@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/oapi-codegen/nullable"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -816,7 +817,7 @@ type NetworkPatchRequest struct {
 	// The 100-character limit applies to the TRIMMED value, with the
 	// same documented `maxLength` deviation as
 	// `NetworkCreateRequest.name`.
-	Name *string `json:"name,omitempty"`
+	Name nullable.Nullable[string] `json:"name,omitempty"`
 }
 
 // NetworkResponse A network as i3D.net recorded it. Locations are public fabric
@@ -1294,7 +1295,7 @@ type PrefixPatchRequest struct {
 	// value longer than 200 characters (Unicode code points), or a
 	// value containing control characters (newline, tab, ...) is a
 	// `422` (code E020001).
-	CustomerDescription *string `json:"customerDescription,omitempty"`
+	CustomerDescription nullable.Nullable[string] `json:"customerDescription,omitempty"`
 }
 
 // PrefixResponse A prefix on your account: the location is the public fabric
