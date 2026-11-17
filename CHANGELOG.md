@@ -1,6 +1,107 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Chore
+- **ci:** test Terraform 1.0 and the three latest minor versions ([#139](https://github.com/i3dnet/terraform-provider-i3dnet/issues/139))
+
+
+<a name="v1.11.0"></a>
+## [v1.11.0] - 2026-10-16
+### Features
+- **network:** i3dnet_network_ip_addresses data source (NISE-4308, PR 5) ([#137](https://github.com/i3dnet/terraform-provider-i3dnet/issues/137))
+- **network:** i3dnet_network_prefixes data source (NISE-4210, PR 4b) ([#136](https://github.com/i3dnet/terraform-provider-i3dnet/issues/136))
+- **network:** i3dnet_network and i3dnet_networks data sources (NISE-4210, PR 4a) ([#135](https://github.com/i3dnet/terraform-provider-i3dnet/issues/135))
+- **network:** generated Network API client and i3dnet_fabrics data source (NISE-4210, PR 1/4) ([#132](https://github.com/i3dnet/terraform-provider-i3dnet/issues/132))
+
+
+<a name="v1.10.6"></a>
+## [v1.10.6] - 2026-09-09
+### Bug Fixes
+- **flexmetal-server:** retry a refresh whose GET never completed ([#131](https://github.com/i3dnet/terraform-provider-i3dnet/issues/131))
+
+
+<a name="v1.10.5"></a>
+## [v1.10.5] - 2026-09-03
+### Bug Fixes
+- **flexmetal-server:** populate name, location, instance_type and os on import [FM-4961] ([#128](https://github.com/i3dnet/terraform-provider-i3dnet/issues/128))
+
+### Features
+- **flexmetal-server:** ramp the delivery poll interval down to 15s ([#129](https://github.com/i3dnet/terraform-provider-i3dnet/issues/129))
+
+
+<a name="v1.10.4"></a>
+## [v1.10.4] - 2026-09-02
+### Bug Fixes
+- **flexmetal-server:** adopt servers whose create request timed out [FM-4949] ([#118](https://github.com/i3dnet/terraform-provider-i3dnet/issues/118))
+
+### Chore
+- **ci:** move to golangci-lint v2 and bump the action majors ([#120](https://github.com/i3dnet/terraform-provider-i3dnet/issues/120))
+- **deps:** clear the security alerts and bump the plugin SDK ([#119](https://github.com/i3dnet/terraform-provider-i3dnet/issues/119))
+
+
+<a name="v1.10.3"></a>
+## [v1.10.3] - 2026-07-16
+### Bug Fixes
+- **flexvm-vm:** keep omitted description null when API returns "" ([#115](https://github.com/i3dnet/terraform-provider-i3dnet/issues/115))
+
+
+<a name="v1.10.2"></a>
+## [v1.10.2] - 2026-07-15
+### Bug Fixes
+- **flexvm-node:** bump default create timeout to 45m ([#114](https://github.com/i3dnet/terraform-provider-i3dnet/issues/114))
+
+
+<a name="v1.10.1"></a>
+## [v1.10.1] - 2026-06-29
+### Features
+- **flexvm-vm:** support tags on VM create ([#110](https://github.com/i3dnet/terraform-provider-i3dnet/issues/110))
+
+
+<a name="v1.10.0"></a>
+## [v1.10.0] - 2026-06-29
+### Features
+- add `user_data_file` field, to add custom cloud-init configuration ([#104](https://github.com/i3dnet/terraform-provider-i3dnet/issues/104))
+- **flexvm-cloud:** add flexvm_cloud resource ([#106](https://github.com/i3dnet/terraform-provider-i3dnet/issues/106))
+- **flexvm-node:** add flexvm_node resource ([#109](https://github.com/i3dnet/terraform-provider-i3dnet/issues/109))
+- **flexvm-node:** add `flexvm_node` and `flexvm_nodes` data sources ([#108](https://github.com/i3dnet/terraform-provider-i3dnet/issues/108))
+- **flexvm_cloud:** add cloud as a data source ([#107](https://github.com/i3dnet/terraform-provider-i3dnet/issues/107))
+
+
+<a name="v1.9.1"></a>
+## [v1.9.1] - 2026-05-19
+### Bug Fixes
+- **flexvm-vm:** do not remove "failed" state + handle delete responses properly ([#103](https://github.com/i3dnet/terraform-provider-i3dnet/issues/103))
+
+
+<a name="v1.9.0"></a>
+## [v1.9.0] - 2026-04-13
+### Features
+- **flexvm:** add flex vm resource ([#100](https://github.com/i3dnet/terraform-provider-i3dnet/issues/100))
+
+
+<a name="v1.8.1"></a>
+## [v1.8.1] - 2026-02-11
+### Bug Fixes
+- updated documentation links ([#91](https://github.com/i3dnet/terraform-provider-i3dnet/issues/91))
+
+### Chore
+- goreleaser - update deprecated "archive.format" to "archive.formats". ([#90](https://github.com/i3dnet/terraform-provider-i3dnet/issues/90))
+
+
+<a name="v1.8.0"></a>
+## [v1.8.0] - 2026-02-10
+### Chore
+- bump dependency versions. ([#84](https://github.com/i3dnet/terraform-provider-i3dnet/issues/84))
+
+### Features
+- support for custom-ipxe requests. ([#86](https://github.com/i3dnet/terraform-provider-i3dnet/issues/86))
+
+
+<a name="v1.7.1"></a>
+## [v1.7.1] - 2025-10-31
+### Chore
+- Updated documentation and fixed broken links. Updated dependencies. ([#82](https://github.com/i3dnet/terraform-provider-i3dnet/issues/82))
+
 
 <a name="v1.7.0"></a>
 ## [v1.7.0] - 2025-06-30
@@ -203,7 +304,20 @@
 - Add initial code for flexmetal provider
 
 
-[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.11.0...HEAD
+[v1.11.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.6...v1.11.0
+[v1.10.6]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.5...v1.10.6
+[v1.10.5]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.4...v1.10.5
+[v1.10.4]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.3...v1.10.4
+[v1.10.3]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.2...v1.10.3
+[v1.10.2]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.1...v1.10.2
+[v1.10.1]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.0...v1.10.1
+[v1.10.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.9.1...v1.10.0
+[v1.9.1]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.9.0...v1.9.1
+[v1.9.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.8.1...v1.9.0
+[v1.8.1]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.8.0...v1.8.1
+[v1.8.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.7.1...v1.8.0
+[v1.7.1]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.7.0...v1.7.1
 [v1.7.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.6.3...v1.7.0
 [v1.6.3]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.6.2...v1.6.3
 [v1.6.2]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.6.1...v1.6.2
