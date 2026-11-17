@@ -160,6 +160,128 @@
 						}
 					},
 					{
+						"name": "networks",
+						"list_nested": {
+							"computed_optional_required": "computed_optional",
+							"nested_object": {
+								"attributes": [
+									{
+										"name": "ip_allocations",
+										"list_nested": {
+											"computed_optional_required": "computed_optional",
+											"nested_object": {
+												"attributes": [
+													{
+														"name": "family",
+														"int64": {
+															"computed_optional_required": "computed_optional",
+															"description": "4 or 6."
+														}
+													},
+													{
+														"name": "prefix_id",
+														"string": {
+															"computed_optional_required": "computed_optional",
+															"description": "ID of a prefix in the network."
+														}
+													},
+													{
+														"name": "address",
+														"string": {
+															"computed_optional_required": "computed",
+															"description": "The address."
+														}
+													},
+													{
+														"name": "id",
+														"string": {
+															"computed_optional_required": "computed",
+															"description": "IP allocation ID."
+														}
+													},
+													{
+														"name": "prefix",
+														"single_nested": {
+															"computed_optional_required": "computed",
+															"attributes": [
+																{
+																	"name": "cidr",
+																	"string": {
+																		"computed_optional_required": "computed",
+																		"description": "Prefix in CIDR notation."
+																	}
+																},
+																{
+																	"name": "gateway",
+																	"string": {
+																		"computed_optional_required": "computed",
+																		"description": "Gateway of the prefix. Null when it has none, for example on a private network."
+																	}
+																},
+																{
+																	"name": "id",
+																	"string": {
+																		"computed_optional_required": "computed",
+																		"description": "Prefix ID."
+																	}
+																}
+															],
+															"description": "The prefix the address is in."
+														}
+													}
+												]
+											},
+											"description": "The addresses the server gets in this network. Omit it for the default addresses; send [] for none (layer 2 only). At most 8 across all networks."
+										}
+									},
+									{
+										"name": "network_id",
+										"string": {
+											"computed_optional_required": "required",
+											"description": "ID of a network you created with the Dedicated Networks API, in the same fabric as the server's location. Each network at most once."
+										}
+									},
+									{
+										"name": "tagged",
+										"bool": {
+											"computed_optional_required": "computed_optional",
+											"description": "false (default): the network is untagged on the server's interface; true: a tagged 802.1Q VLAN. At most one network may be untagged."
+										}
+									},
+									{
+										"name": "connectivity",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "public or private. Null when unknown."
+										}
+									},
+									{
+										"name": "fabric",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "Fabric of the network. Null when unknown."
+										}
+									},
+									{
+										"name": "name",
+										"string": {
+											"computed_optional_required": "computed",
+											"description": "Network name. Null when unknown."
+										}
+									},
+									{
+										"name": "vlan_id",
+										"int64": {
+											"computed_optional_required": "computed",
+											"description": "VLAN ID. Null when unknown."
+										}
+									}
+								]
+							},
+							"description": "The networks to attach the server to, in this order: untagged or as tagged VLANs, with addresses from the prefixes you choose, or without addresses. Omit it for the default network and addresses. Create the networks and prefixes first with the Dedicated Networks API."
+						}
+					},
+					{
 						"name": "os",
 						"single_nested": {
 							"computed_optional_required": "required",

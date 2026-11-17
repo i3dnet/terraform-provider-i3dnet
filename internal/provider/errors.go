@@ -23,7 +23,12 @@ func AddErrorResponseToDiags(message string, resp *one_api.ErrorResponse, diags 
 	}
 
 	for _, v := range resp.Errors {
-		details += fmt.Sprintf("Message: %s\n", strings.TrimRight(firstUpper(v.Message), ", "))
+		message := strings.TrimRight(firstUpper(v.Message), ", ")
+		if v.Property != "" {
+			// e.g. which part of networks One API refused (FM-5404)
+			message = v.Property + ": " + message
+		}
+		details += fmt.Sprintf("Message: %s\n", message)
 	}
 
 	diags.AddError(summary, strings.TrimRight(details, "\n"))

@@ -68,6 +68,116 @@ func FlexmetalServerResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Server name or hostname, depending on the chosen OS. E.g. Talos requires a hostname but regular Linux OSs work with either.",
 				MarkdownDescription: "Server name or hostname, depending on the chosen OS. E.g. Talos requires a hostname but regular Linux OSs work with either.",
 			},
+			"networks": schema.ListNestedAttribute{
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"connectivity": schema.StringAttribute{
+							Computed:            true,
+							Description:         "public or private. Null when unknown.",
+							MarkdownDescription: "public or private. Null when unknown.",
+						},
+						"fabric": schema.StringAttribute{
+							Computed:            true,
+							Description:         "Fabric of the network. Null when unknown.",
+							MarkdownDescription: "Fabric of the network. Null when unknown.",
+						},
+						"ip_allocations": schema.ListNestedAttribute{
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"address": schema.StringAttribute{
+										Computed:            true,
+										Description:         "The address.",
+										MarkdownDescription: "The address.",
+									},
+									"family": schema.Int64Attribute{
+										Optional:            true,
+										Computed:            true,
+										Description:         "4 or 6.",
+										MarkdownDescription: "4 or 6.",
+									},
+									"id": schema.StringAttribute{
+										Computed:            true,
+										Description:         "IP allocation ID.",
+										MarkdownDescription: "IP allocation ID.",
+									},
+									"prefix": schema.SingleNestedAttribute{
+										Attributes: map[string]schema.Attribute{
+											"cidr": schema.StringAttribute{
+												Computed:            true,
+												Description:         "Prefix in CIDR notation.",
+												MarkdownDescription: "Prefix in CIDR notation.",
+											},
+											"gateway": schema.StringAttribute{
+												Computed:            true,
+												Description:         "Gateway of the prefix. Null when it has none, for example on a private network.",
+												MarkdownDescription: "Gateway of the prefix. Null when it has none, for example on a private network.",
+											},
+											"id": schema.StringAttribute{
+												Computed:            true,
+												Description:         "Prefix ID.",
+												MarkdownDescription: "Prefix ID.",
+											},
+										},
+										CustomType: PrefixType{
+											ObjectType: types.ObjectType{
+												AttrTypes: PrefixValue{}.AttributeTypes(ctx),
+											},
+										},
+										Computed:            true,
+										Description:         "The prefix the address is in.",
+										MarkdownDescription: "The prefix the address is in.",
+									},
+									"prefix_id": schema.StringAttribute{
+										Optional:            true,
+										Computed:            true,
+										Description:         "ID of a prefix in the network.",
+										MarkdownDescription: "ID of a prefix in the network.",
+									},
+								},
+								CustomType: IpAllocationsType{
+									ObjectType: types.ObjectType{
+										AttrTypes: IpAllocationsValue{}.AttributeTypes(ctx),
+									},
+								},
+							},
+							Optional:            true,
+							Computed:            true,
+							Description:         "The addresses the server gets in this network. Omit it for the default addresses; send [] for none (layer 2 only). At most 8 across all networks.",
+							MarkdownDescription: "The addresses the server gets in this network. Omit it for the default addresses; send [] for none (layer 2 only). At most 8 across all networks.",
+						},
+						"name": schema.StringAttribute{
+							Computed:            true,
+							Description:         "Network name. Null when unknown.",
+							MarkdownDescription: "Network name. Null when unknown.",
+						},
+						"network_id": schema.StringAttribute{
+							Required:            true,
+							Description:         "ID of a network you created with the Dedicated Networks API, in the same fabric as the server's location. Each network at most once.",
+							MarkdownDescription: "ID of a network you created with the Dedicated Networks API, in the same fabric as the server's location. Each network at most once.",
+						},
+						"tagged": schema.BoolAttribute{
+							Optional:            true,
+							Computed:            true,
+							Description:         "false (default): the network is untagged on the server's interface; true: a tagged 802.1Q VLAN. At most one network may be untagged.",
+							MarkdownDescription: "false (default): the network is untagged on the server's interface; true: a tagged 802.1Q VLAN. At most one network may be untagged.",
+						},
+						"vlan_id": schema.Int64Attribute{
+							Computed:            true,
+							Description:         "VLAN ID. Null when unknown.",
+							MarkdownDescription: "VLAN ID. Null when unknown.",
+						},
+					},
+					CustomType: NetworksType{
+						ObjectType: types.ObjectType{
+							AttrTypes: NetworksValue{}.AttributeTypes(ctx),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "The networks to attach the server to, in this order: untagged or as tagged VLANs, with addresses from the prefixes you choose, or without addresses. Omit it for the default network and addresses. Create the networks and prefixes first with the Dedicated Networks API.",
+				MarkdownDescription: "The networks to attach the server to, in this order: untagged or as tagged VLANs, with addresses from the prefixes you choose, or without addresses. Omit it for the default network and addresses. Create the networks and prefixes first with the Dedicated Networks API.",
+			},
 			"os": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"ipxe_script_url": schema.StringAttribute{
@@ -203,6 +313,7 @@ type FlexmetalServerModel struct {
 	IpAddresses       types.List   `tfsdk:"ip_addresses"`
 	Location          types.String `tfsdk:"location"`
 	Name              types.String `tfsdk:"name"`
+	Networks          types.List   `tfsdk:"networks"`
 	Os                OsValue      `tfsdk:"os"`
 	Overflow          types.Bool   `tfsdk:"overflow"`
 	PostInstallScript types.String `tfsdk:"post_install_script"`
@@ -535,6 +646,1700 @@ func (v IpAddressesValue) Type(ctx context.Context) attr.Type {
 func (v IpAddressesValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 	return map[string]attr.Type{
 		"ip_address": basetypes.StringType{},
+	}
+}
+
+var _ basetypes.ObjectTypable = NetworksType{}
+
+type NetworksType struct {
+	basetypes.ObjectType
+}
+
+func (t NetworksType) Equal(o attr.Type) bool {
+	other, ok := o.(NetworksType)
+
+	if !ok {
+		return false
+	}
+
+	return t.ObjectType.Equal(other.ObjectType)
+}
+
+func (t NetworksType) String() string {
+	return "NetworksType"
+}
+
+func (t NetworksType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	attributes := in.Attributes()
+
+	connectivityAttribute, ok := attributes["connectivity"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`connectivity is missing from object`)
+
+		return nil, diags
+	}
+
+	connectivityVal, ok := connectivityAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`connectivity expected to be basetypes.StringValue, was: %T`, connectivityAttribute))
+	}
+
+	fabricAttribute, ok := attributes["fabric"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`fabric is missing from object`)
+
+		return nil, diags
+	}
+
+	fabricVal, ok := fabricAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`fabric expected to be basetypes.StringValue, was: %T`, fabricAttribute))
+	}
+
+	ipAllocationsAttribute, ok := attributes["ip_allocations"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`ip_allocations is missing from object`)
+
+		return nil, diags
+	}
+
+	ipAllocationsVal, ok := ipAllocationsAttribute.(basetypes.ListValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`ip_allocations expected to be basetypes.ListValue, was: %T`, ipAllocationsAttribute))
+	}
+
+	nameAttribute, ok := attributes["name"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`name is missing from object`)
+
+		return nil, diags
+	}
+
+	nameVal, ok := nameAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`name expected to be basetypes.StringValue, was: %T`, nameAttribute))
+	}
+
+	networkIdAttribute, ok := attributes["network_id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`network_id is missing from object`)
+
+		return nil, diags
+	}
+
+	networkIdVal, ok := networkIdAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`network_id expected to be basetypes.StringValue, was: %T`, networkIdAttribute))
+	}
+
+	taggedAttribute, ok := attributes["tagged"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`tagged is missing from object`)
+
+		return nil, diags
+	}
+
+	taggedVal, ok := taggedAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`tagged expected to be basetypes.BoolValue, was: %T`, taggedAttribute))
+	}
+
+	vlanIdAttribute, ok := attributes["vlan_id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`vlan_id is missing from object`)
+
+		return nil, diags
+	}
+
+	vlanIdVal, ok := vlanIdAttribute.(basetypes.Int64Value)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`vlan_id expected to be basetypes.Int64Value, was: %T`, vlanIdAttribute))
+	}
+
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	return NetworksValue{
+		Connectivity:  connectivityVal,
+		Fabric:        fabricVal,
+		IpAllocations: ipAllocationsVal,
+		Name:          nameVal,
+		NetworkId:     networkIdVal,
+		Tagged:        taggedVal,
+		VlanId:        vlanIdVal,
+		state:         attr.ValueStateKnown,
+	}, diags
+}
+
+func NewNetworksValueNull() NetworksValue {
+	return NetworksValue{
+		state: attr.ValueStateNull,
+	}
+}
+
+func NewNetworksValueUnknown() NetworksValue {
+	return NetworksValue{
+		state: attr.ValueStateUnknown,
+	}
+}
+
+func NewNetworksValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (NetworksValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	// Reference: https://github.com/hashicorp/terraform-plugin-framework/issues/521
+	ctx := context.Background()
+
+	for name, attributeType := range attributeTypes {
+		attribute, ok := attributes[name]
+
+		if !ok {
+			diags.AddError(
+				"Missing NetworksValue Attribute Value",
+				"While creating a NetworksValue value, a missing attribute value was detected. "+
+					"A NetworksValue must contain values for all attributes, even if null or unknown. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("NetworksValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
+			)
+
+			continue
+		}
+
+		if !attributeType.Equal(attribute.Type(ctx)) {
+			diags.AddError(
+				"Invalid NetworksValue Attribute Type",
+				"While creating a NetworksValue value, an invalid attribute value was detected. "+
+					"A NetworksValue must use a matching attribute type for the value. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("NetworksValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
+					fmt.Sprintf("NetworksValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
+			)
+		}
+	}
+
+	for name := range attributes {
+		_, ok := attributeTypes[name]
+
+		if !ok {
+			diags.AddError(
+				"Extra NetworksValue Attribute Value",
+				"While creating a NetworksValue value, an extra attribute value was detected. "+
+					"A NetworksValue must not contain values beyond the expected attribute types. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("Extra NetworksValue Attribute Name: %s", name),
+			)
+		}
+	}
+
+	if diags.HasError() {
+		return NewNetworksValueUnknown(), diags
+	}
+
+	connectivityAttribute, ok := attributes["connectivity"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`connectivity is missing from object`)
+
+		return NewNetworksValueUnknown(), diags
+	}
+
+	connectivityVal, ok := connectivityAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`connectivity expected to be basetypes.StringValue, was: %T`, connectivityAttribute))
+	}
+
+	fabricAttribute, ok := attributes["fabric"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`fabric is missing from object`)
+
+		return NewNetworksValueUnknown(), diags
+	}
+
+	fabricVal, ok := fabricAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`fabric expected to be basetypes.StringValue, was: %T`, fabricAttribute))
+	}
+
+	ipAllocationsAttribute, ok := attributes["ip_allocations"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`ip_allocations is missing from object`)
+
+		return NewNetworksValueUnknown(), diags
+	}
+
+	ipAllocationsVal, ok := ipAllocationsAttribute.(basetypes.ListValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`ip_allocations expected to be basetypes.ListValue, was: %T`, ipAllocationsAttribute))
+	}
+
+	nameAttribute, ok := attributes["name"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`name is missing from object`)
+
+		return NewNetworksValueUnknown(), diags
+	}
+
+	nameVal, ok := nameAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`name expected to be basetypes.StringValue, was: %T`, nameAttribute))
+	}
+
+	networkIdAttribute, ok := attributes["network_id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`network_id is missing from object`)
+
+		return NewNetworksValueUnknown(), diags
+	}
+
+	networkIdVal, ok := networkIdAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`network_id expected to be basetypes.StringValue, was: %T`, networkIdAttribute))
+	}
+
+	taggedAttribute, ok := attributes["tagged"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`tagged is missing from object`)
+
+		return NewNetworksValueUnknown(), diags
+	}
+
+	taggedVal, ok := taggedAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`tagged expected to be basetypes.BoolValue, was: %T`, taggedAttribute))
+	}
+
+	vlanIdAttribute, ok := attributes["vlan_id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`vlan_id is missing from object`)
+
+		return NewNetworksValueUnknown(), diags
+	}
+
+	vlanIdVal, ok := vlanIdAttribute.(basetypes.Int64Value)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`vlan_id expected to be basetypes.Int64Value, was: %T`, vlanIdAttribute))
+	}
+
+	if diags.HasError() {
+		return NewNetworksValueUnknown(), diags
+	}
+
+	return NetworksValue{
+		Connectivity:  connectivityVal,
+		Fabric:        fabricVal,
+		IpAllocations: ipAllocationsVal,
+		Name:          nameVal,
+		NetworkId:     networkIdVal,
+		Tagged:        taggedVal,
+		VlanId:        vlanIdVal,
+		state:         attr.ValueStateKnown,
+	}, diags
+}
+
+func NewNetworksValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) NetworksValue {
+	object, diags := NewNetworksValue(attributeTypes, attributes)
+
+	if diags.HasError() {
+		// This could potentially be added to the diag package.
+		diagsStrings := make([]string, 0, len(diags))
+
+		for _, diagnostic := range diags {
+			diagsStrings = append(diagsStrings, fmt.Sprintf(
+				"%s | %s | %s",
+				diagnostic.Severity(),
+				diagnostic.Summary(),
+				diagnostic.Detail()))
+		}
+
+		panic("NewNetworksValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
+	}
+
+	return object
+}
+
+func (t NetworksType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	if in.Type() == nil {
+		return NewNetworksValueNull(), nil
+	}
+
+	if !in.Type().Equal(t.TerraformType(ctx)) {
+		return nil, fmt.Errorf("expected %s, got %s", t.TerraformType(ctx), in.Type())
+	}
+
+	if !in.IsKnown() {
+		return NewNetworksValueUnknown(), nil
+	}
+
+	if in.IsNull() {
+		return NewNetworksValueNull(), nil
+	}
+
+	attributes := map[string]attr.Value{}
+
+	val := map[string]tftypes.Value{}
+
+	err := in.As(&val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range val {
+		a, err := t.AttrTypes[k].ValueFromTerraform(ctx, v)
+
+		if err != nil {
+			return nil, err
+		}
+
+		attributes[k] = a
+	}
+
+	return NewNetworksValueMust(NetworksValue{}.AttributeTypes(ctx), attributes), nil
+}
+
+func (t NetworksType) ValueType(ctx context.Context) attr.Value {
+	return NetworksValue{}
+}
+
+var _ basetypes.ObjectValuable = NetworksValue{}
+
+type NetworksValue struct {
+	Connectivity  basetypes.StringValue `tfsdk:"connectivity"`
+	Fabric        basetypes.StringValue `tfsdk:"fabric"`
+	IpAllocations basetypes.ListValue   `tfsdk:"ip_allocations"`
+	Name          basetypes.StringValue `tfsdk:"name"`
+	NetworkId     basetypes.StringValue `tfsdk:"network_id"`
+	Tagged        basetypes.BoolValue   `tfsdk:"tagged"`
+	VlanId        basetypes.Int64Value  `tfsdk:"vlan_id"`
+	state         attr.ValueState
+}
+
+func (v NetworksValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
+	attrTypes := make(map[string]tftypes.Type, 7)
+
+	var val tftypes.Value
+	var err error
+
+	attrTypes["connectivity"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["fabric"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["ip_allocations"] = basetypes.ListType{
+		ElemType: IpAllocationsValue{}.Type(ctx),
+	}.TerraformType(ctx)
+	attrTypes["name"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["network_id"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["tagged"] = basetypes.BoolType{}.TerraformType(ctx)
+	attrTypes["vlan_id"] = basetypes.Int64Type{}.TerraformType(ctx)
+
+	objectType := tftypes.Object{AttributeTypes: attrTypes}
+
+	switch v.state {
+	case attr.ValueStateKnown:
+		vals := make(map[string]tftypes.Value, 7)
+
+		val, err = v.Connectivity.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["connectivity"] = val
+
+		val, err = v.Fabric.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["fabric"] = val
+
+		val, err = v.IpAllocations.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["ip_allocations"] = val
+
+		val, err = v.Name.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["name"] = val
+
+		val, err = v.NetworkId.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["network_id"] = val
+
+		val, err = v.Tagged.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["tagged"] = val
+
+		val, err = v.VlanId.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["vlan_id"] = val
+
+		if err := tftypes.ValidateValue(objectType, vals); err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		return tftypes.NewValue(objectType, vals), nil
+	case attr.ValueStateNull:
+		return tftypes.NewValue(objectType, nil), nil
+	case attr.ValueStateUnknown:
+		return tftypes.NewValue(objectType, tftypes.UnknownValue), nil
+	default:
+		panic(fmt.Sprintf("unhandled Object state in ToTerraformValue: %s", v.state))
+	}
+}
+
+func (v NetworksValue) IsNull() bool {
+	return v.state == attr.ValueStateNull
+}
+
+func (v NetworksValue) IsUnknown() bool {
+	return v.state == attr.ValueStateUnknown
+}
+
+func (v NetworksValue) String() string {
+	return "NetworksValue"
+}
+
+func (v NetworksValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	ipAllocations := types.ListValueMust(
+		IpAllocationsType{
+			basetypes.ObjectType{
+				AttrTypes: IpAllocationsValue{}.AttributeTypes(ctx),
+			},
+		},
+		v.IpAllocations.Elements(),
+	)
+
+	if v.IpAllocations.IsNull() {
+		ipAllocations = types.ListNull(
+			IpAllocationsType{
+				basetypes.ObjectType{
+					AttrTypes: IpAllocationsValue{}.AttributeTypes(ctx),
+				},
+			},
+		)
+	}
+
+	if v.IpAllocations.IsUnknown() {
+		ipAllocations = types.ListUnknown(
+			IpAllocationsType{
+				basetypes.ObjectType{
+					AttrTypes: IpAllocationsValue{}.AttributeTypes(ctx),
+				},
+			},
+		)
+	}
+
+	attributeTypes := map[string]attr.Type{
+		"connectivity": basetypes.StringType{},
+		"fabric":       basetypes.StringType{},
+		"ip_allocations": basetypes.ListType{
+			ElemType: IpAllocationsValue{}.Type(ctx),
+		},
+		"name":       basetypes.StringType{},
+		"network_id": basetypes.StringType{},
+		"tagged":     basetypes.BoolType{},
+		"vlan_id":    basetypes.Int64Type{},
+	}
+
+	if v.IsNull() {
+		return types.ObjectNull(attributeTypes), diags
+	}
+
+	if v.IsUnknown() {
+		return types.ObjectUnknown(attributeTypes), diags
+	}
+
+	objVal, diags := types.ObjectValue(
+		attributeTypes,
+		map[string]attr.Value{
+			"connectivity":   v.Connectivity,
+			"fabric":         v.Fabric,
+			"ip_allocations": ipAllocations,
+			"name":           v.Name,
+			"network_id":     v.NetworkId,
+			"tagged":         v.Tagged,
+			"vlan_id":        v.VlanId,
+		})
+
+	return objVal, diags
+}
+
+func (v NetworksValue) Equal(o attr.Value) bool {
+	other, ok := o.(NetworksValue)
+
+	if !ok {
+		return false
+	}
+
+	if v.state != other.state {
+		return false
+	}
+
+	if v.state != attr.ValueStateKnown {
+		return true
+	}
+
+	if !v.Connectivity.Equal(other.Connectivity) {
+		return false
+	}
+
+	if !v.Fabric.Equal(other.Fabric) {
+		return false
+	}
+
+	if !v.IpAllocations.Equal(other.IpAllocations) {
+		return false
+	}
+
+	if !v.Name.Equal(other.Name) {
+		return false
+	}
+
+	if !v.NetworkId.Equal(other.NetworkId) {
+		return false
+	}
+
+	if !v.Tagged.Equal(other.Tagged) {
+		return false
+	}
+
+	if !v.VlanId.Equal(other.VlanId) {
+		return false
+	}
+
+	return true
+}
+
+func (v NetworksValue) Type(ctx context.Context) attr.Type {
+	return NetworksType{
+		basetypes.ObjectType{
+			AttrTypes: v.AttributeTypes(ctx),
+		},
+	}
+}
+
+func (v NetworksValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
+	return map[string]attr.Type{
+		"connectivity": basetypes.StringType{},
+		"fabric":       basetypes.StringType{},
+		"ip_allocations": basetypes.ListType{
+			ElemType: IpAllocationsValue{}.Type(ctx),
+		},
+		"name":       basetypes.StringType{},
+		"network_id": basetypes.StringType{},
+		"tagged":     basetypes.BoolType{},
+		"vlan_id":    basetypes.Int64Type{},
+	}
+}
+
+var _ basetypes.ObjectTypable = IpAllocationsType{}
+
+type IpAllocationsType struct {
+	basetypes.ObjectType
+}
+
+func (t IpAllocationsType) Equal(o attr.Type) bool {
+	other, ok := o.(IpAllocationsType)
+
+	if !ok {
+		return false
+	}
+
+	return t.ObjectType.Equal(other.ObjectType)
+}
+
+func (t IpAllocationsType) String() string {
+	return "IpAllocationsType"
+}
+
+func (t IpAllocationsType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	attributes := in.Attributes()
+
+	addressAttribute, ok := attributes["address"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`address is missing from object`)
+
+		return nil, diags
+	}
+
+	addressVal, ok := addressAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`address expected to be basetypes.StringValue, was: %T`, addressAttribute))
+	}
+
+	familyAttribute, ok := attributes["family"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`family is missing from object`)
+
+		return nil, diags
+	}
+
+	familyVal, ok := familyAttribute.(basetypes.Int64Value)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`family expected to be basetypes.Int64Value, was: %T`, familyAttribute))
+	}
+
+	idAttribute, ok := attributes["id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`id is missing from object`)
+
+		return nil, diags
+	}
+
+	idVal, ok := idAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`id expected to be basetypes.StringValue, was: %T`, idAttribute))
+	}
+
+	prefixAttribute, ok := attributes["prefix"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`prefix is missing from object`)
+
+		return nil, diags
+	}
+
+	prefixVal, ok := prefixAttribute.(basetypes.ObjectValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`prefix expected to be basetypes.ObjectValue, was: %T`, prefixAttribute))
+	}
+
+	prefixIdAttribute, ok := attributes["prefix_id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`prefix_id is missing from object`)
+
+		return nil, diags
+	}
+
+	prefixIdVal, ok := prefixIdAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`prefix_id expected to be basetypes.StringValue, was: %T`, prefixIdAttribute))
+	}
+
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	return IpAllocationsValue{
+		Address:  addressVal,
+		Family:   familyVal,
+		Id:       idVal,
+		Prefix:   prefixVal,
+		PrefixId: prefixIdVal,
+		state:    attr.ValueStateKnown,
+	}, diags
+}
+
+func NewIpAllocationsValueNull() IpAllocationsValue {
+	return IpAllocationsValue{
+		state: attr.ValueStateNull,
+	}
+}
+
+func NewIpAllocationsValueUnknown() IpAllocationsValue {
+	return IpAllocationsValue{
+		state: attr.ValueStateUnknown,
+	}
+}
+
+func NewIpAllocationsValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (IpAllocationsValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	// Reference: https://github.com/hashicorp/terraform-plugin-framework/issues/521
+	ctx := context.Background()
+
+	for name, attributeType := range attributeTypes {
+		attribute, ok := attributes[name]
+
+		if !ok {
+			diags.AddError(
+				"Missing IpAllocationsValue Attribute Value",
+				"While creating a IpAllocationsValue value, a missing attribute value was detected. "+
+					"A IpAllocationsValue must contain values for all attributes, even if null or unknown. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("IpAllocationsValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
+			)
+
+			continue
+		}
+
+		if !attributeType.Equal(attribute.Type(ctx)) {
+			diags.AddError(
+				"Invalid IpAllocationsValue Attribute Type",
+				"While creating a IpAllocationsValue value, an invalid attribute value was detected. "+
+					"A IpAllocationsValue must use a matching attribute type for the value. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("IpAllocationsValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
+					fmt.Sprintf("IpAllocationsValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
+			)
+		}
+	}
+
+	for name := range attributes {
+		_, ok := attributeTypes[name]
+
+		if !ok {
+			diags.AddError(
+				"Extra IpAllocationsValue Attribute Value",
+				"While creating a IpAllocationsValue value, an extra attribute value was detected. "+
+					"A IpAllocationsValue must not contain values beyond the expected attribute types. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("Extra IpAllocationsValue Attribute Name: %s", name),
+			)
+		}
+	}
+
+	if diags.HasError() {
+		return NewIpAllocationsValueUnknown(), diags
+	}
+
+	addressAttribute, ok := attributes["address"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`address is missing from object`)
+
+		return NewIpAllocationsValueUnknown(), diags
+	}
+
+	addressVal, ok := addressAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`address expected to be basetypes.StringValue, was: %T`, addressAttribute))
+	}
+
+	familyAttribute, ok := attributes["family"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`family is missing from object`)
+
+		return NewIpAllocationsValueUnknown(), diags
+	}
+
+	familyVal, ok := familyAttribute.(basetypes.Int64Value)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`family expected to be basetypes.Int64Value, was: %T`, familyAttribute))
+	}
+
+	idAttribute, ok := attributes["id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`id is missing from object`)
+
+		return NewIpAllocationsValueUnknown(), diags
+	}
+
+	idVal, ok := idAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`id expected to be basetypes.StringValue, was: %T`, idAttribute))
+	}
+
+	prefixAttribute, ok := attributes["prefix"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`prefix is missing from object`)
+
+		return NewIpAllocationsValueUnknown(), diags
+	}
+
+	prefixVal, ok := prefixAttribute.(basetypes.ObjectValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`prefix expected to be basetypes.ObjectValue, was: %T`, prefixAttribute))
+	}
+
+	prefixIdAttribute, ok := attributes["prefix_id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`prefix_id is missing from object`)
+
+		return NewIpAllocationsValueUnknown(), diags
+	}
+
+	prefixIdVal, ok := prefixIdAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`prefix_id expected to be basetypes.StringValue, was: %T`, prefixIdAttribute))
+	}
+
+	if diags.HasError() {
+		return NewIpAllocationsValueUnknown(), diags
+	}
+
+	return IpAllocationsValue{
+		Address:  addressVal,
+		Family:   familyVal,
+		Id:       idVal,
+		Prefix:   prefixVal,
+		PrefixId: prefixIdVal,
+		state:    attr.ValueStateKnown,
+	}, diags
+}
+
+func NewIpAllocationsValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) IpAllocationsValue {
+	object, diags := NewIpAllocationsValue(attributeTypes, attributes)
+
+	if diags.HasError() {
+		// This could potentially be added to the diag package.
+		diagsStrings := make([]string, 0, len(diags))
+
+		for _, diagnostic := range diags {
+			diagsStrings = append(diagsStrings, fmt.Sprintf(
+				"%s | %s | %s",
+				diagnostic.Severity(),
+				diagnostic.Summary(),
+				diagnostic.Detail()))
+		}
+
+		panic("NewIpAllocationsValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
+	}
+
+	return object
+}
+
+func (t IpAllocationsType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	if in.Type() == nil {
+		return NewIpAllocationsValueNull(), nil
+	}
+
+	if !in.Type().Equal(t.TerraformType(ctx)) {
+		return nil, fmt.Errorf("expected %s, got %s", t.TerraformType(ctx), in.Type())
+	}
+
+	if !in.IsKnown() {
+		return NewIpAllocationsValueUnknown(), nil
+	}
+
+	if in.IsNull() {
+		return NewIpAllocationsValueNull(), nil
+	}
+
+	attributes := map[string]attr.Value{}
+
+	val := map[string]tftypes.Value{}
+
+	err := in.As(&val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range val {
+		a, err := t.AttrTypes[k].ValueFromTerraform(ctx, v)
+
+		if err != nil {
+			return nil, err
+		}
+
+		attributes[k] = a
+	}
+
+	return NewIpAllocationsValueMust(IpAllocationsValue{}.AttributeTypes(ctx), attributes), nil
+}
+
+func (t IpAllocationsType) ValueType(ctx context.Context) attr.Value {
+	return IpAllocationsValue{}
+}
+
+var _ basetypes.ObjectValuable = IpAllocationsValue{}
+
+type IpAllocationsValue struct {
+	Address  basetypes.StringValue `tfsdk:"address"`
+	Family   basetypes.Int64Value  `tfsdk:"family"`
+	Id       basetypes.StringValue `tfsdk:"id"`
+	Prefix   basetypes.ObjectValue `tfsdk:"prefix"`
+	PrefixId basetypes.StringValue `tfsdk:"prefix_id"`
+	state    attr.ValueState
+}
+
+func (v IpAllocationsValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
+	attrTypes := make(map[string]tftypes.Type, 5)
+
+	var val tftypes.Value
+	var err error
+
+	attrTypes["address"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["family"] = basetypes.Int64Type{}.TerraformType(ctx)
+	attrTypes["id"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["prefix"] = basetypes.ObjectType{
+		AttrTypes: PrefixValue{}.AttributeTypes(ctx),
+	}.TerraformType(ctx)
+	attrTypes["prefix_id"] = basetypes.StringType{}.TerraformType(ctx)
+
+	objectType := tftypes.Object{AttributeTypes: attrTypes}
+
+	switch v.state {
+	case attr.ValueStateKnown:
+		vals := make(map[string]tftypes.Value, 5)
+
+		val, err = v.Address.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["address"] = val
+
+		val, err = v.Family.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["family"] = val
+
+		val, err = v.Id.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["id"] = val
+
+		val, err = v.Prefix.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["prefix"] = val
+
+		val, err = v.PrefixId.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["prefix_id"] = val
+
+		if err := tftypes.ValidateValue(objectType, vals); err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		return tftypes.NewValue(objectType, vals), nil
+	case attr.ValueStateNull:
+		return tftypes.NewValue(objectType, nil), nil
+	case attr.ValueStateUnknown:
+		return tftypes.NewValue(objectType, tftypes.UnknownValue), nil
+	default:
+		panic(fmt.Sprintf("unhandled Object state in ToTerraformValue: %s", v.state))
+	}
+}
+
+func (v IpAllocationsValue) IsNull() bool {
+	return v.state == attr.ValueStateNull
+}
+
+func (v IpAllocationsValue) IsUnknown() bool {
+	return v.state == attr.ValueStateUnknown
+}
+
+func (v IpAllocationsValue) String() string {
+	return "IpAllocationsValue"
+}
+
+func (v IpAllocationsValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	var prefix basetypes.ObjectValue
+
+	if v.Prefix.IsNull() {
+		prefix = types.ObjectNull(
+			PrefixValue{}.AttributeTypes(ctx),
+		)
+	}
+
+	if v.Prefix.IsUnknown() {
+		prefix = types.ObjectUnknown(
+			PrefixValue{}.AttributeTypes(ctx),
+		)
+	}
+
+	if !v.Prefix.IsNull() && !v.Prefix.IsUnknown() {
+		prefix = types.ObjectValueMust(
+			PrefixValue{}.AttributeTypes(ctx),
+			v.Prefix.Attributes(),
+		)
+	}
+
+	attributeTypes := map[string]attr.Type{
+		"address": basetypes.StringType{},
+		"family":  basetypes.Int64Type{},
+		"id":      basetypes.StringType{},
+		"prefix": basetypes.ObjectType{
+			AttrTypes: PrefixValue{}.AttributeTypes(ctx),
+		},
+		"prefix_id": basetypes.StringType{},
+	}
+
+	if v.IsNull() {
+		return types.ObjectNull(attributeTypes), diags
+	}
+
+	if v.IsUnknown() {
+		return types.ObjectUnknown(attributeTypes), diags
+	}
+
+	objVal, diags := types.ObjectValue(
+		attributeTypes,
+		map[string]attr.Value{
+			"address":   v.Address,
+			"family":    v.Family,
+			"id":        v.Id,
+			"prefix":    prefix,
+			"prefix_id": v.PrefixId,
+		})
+
+	return objVal, diags
+}
+
+func (v IpAllocationsValue) Equal(o attr.Value) bool {
+	other, ok := o.(IpAllocationsValue)
+
+	if !ok {
+		return false
+	}
+
+	if v.state != other.state {
+		return false
+	}
+
+	if v.state != attr.ValueStateKnown {
+		return true
+	}
+
+	if !v.Address.Equal(other.Address) {
+		return false
+	}
+
+	if !v.Family.Equal(other.Family) {
+		return false
+	}
+
+	if !v.Id.Equal(other.Id) {
+		return false
+	}
+
+	if !v.Prefix.Equal(other.Prefix) {
+		return false
+	}
+
+	if !v.PrefixId.Equal(other.PrefixId) {
+		return false
+	}
+
+	return true
+}
+
+func (v IpAllocationsValue) Type(ctx context.Context) attr.Type {
+	return IpAllocationsType{
+		basetypes.ObjectType{
+			AttrTypes: v.AttributeTypes(ctx),
+		},
+	}
+}
+
+func (v IpAllocationsValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
+	return map[string]attr.Type{
+		"address": basetypes.StringType{},
+		"family":  basetypes.Int64Type{},
+		"id":      basetypes.StringType{},
+		"prefix": basetypes.ObjectType{
+			AttrTypes: PrefixValue{}.AttributeTypes(ctx),
+		},
+		"prefix_id": basetypes.StringType{},
+	}
+}
+
+var _ basetypes.ObjectTypable = PrefixType{}
+
+type PrefixType struct {
+	basetypes.ObjectType
+}
+
+func (t PrefixType) Equal(o attr.Type) bool {
+	other, ok := o.(PrefixType)
+
+	if !ok {
+		return false
+	}
+
+	return t.ObjectType.Equal(other.ObjectType)
+}
+
+func (t PrefixType) String() string {
+	return "PrefixType"
+}
+
+func (t PrefixType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	attributes := in.Attributes()
+
+	cidrAttribute, ok := attributes["cidr"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`cidr is missing from object`)
+
+		return nil, diags
+	}
+
+	cidrVal, ok := cidrAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`cidr expected to be basetypes.StringValue, was: %T`, cidrAttribute))
+	}
+
+	gatewayAttribute, ok := attributes["gateway"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`gateway is missing from object`)
+
+		return nil, diags
+	}
+
+	gatewayVal, ok := gatewayAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`gateway expected to be basetypes.StringValue, was: %T`, gatewayAttribute))
+	}
+
+	idAttribute, ok := attributes["id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`id is missing from object`)
+
+		return nil, diags
+	}
+
+	idVal, ok := idAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`id expected to be basetypes.StringValue, was: %T`, idAttribute))
+	}
+
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	return PrefixValue{
+		Cidr:    cidrVal,
+		Gateway: gatewayVal,
+		Id:      idVal,
+		state:   attr.ValueStateKnown,
+	}, diags
+}
+
+func NewPrefixValueNull() PrefixValue {
+	return PrefixValue{
+		state: attr.ValueStateNull,
+	}
+}
+
+func NewPrefixValueUnknown() PrefixValue {
+	return PrefixValue{
+		state: attr.ValueStateUnknown,
+	}
+}
+
+func NewPrefixValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (PrefixValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	// Reference: https://github.com/hashicorp/terraform-plugin-framework/issues/521
+	ctx := context.Background()
+
+	for name, attributeType := range attributeTypes {
+		attribute, ok := attributes[name]
+
+		if !ok {
+			diags.AddError(
+				"Missing PrefixValue Attribute Value",
+				"While creating a PrefixValue value, a missing attribute value was detected. "+
+					"A PrefixValue must contain values for all attributes, even if null or unknown. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("PrefixValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
+			)
+
+			continue
+		}
+
+		if !attributeType.Equal(attribute.Type(ctx)) {
+			diags.AddError(
+				"Invalid PrefixValue Attribute Type",
+				"While creating a PrefixValue value, an invalid attribute value was detected. "+
+					"A PrefixValue must use a matching attribute type for the value. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("PrefixValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
+					fmt.Sprintf("PrefixValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
+			)
+		}
+	}
+
+	for name := range attributes {
+		_, ok := attributeTypes[name]
+
+		if !ok {
+			diags.AddError(
+				"Extra PrefixValue Attribute Value",
+				"While creating a PrefixValue value, an extra attribute value was detected. "+
+					"A PrefixValue must not contain values beyond the expected attribute types. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("Extra PrefixValue Attribute Name: %s", name),
+			)
+		}
+	}
+
+	if diags.HasError() {
+		return NewPrefixValueUnknown(), diags
+	}
+
+	cidrAttribute, ok := attributes["cidr"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`cidr is missing from object`)
+
+		return NewPrefixValueUnknown(), diags
+	}
+
+	cidrVal, ok := cidrAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`cidr expected to be basetypes.StringValue, was: %T`, cidrAttribute))
+	}
+
+	gatewayAttribute, ok := attributes["gateway"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`gateway is missing from object`)
+
+		return NewPrefixValueUnknown(), diags
+	}
+
+	gatewayVal, ok := gatewayAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`gateway expected to be basetypes.StringValue, was: %T`, gatewayAttribute))
+	}
+
+	idAttribute, ok := attributes["id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`id is missing from object`)
+
+		return NewPrefixValueUnknown(), diags
+	}
+
+	idVal, ok := idAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`id expected to be basetypes.StringValue, was: %T`, idAttribute))
+	}
+
+	if diags.HasError() {
+		return NewPrefixValueUnknown(), diags
+	}
+
+	return PrefixValue{
+		Cidr:    cidrVal,
+		Gateway: gatewayVal,
+		Id:      idVal,
+		state:   attr.ValueStateKnown,
+	}, diags
+}
+
+func NewPrefixValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) PrefixValue {
+	object, diags := NewPrefixValue(attributeTypes, attributes)
+
+	if diags.HasError() {
+		// This could potentially be added to the diag package.
+		diagsStrings := make([]string, 0, len(diags))
+
+		for _, diagnostic := range diags {
+			diagsStrings = append(diagsStrings, fmt.Sprintf(
+				"%s | %s | %s",
+				diagnostic.Severity(),
+				diagnostic.Summary(),
+				diagnostic.Detail()))
+		}
+
+		panic("NewPrefixValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
+	}
+
+	return object
+}
+
+func (t PrefixType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	if in.Type() == nil {
+		return NewPrefixValueNull(), nil
+	}
+
+	if !in.Type().Equal(t.TerraformType(ctx)) {
+		return nil, fmt.Errorf("expected %s, got %s", t.TerraformType(ctx), in.Type())
+	}
+
+	if !in.IsKnown() {
+		return NewPrefixValueUnknown(), nil
+	}
+
+	if in.IsNull() {
+		return NewPrefixValueNull(), nil
+	}
+
+	attributes := map[string]attr.Value{}
+
+	val := map[string]tftypes.Value{}
+
+	err := in.As(&val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range val {
+		a, err := t.AttrTypes[k].ValueFromTerraform(ctx, v)
+
+		if err != nil {
+			return nil, err
+		}
+
+		attributes[k] = a
+	}
+
+	return NewPrefixValueMust(PrefixValue{}.AttributeTypes(ctx), attributes), nil
+}
+
+func (t PrefixType) ValueType(ctx context.Context) attr.Value {
+	return PrefixValue{}
+}
+
+var _ basetypes.ObjectValuable = PrefixValue{}
+
+type PrefixValue struct {
+	Cidr    basetypes.StringValue `tfsdk:"cidr"`
+	Gateway basetypes.StringValue `tfsdk:"gateway"`
+	Id      basetypes.StringValue `tfsdk:"id"`
+	state   attr.ValueState
+}
+
+func (v PrefixValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
+	attrTypes := make(map[string]tftypes.Type, 3)
+
+	var val tftypes.Value
+	var err error
+
+	attrTypes["cidr"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["gateway"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["id"] = basetypes.StringType{}.TerraformType(ctx)
+
+	objectType := tftypes.Object{AttributeTypes: attrTypes}
+
+	switch v.state {
+	case attr.ValueStateKnown:
+		vals := make(map[string]tftypes.Value, 3)
+
+		val, err = v.Cidr.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["cidr"] = val
+
+		val, err = v.Gateway.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["gateway"] = val
+
+		val, err = v.Id.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["id"] = val
+
+		if err := tftypes.ValidateValue(objectType, vals); err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		return tftypes.NewValue(objectType, vals), nil
+	case attr.ValueStateNull:
+		return tftypes.NewValue(objectType, nil), nil
+	case attr.ValueStateUnknown:
+		return tftypes.NewValue(objectType, tftypes.UnknownValue), nil
+	default:
+		panic(fmt.Sprintf("unhandled Object state in ToTerraformValue: %s", v.state))
+	}
+}
+
+func (v PrefixValue) IsNull() bool {
+	return v.state == attr.ValueStateNull
+}
+
+func (v PrefixValue) IsUnknown() bool {
+	return v.state == attr.ValueStateUnknown
+}
+
+func (v PrefixValue) String() string {
+	return "PrefixValue"
+}
+
+func (v PrefixValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	attributeTypes := map[string]attr.Type{
+		"cidr":    basetypes.StringType{},
+		"gateway": basetypes.StringType{},
+		"id":      basetypes.StringType{},
+	}
+
+	if v.IsNull() {
+		return types.ObjectNull(attributeTypes), diags
+	}
+
+	if v.IsUnknown() {
+		return types.ObjectUnknown(attributeTypes), diags
+	}
+
+	objVal, diags := types.ObjectValue(
+		attributeTypes,
+		map[string]attr.Value{
+			"cidr":    v.Cidr,
+			"gateway": v.Gateway,
+			"id":      v.Id,
+		})
+
+	return objVal, diags
+}
+
+func (v PrefixValue) Equal(o attr.Value) bool {
+	other, ok := o.(PrefixValue)
+
+	if !ok {
+		return false
+	}
+
+	if v.state != other.state {
+		return false
+	}
+
+	if v.state != attr.ValueStateKnown {
+		return true
+	}
+
+	if !v.Cidr.Equal(other.Cidr) {
+		return false
+	}
+
+	if !v.Gateway.Equal(other.Gateway) {
+		return false
+	}
+
+	if !v.Id.Equal(other.Id) {
+		return false
+	}
+
+	return true
+}
+
+func (v PrefixValue) Type(ctx context.Context) attr.Type {
+	return PrefixType{
+		basetypes.ObjectType{
+			AttrTypes: v.AttributeTypes(ctx),
+		},
+	}
+}
+
+func (v PrefixValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
+	return map[string]attr.Type{
+		"cidr":    basetypes.StringType{},
+		"gateway": basetypes.StringType{},
+		"id":      basetypes.StringType{},
 	}
 }
 
