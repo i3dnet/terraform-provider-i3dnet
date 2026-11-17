@@ -129,6 +129,8 @@ func (r *serverResource) Schema(ctx context.Context, req resource.SchemaRequest,
 		Create: true,
 	})
 
+	generatedSchema.Attributes["networks"] = networksSchema(generatedSchema.Attributes["networks"].(schema.ListNestedAttribute))
+
 	modifiers.UpdateComputed(generatedSchema, []string{"tags", "overflow", "contract_id"}, false)
 
 	modifiers.ApplyRequireReplace(generatedSchema, []string{"instance_type", "location", "post_install_script"})
@@ -190,6 +192,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		PostInstallScript: data.PostInstallScript.ValueString(),
 		ContractID:        data.ContractId.ValueString(),
 		Overflow:          data.Overflow.ValueBool(),
+		Networks:          networksToRequest(ctx, data.Networks),
 	}
 
 	createTimeout, diags := data.Timeouts.Create(ctx, 45*time.Minute)
@@ -254,6 +257,9 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	// The create response has no addresses yet. Keep the planned networks, so the delivered server is mapped against
+	// what was configured rather than against that early, partial answer.
+	plannedNetworks := data.Networks
 	serverRespToPlan(ctx, serverResp.Server, &data)
 
 	// Add resource to TF state earlier to prevent dangling servers
@@ -306,6 +312,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	data.Networks = plannedNetworks
 	serverRespToPlan(ctx, getServerResp.Server, &data)
 
 	// Save data into Terraform state
@@ -356,6 +363,8 @@ func serverRespToPlan(ctx context.Context, server *one_api.Server, data *Flexmet
 			values,
 		)
 	}
+
+	data.Networks = networksRespToPlan(ctx, server.Networks, data.Networks)
 
 	if len(server.Tags) > 0 {
 		var values []attr.Value
