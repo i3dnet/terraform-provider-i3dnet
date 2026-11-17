@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -49,8 +50,11 @@ resource "i3dnet_flexmetal_server" "my-talos" {
 					resource.TestCheckResourceAttrSet("i3dnet_flexmetal_server.my-talos", "uuid"),
 					resource.TestCheckResourceAttrSet("i3dnet_flexmetal_server.my-talos", "created_at"),
 					resource.TestCheckResourceAttrSet("i3dnet_flexmetal_server.my-talos", "delivered_at"),
-					// IPv4 and IPv6 expected, so we expect 2 addresses.
-					resource.TestCheckResourceAttr("i3dnet_flexmetal_server.my-talos", "ip_addresses.#", "2"),
+					// An IPv4 address, first. IPv6 is not checked: the test account also has a network of its own in
+					// this fabric (for TestAccFlexmetalServerNetworks), and the default path then takes IPv4 from it,
+					// without IPv6.
+					resource.TestMatchResourceAttr("i3dnet_flexmetal_server.my-talos", "ip_addresses.0.ip_address",
+						regexp.MustCompile(`^\d{1,3}(\.\d{1,3}){3}$`)),
 				),
 			},
 			{
