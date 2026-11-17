@@ -2,6 +2,12 @@
 ## [Unreleased]
 
 
+<a name="v1.12.1"></a>
+## [v1.12.1] - 2026-11-17
+### Chore
+- **deps:** apply pending dependabot updates ([#148](https://github.com/i3dnet/terraform-provider-i3dnet/issues/148))
+
+
 <a name="v1.12.0"></a>
 ## [v1.12.0] - 2026-11-17
 ### Chore
@@ -314,7 +320,8 @@
 - Add initial code for flexmetal provider
 
 
-[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.12.1...HEAD
+[v1.12.1]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.12.0...v1.12.1
 [v1.12.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.11.0...v1.12.0
 [v1.11.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.6...v1.11.0
 [v1.10.6]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.5...v1.10.6
