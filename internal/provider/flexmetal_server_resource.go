@@ -733,7 +733,11 @@ func (r *serverResource) waitForOperationFinish(ctx context.Context, serverID st
 }
 
 func (r *serverResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Retrieve import ID and save to id attribute
+	if err := errServerManagedByProduct(ctx, r.client.GetServer, req.ID); err != nil {
+		resp.Diagnostics.AddError("Server cannot be imported", err.Error())
+		return
+	}
+
 	resource.ImportStatePassthroughID(ctx, path.Root("uuid"), req, resp)
 }
 

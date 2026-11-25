@@ -97,6 +97,9 @@ type Server struct {
 	DeliveredAt int64           `json:"deliveredAt"`
 	ReleasedAt  int64           `json:"releasedAt"`
 	ContractID  string          `json:"contractId"`
+	// ManagedBy names the i3D product that manages the server (e.g. "flexvm"),
+	// or is empty when the customer manages it.
+	ManagedBy string `json:"managedBy"`
 }
 
 // ServerNetwork is a network the server is attached to, with its addresses in it (FM-5404). For a server created with
