@@ -58,8 +58,9 @@ jobs:
       I3D_FLEXVM_API_KEY: ${{ secrets.I3D_FLEXVM_API_KEY }}
     needs: build
     runs-on: ubuntu-latest
-    # A real FlexMetal delivery alone can take 10+ minutes; leave room above go test's own -timeout 20m.
-    timeout-minutes: 25
+    # A real FlexMetal delivery alone can take 10+ minutes; leave room above
+    # the test step's limit for setup and the log upload.
+    timeout-minutes: 28
     strategy:
       fail-fast: false
       matrix:
@@ -90,5 +91,34 @@ jobs:
           I3D_TEST_NETWORK_PUBLIC_ID: ${{ vars.I3D_TEST_NETWORK_PUBLIC_ID }}
           I3D_TEST_NETWORK_L2_ID: ${{ vars.I3D_TEST_NETWORK_L2_ID }}
           ACCTEST_TIMEOUT: "20m"
-        run: go test -v -cover -timeout 20m ./internal/...
-        timeout-minutes: 20
+          # One debug log per test (Terraform CLI and the provider), uploaded below.
+          TF_LOG: DEBUG
+          TF_ACC_LOG: DEBUG
+          TF_LOG_PATH_MASK: ${{ github.workspace }}/tf-logs/%s.log
+        run: |
+          mkdir -p tf-logs
+          go test -v -cover -timeout 20m ./internal/...
+        # Above go test's own -timeout, so a hang ends in Go's timeout panic,
+        # which names the stuck test and prints its output, instead of the
+        # runner killing the step silently.
+        timeout-minutes: 22
+      # The logs hold the API keys: request dumps carry the PRIVATE-TOKEN header,
+      # and the test configs carry api_key. Scrub them before uploading.
+      - name: Scrub API keys from the test logs
+        if: always()
+        run: |
+          [ -d tf-logs ] || exit 0
+          find tf-logs -type f -name '*.log' -exec perl -pi -e '
+            for my $k (@ENV{qw(I3D_API_KEY I3D_FLEXMETAL_API_KEY I3D_FLEXVM_API_KEY)}) {
+              s/\Q$k\E/***/g if defined $k && length $k;
+            }
+            s/(PRIVATE-TOKEN:\s*)[^\s\\"]+/$1***/gi;
+          ' {} +
+      - name: Upload the test logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tf-logs-${{ strategy.job-index }}
+          path: tf-logs/
+          if-no-files-found: ignore
+          retention-days: 7
