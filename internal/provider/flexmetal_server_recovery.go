@@ -65,6 +65,10 @@ func matchesCreatedServer(s one_api.Server, c createdServerCriteria) bool {
 		!equalFoldTrimmed(s.InstanceType.Name, c.InstanceType) {
 		return false
 	}
+	// Servers managed by another i3D product (FlexVM nodes) are never ours.
+	if s.ManagedBy != "" {
+		return false
+	}
 	if s.CreatedAt < c.NotBefore {
 		return false
 	}

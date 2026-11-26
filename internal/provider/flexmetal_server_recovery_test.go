@@ -40,6 +40,9 @@ func TestSelectCreatedServer(t *testing.T) {
 	otherInstanceType := testServer("other-instance-type", "wk-0054", "created", 1100)
 	otherInstanceType.InstanceType.Name = "bm9.hmm.12"
 
+	flexvmNode := testServer("flexvm-node", "wk-0054", "created", 1100)
+	flexvmNode.ManagedBy = "flexvm"
+
 	tests := map[string]struct {
 		servers        []one_api.Server
 		wantMatch      string
@@ -118,6 +121,19 @@ func TestSelectCreatedServer(t *testing.T) {
 			},
 			wantMatch:      "",
 			wantCandidates: 2,
+		},
+		"server managed by another product is ignored": {
+			servers:        []one_api.Server{flexvmNode},
+			wantMatch:      "",
+			wantCandidates: 0,
+		},
+		"server managed by another product does not create ambiguity": {
+			servers: []one_api.Server{
+				flexvmNode,
+				testServer("ours", "wk-0054", "delivered", 1200),
+			},
+			wantMatch:      "ours",
+			wantCandidates: 1,
 		},
 		"stale duplicate outside the window does not create ambiguity": {
 			servers: []one_api.Server{
