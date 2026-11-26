@@ -20,7 +20,7 @@ type loggingRoundTripper struct {
 func (l *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	start := time.Now()
 
-	reqBody, err := httputil.DumpRequest(req, true)
+	reqBody, err := dumpRequestRedacted(req)
 	if err != nil {
 		return nil, fmt.Errorf("error dumping request: %w", err)
 	}
@@ -40,4 +40,24 @@ func (l *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 	tflog.Debug(l.ctx, "Getting api response", map[string]interface{}{"body": string(respBody), "duration": time.Since(start)})
 
 	return resp, nil
+}
+
+// redactedHeaders hold credentials and are never written to the logs.
+var redactedHeaders = []string{"PRIVATE-TOKEN", "Authorization"}
+
+// dumpRequestRedacted dumps req like httputil.DumpRequest, with the values of
+// redactedHeaders replaced. req itself is sent with its headers unchanged.
+func dumpRequestRedacted(req *http.Request) ([]byte, error) {
+	original := req.Header
+	redacted := original.Clone()
+	for _, h := range redactedHeaders {
+		if redacted.Get(h) != "" {
+			redacted.Set(h, "***")
+		}
+	}
+
+	req.Header = redacted
+	defer func() { req.Header = original }()
+
+	return httputil.DumpRequest(req, true)
 }
