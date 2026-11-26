@@ -58,8 +58,8 @@ jobs:
       I3D_FLEXVM_API_KEY: ${{ secrets.I3D_FLEXVM_API_KEY }}
     needs: build
     runs-on: ubuntu-latest
-    # A real FlexMetal delivery alone can take 10+ minutes; leave room above go test's own -timeout 20m.
-    timeout-minutes: 25
+    # A real FlexMetal delivery alone can take 10+ minutes; leave room above the test step's limit for setup.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -89,6 +89,8 @@ jobs:
           # Long-lived networks of the test account for TestAccFlexmetalServerNetworks (FM-5404).
           I3D_TEST_NETWORK_PUBLIC_ID: ${{ vars.I3D_TEST_NETWORK_PUBLIC_ID }}
           I3D_TEST_NETWORK_L2_ID: ${{ vars.I3D_TEST_NETWORK_L2_ID }}
-          ACCTEST_TIMEOUT: "20m"
-        run: go test -v -cover -timeout 20m ./internal/...
-        timeout-minutes: 20
+          ACCTEST_TIMEOUT: "25m"
+        run: go test -v -cover -timeout 25m ./internal/...
+        # Above go test's own -timeout, so a hang ends in Go's timeout panic (which names the stuck test) instead
+        # of the runner killing the step without output.
+        timeout-minutes: 27
