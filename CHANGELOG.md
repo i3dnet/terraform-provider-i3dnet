@@ -2,6 +2,15 @@
 ## [Unreleased]
 
 
+<a name="v1.12.2"></a>
+## [v1.12.2] - 2026-11-26
+### Bug Fixes
+- **logging:** Redact the API key from debug request logs ([#156](https://github.com/i3dnet/terraform-provider-i3dnet/issues/156))
+
+### Features
+- **flexmetal:** Ignore and refuse to import servers managed by another i3D product ([#154](https://github.com/i3dnet/terraform-provider-i3dnet/issues/154))
+
+
 <a name="v1.12.1"></a>
 ## [v1.12.1] - 2026-11-17
 ### Chore
@@ -320,7 +329,8 @@
 - Add initial code for flexmetal provider
 
 
-[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.12.1...HEAD
+[Unreleased]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.12.2...HEAD
+[v1.12.2]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.12.1...v1.12.2
 [v1.12.1]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.12.0...v1.12.1
 [v1.12.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.11.0...v1.12.0
 [v1.11.0]: https://github.com/i3dnet/terraform-provider-i3dnet/compare/v1.10.6...v1.11.0
