@@ -499,21 +499,14 @@ func (r *cdnResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 
 	current, err := r.client.GetResource(ctx, uid)
 	if cdn_api.IsNotFound(err) {
-		// The API also answers 404 when it cannot read its database. Forget the
-		// resource only when the resource listing confirms it is gone, or the
-		// next apply would create a second one while the first still serves.
-		exists, existsErr := r.client.ResourceExists(ctx, uid)
-		if existsErr != nil {
-			resp.Diagnostics.AddError("Error reading CDN resource",
-				fmt.Sprintf("%s\n\nCould not confirm that the resource is gone: %s", err, existsErr))
-			return
-		}
-		if !exists {
+		gone, why := r.confirmGone(ctx, uid)
+		if gone {
 			resp.State.RemoveResource(ctx)
 			return
 		}
 		resp.Diagnostics.AddError("Error reading CDN resource",
-			fmt.Sprintf("%s\n\nThe resource is still listed by the CDN API, so this is likely a temporary API error. Try again later.", err))
+			fmt.Sprintf("%s\n\n%s Terraform keeps the resource in its state. Try again later; "+
+				"if the resource really is gone, remove it with terraform state rm.", err, why))
 		return
 	}
 	if err != nil {
@@ -602,6 +595,32 @@ func (r *cdnResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 
 func (r *cdnResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
+}
+
+// confirmGone decides whether a resource the API answered 404 for is really
+// gone. The API also answers 404 when it cannot read the resource from its
+// database, and a resource it cannot read is also missing from its listing. So
+// the resource counts as gone only when it is not listed and none of its
+// settings is left: the API refuses to delete a resource that still has any.
+// Otherwise it explains why the resource is kept.
+func (r *cdnResource) confirmGone(ctx context.Context, uid string) (bool, string) {
+	listed, err := r.client.ResourceExists(ctx, uid)
+	if err != nil {
+		return false, fmt.Sprintf("Could not confirm that the resource is gone: %s.", err)
+	}
+	if listed {
+		return false, "The CDN API still lists the resource, so the error is likely temporary."
+	}
+
+	s, err := r.readSettings(ctx, uid)
+	if err != nil {
+		return false, fmt.Sprintf("Could not confirm that the resource is gone: %s.", err)
+	}
+	if len(s.Backend.Origins) > 0 || len(s.Hostnames) > 0 || s.PredefinedAllowlist != "" {
+		return false, "The resource still has settings in the CDN API, so it was not deleted."
+	}
+
+	return true, ""
 }
 
 // cdnSettings are the settings of a resource this provider manages, in API form.

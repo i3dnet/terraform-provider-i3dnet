@@ -35,6 +35,9 @@ type fakeCDNAPI struct {
 	databaseDown bool
 	// createBody, when set, replaces the body of a successful create.
 	createBody string
+	// unreadable lists resources whose database row the API cannot read: GET
+	// answers 404, the listing leaves them out and DELETE refuses them.
+	unreadable map[string]bool
 }
 
 func newFakeCDNAPI(t *testing.T) (*fakeCDNAPI, *httptest.Server) {
@@ -115,8 +118,10 @@ func (f *fakeCDNAPI) handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		list := make([]json.RawMessage, 0, len(f.resources))
-		for _, res := range f.resources {
-			list = append(list, res["base"])
+		for uid, res := range f.resources {
+			if !f.unreadable[uid] {
+				list = append(list, res["base"])
+			}
 		}
 		out, _ := json.Marshal(list)
 		writeCDNJSON(w, 200, string(out))
@@ -130,7 +135,7 @@ func (f *fakeCDNAPI) handle(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 1 {
 		switch r.Method {
 		case http.MethodGet:
-			if !ok || f.databaseDown {
+			if !ok || f.databaseDown || f.unreadable[uid] {
 				writeCDNJSON(w, 404, `{"code":404,"message":"no vhost found with the provided uid"}`)
 				return
 			}
@@ -144,7 +149,7 @@ func (f *fakeCDNAPI) handle(w http.ResponseWriter, r *http.Request) {
 			res["base"], _ = json.Marshal(base)
 			writeCDNJSON(w, 200, string(res["base"]))
 		case http.MethodDelete:
-			if !ok {
+			if !ok || f.unreadable[uid] {
 				writeCDNJSON(w, 400, `{"code":400,"message":"could not get vhost model from db"}`)
 				return
 			}
@@ -354,10 +359,9 @@ func TestCDNResourceDeletedOutsideTerraform(t *testing.T) {
 		Steps: []resource.TestStep{
 			{Config: cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site")},
 			{
-				PreConfig:          func() { api.mu.Lock(); delete(api.resources, "uid1"); api.mu.Unlock() },
-				Config:             cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
-				PlanOnly:           true,
-				ExpectNonEmptyPlan: true,
+				PreConfig: func() { api.mu.Lock(); delete(api.resources, "uid1"); api.mu.Unlock() },
+				Config:    cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
+				Check:     resource.TestCheckResourceAttr("i3dnet_cdn_resource.site", "id", "uid2"),
 			},
 		},
 	})
@@ -386,6 +390,36 @@ func TestCDNResourceKeepsTheResourceWhenA404IsNotConfirmed(t *testing.T) {
 			{
 				// Back up: the same resource, no changes, nothing created.
 				PreConfig: setDown(false),
+				Config:    cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
+				Check:     resource.TestCheckResourceAttr("i3dnet_cdn_resource.site", "id", "uid1"),
+			},
+		},
+	})
+}
+
+// A resource whose row the API cannot read answers 404 and is missing from
+// the listing, but still has its settings. Terraform must not forget it on
+// refresh. (cdn_api's TestDeleteResourceFailsWhenTheAPICannotReadTheResource
+// covers destroy.)
+func TestCDNResourceKeepsAnUnreadableResource(t *testing.T) {
+	api, srv := newFakeCDNAPI(t)
+	cdnDeleteRetryInterval = 10 * time.Millisecond
+
+	setUnreadable := func(on bool) func() {
+		return func() { api.mu.Lock(); api.unreadable = map[string]bool{"uid1": on}; api.mu.Unlock() }
+	}
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{Config: cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site")},
+			{
+				PreConfig:   setUnreadable(true),
+				Config:      cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
+				ExpectError: regexp.MustCompile(`still has settings in the CDN API`),
+			},
+			{
+				PreConfig: setUnreadable(false),
 				Config:    cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
 				Check:     resource.TestCheckResourceAttr("i3dnet_cdn_resource.site", "id", "uid1"),
 			},

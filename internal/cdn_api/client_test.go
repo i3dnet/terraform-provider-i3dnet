@@ -132,6 +132,29 @@ func TestDeleteResourceGivesUpWhenTheContextExpires(t *testing.T) {
 	}
 }
 
+// The API refuses to delete a resource it cannot read, and leaves it out of
+// its listing. That must be an error, not a successful delete.
+func TestDeleteResourceFailsWhenTheAPICannotReadTheResource(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/service":
+			_, _ = w.Write([]byte(`[]`))
+		case r.URL.Path == "/service/resource/abc":
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"code":400,"message":"could not get vhost model from db: failed to scan"}`))
+		default:
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c, _ := NewClient("k", srv.URL)
+	err := c.DeleteResource(context.Background(), "abc", time.Millisecond)
+	if err == nil || !strings.Contains(err.Error(), "could not get vhost model") {
+		t.Fatalf("err = %v, want the API's refusal", err)
+	}
+}
+
 func TestATransportFailureIsErrNoResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	srv.Close()

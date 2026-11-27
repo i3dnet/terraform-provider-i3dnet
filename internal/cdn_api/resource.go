@@ -243,8 +243,9 @@ func (c *Client) ListPredefinedAllowLists(ctx context.Context) ([]PredefinedAllo
 //
 // The API checks that every setting is cleared before it deletes a resource, but
 // it may not yet see a clear it has just accepted. A refusal of that kind is
-// retried every retryInterval until ctx expires. A resource that is already gone
-// is not an error.
+// retried every retryInterval until ctx expires. Any other refusal is an error,
+// even when the resource looks gone: the API refuses in the same way when it
+// cannot read the resource, so only a successful DELETE proves deletion.
 func (c *Client) DeleteResource(ctx context.Context, uid string, retryInterval time.Duration) error {
 	for _, s := range resourceSettings {
 		if err := c.DeleteSetting(ctx, uid, s); err != nil {
@@ -259,10 +260,6 @@ func (c *Client) DeleteResource(ctx context.Context, uid string, retryInterval t
 	for {
 		err := c.do(ctx, http.MethodDelete, resourcePath(uid), nil, nil)
 		if err == nil {
-			return nil
-		}
-
-		if exists, existsErr := c.ResourceExists(ctx, uid); existsErr == nil && !exists {
 			return nil
 		}
 
