@@ -349,19 +349,32 @@ func TestCDNResourcePartialCreateKeepsTheResource(t *testing.T) {
 	})
 }
 
-// A resource deleted outside Terraform is planned for creation again.
+// A resource deleted outside Terraform is not forgotten silently, since the
+// API's 404 is ambiguous: refresh fails and says how to drop it from the state.
 func TestCDNResourceDeletedOutsideTerraform(t *testing.T) {
 	api, srv := newFakeCDNAPI(t)
 	cdnDeleteRetryInterval = 10 * time.Millisecond
+
+	var saved map[string]json.RawMessage
 
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{Config: cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site")},
 			{
-				PreConfig: func() { api.mu.Lock(); delete(api.resources, "uid1"); api.mu.Unlock() },
+				PreConfig: func() {
+					api.mu.Lock()
+					saved = api.resources["uid1"]
+					delete(api.resources, "uid1")
+					api.mu.Unlock()
+				},
+				Config:      cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
+				ExpectError: regexp.MustCompile(`(?s)looks deleted.*terraform state rm`),
+			},
+			{
+				// Put it back so the test can clean up.
+				PreConfig: func() { api.mu.Lock(); api.resources["uid1"] = saved; api.mu.Unlock() },
 				Config:    cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
-				Check:     resource.TestCheckResourceAttr("i3dnet_cdn_resource.site", "id", "uid2"),
 			},
 		},
 	})
@@ -385,7 +398,7 @@ func TestCDNResourceKeepsTheResourceWhenA404IsNotConfirmed(t *testing.T) {
 				// Database down: the listing fails too, so refresh errors.
 				PreConfig:   setDown(true),
 				Config:      cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
-				ExpectError: regexp.MustCompile(`Could not confirm that the resource is gone`),
+				ExpectError: regexp.MustCompile(`Could not check the resource listing`),
 			},
 			{
 				// Back up: the same resource, no changes, nothing created.

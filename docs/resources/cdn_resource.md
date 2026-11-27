@@ -6,6 +6,7 @@ description: |-
   Manages an i3D.net CDN resource: a set of public hostnames that the CDN serves from one or more origins.
   The resource manages the hostnames, the origins, the flags and an optional predefined allowlist. Every setting is read back from the CDN API, so a plan shows changes made outside Terraform, for example in the CDN dashboard, and an apply puts them back.
   Point each hostname at the CDN with a CNAME record to cname_target.
+  A resource deleted outside Terraform is not dropped from the state automatically: the refresh fails and says so. Remove it with terraform state rm to have Terraform create it again.
   The provider needs a CDN API key (cdn_api_key) for this resource. The key belongs to one group and initiative, and the resource must use the same group_code and initiative_code.
 ---
 
@@ -16,6 +17,8 @@ Manages an i3D.net CDN resource: a set of public hostnames that the CDN serves f
 The resource manages the hostnames, the origins, the flags and an optional predefined allowlist. Every setting is read back from the CDN API, so a plan shows changes made outside Terraform, for example in the CDN dashboard, and an apply puts them back.
 
 Point each hostname at the CDN with a CNAME record to `cname_target`.
+
+A resource deleted outside Terraform is not dropped from the state automatically: the refresh fails and says so. Remove it with `terraform state rm` to have Terraform create it again.
 
 The provider needs a CDN API key (`cdn_api_key`) for this resource. The key belongs to one group and initiative, and the resource must use the same `group_code` and `initiative_code`.
 

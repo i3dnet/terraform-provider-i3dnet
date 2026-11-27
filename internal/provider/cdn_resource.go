@@ -166,6 +166,8 @@ func (r *cdnResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp
 			"The resource manages the hostnames, the origins, the flags and an optional predefined allowlist. " +
 			"Every setting is read back from the CDN API, so a plan shows changes made outside Terraform, for example in the CDN dashboard, and an apply puts them back.\n\n" +
 			"Point each hostname at the CDN with a CNAME record to `cname_target`.\n\n" +
+			"A resource deleted outside Terraform is not dropped from the state automatically: the refresh fails and says so. " +
+			"Remove it with `terraform state rm` to have Terraform create it again.\n\n" +
 			"The provider needs a CDN API key (`cdn_api_key`) for this resource. The key belongs to one group and initiative, and the resource must use the same `group_code` and `initiative_code`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -499,14 +501,13 @@ func (r *cdnResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 
 	current, err := r.client.GetResource(ctx, uid)
 	if cdn_api.IsNotFound(err) {
-		gone, why := r.confirmGone(ctx, uid)
-		if gone {
-			resp.State.RemoveResource(ctx)
-			return
-		}
-		resp.Diagnostics.AddError("Error reading CDN resource",
-			fmt.Sprintf("%s\n\n%s Terraform keeps the resource in its state. Try again later; "+
-				"if the resource really is gone, remove it with terraform state rm.", err, why))
+		// The CDN API also answers 404 when it cannot read the resource from its
+		// database, so Terraform never forgets a resource on a 404 alone: if it
+		// did, the next apply would create a second one while the first may still
+		// serve traffic. The user decides, with the evidence below.
+		resp.Diagnostics.AddError("CDN resource not found",
+			fmt.Sprintf("%s\n\n%s\n\nIf the resource was deleted outside Terraform, remove it from the state with "+
+				"terraform state rm, and Terraform will create it again on the next apply.", err, r.explainNotFound(ctx, uid)))
 		return
 	}
 	if err != nil {
@@ -597,30 +598,27 @@ func (r *cdnResource) ImportState(ctx context.Context, req resource.ImportStateR
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 }
 
-// confirmGone decides whether a resource the API answered 404 for is really
-// gone. The API also answers 404 when it cannot read the resource from its
-// database, and a resource it cannot read is also missing from its listing. So
-// the resource counts as gone only when it is not listed and none of its
-// settings is left: the API refuses to delete a resource that still has any.
-// Otherwise it explains why the resource is kept.
-func (r *cdnResource) confirmGone(ctx context.Context, uid string) (bool, string) {
+// explainNotFound says what the CDN API knows about a resource it answered 404
+// for: whether it still lists it, and whether settings are left (the API
+// refuses to delete a resource that still has any).
+func (r *cdnResource) explainNotFound(ctx context.Context, uid string) string {
 	listed, err := r.client.ResourceExists(ctx, uid)
 	if err != nil {
-		return false, fmt.Sprintf("Could not confirm that the resource is gone: %s.", err)
+		return fmt.Sprintf("Could not check the resource listing: %s. The error is likely temporary; try again later.", err)
 	}
 	if listed {
-		return false, "The CDN API still lists the resource, so the error is likely temporary."
+		return "The CDN API still lists the resource, so the error is likely temporary. Try again later."
 	}
 
 	s, err := r.readSettings(ctx, uid)
 	if err != nil {
-		return false, fmt.Sprintf("Could not confirm that the resource is gone: %s.", err)
+		return fmt.Sprintf("Could not read the resource's settings: %s. The error is likely temporary; try again later.", err)
 	}
 	if len(s.Backend.Origins) > 0 || len(s.Hostnames) > 0 || s.PredefinedAllowlist != "" {
-		return false, "The resource still has settings in the CDN API, so it was not deleted."
+		return "The resource still has settings in the CDN API, so it was not deleted. The error is likely temporary; try again later."
 	}
 
-	return true, ""
+	return "The CDN API does not list the resource and it has no settings left, so it looks deleted."
 }
 
 // cdnSettings are the settings of a resource this provider manages, in API form.
