@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"terraform-provider-i3dnet/internal/cdn_api"
 	"terraform-provider-i3dnet/internal/network_api"
 	"terraform-provider-i3dnet/internal/one_api"
 
@@ -26,6 +27,10 @@ func clientFromProviderData(providerData any, diags *diag.Diagnostics) *one_api.
 		return nil
 	}
 
+	if data.oneAPI == nil {
+		addMissingKeyError(diags, "api_key", envForApiKey)
+	}
+
 	return data.oneAPI
 }
 
@@ -37,7 +42,33 @@ func networkClientFromProviderData(providerData any, diags *diag.Diagnostics) *n
 		return nil
 	}
 
+	if data.network == nil {
+		addMissingKeyError(diags, "api_key", envForApiKey)
+	}
+
 	return data.network
+}
+
+// cdnClientFromProviderData extracts the CDN API client the same way
+// clientFromProviderData extracts the One API client.
+func cdnClientFromProviderData(providerData any, diags *diag.Diagnostics) *cdn_api.Client {
+	data := clientsFromProviderData(providerData, diags)
+	if data == nil {
+		return nil
+	}
+
+	if data.cdn == nil {
+		addMissingKeyError(diags, "cdn_api_key", envForCDNApiKey)
+	}
+
+	return data.cdn
+}
+
+func addMissingKeyError(diags *diag.Diagnostics, attribute, env string) {
+	diags.AddError(
+		fmt.Sprintf("Missing provider %s", attribute),
+		fmt.Sprintf("This resource or data source needs the provider's %s. Set it in the provider configuration or use the %s environment variable.", attribute, env),
+	)
 }
 
 func clientsFromProviderData(providerData any, diags *diag.Diagnostics) *providerClients {

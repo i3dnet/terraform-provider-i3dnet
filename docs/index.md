@@ -16,6 +16,8 @@ Use the navigation to the left to read about the available resources.
 
 To obtain your API Key [follow our API documentation](https://docs.i3d.net/compute/flexmetal/api#id-1.-api-token).
 
+The CDN resources and data sources (`i3dnet_cdn_*`) use a separate CDN API key, set with `cdn_api_key`. To use them, get in touch with i3D.net for access to the CDN. A configuration that only manages CDN resources needs only `cdn_api_key`.
+
 ## Example Usage
 
 ```terraform
@@ -76,3 +78,5 @@ resource "i3dnet_flexvm_vm" "my-vm" {
 
 - `api_key` (String) API Key for i3D.net One API. May also be provided via `FLEXMETAL_API_KEY` environment variable.
 - `base_url` (String) API base URL. By default it's using `https://api.i3d.net` API URL
+- `cdn_api_key` (String, Sensitive) API key for the i3D.net CDN API, used by the `i3dnet_cdn_*` resources and data sources. It is a different key from `api_key`. May also be provided via `I3D_CDN_API_KEY` environment variable.
+- `cdn_base_url` (String) CDN API base URL. By default it's using `https://api.cdn-v2.i3d.net/api`.
