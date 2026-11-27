@@ -68,7 +68,7 @@ output "cname_target" {
 ### Optional
 
 - `flags` (Attributes) Switches for the resource. Every flag has a default, so the block is optional. (see [below for nested schema](#nestedatt--flags))
-- `predefined_allowlist` (String) Key of a predefined allowlist that limits who can reach the resource. The `i3dnet_cdn_predefined_allowlists` data source lists the keys. When not set, the resource is open to everyone. When set, the allowlist is applied before the hostnames and flags, so a resource meant to be restricted is never published without it.
+- `predefined_allowlist` (String) Key of a predefined allowlist that limits who can reach the resource. The `i3dnet_cdn_predefined_allowlists` data source lists the keys. When not set, the resource is open to everyone. When set, Terraform sends the allowlist to the CDN API before the hostnames and flags, and removes it only after them.
 - `strategy` (String) How the edges pick an origin: `HASH`, `FALLBACK` or `RANDOM`. Defaults to `HASH`.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

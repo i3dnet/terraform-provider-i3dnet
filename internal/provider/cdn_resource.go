@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"regexp"
 	"time"
 
@@ -358,7 +357,7 @@ func (r *cdnResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp
 			"predefined_allowlist": schema.StringAttribute{
 				MarkdownDescription: "Key of a predefined allowlist that limits who can reach the resource. " +
 					"The `i3dnet_cdn_predefined_allowlists` data source lists the keys. When not set, the resource is open to everyone. " +
-					"When set, the allowlist is applied before the hostnames and flags, so a resource meant to be restricted is never published without it.",
+					"When set, Terraform sends the allowlist to the CDN API before the hostnames and flags, and removes it only after them.",
 				Optional:   true,
 				Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
@@ -500,7 +499,21 @@ func (r *cdnResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 
 	current, err := r.client.GetResource(ctx, uid)
 	if cdn_api.IsNotFound(err) {
-		resp.State.RemoveResource(ctx)
+		// The API also answers 404 when it cannot read its database. Forget the
+		// resource only when the resource listing confirms it is gone, or the
+		// next apply would create a second one while the first still serves.
+		exists, existsErr := r.client.ResourceExists(ctx, uid)
+		if existsErr != nil {
+			resp.Diagnostics.AddError("Error reading CDN resource",
+				fmt.Sprintf("%s\n\nCould not confirm that the resource is gone: %s", err, existsErr))
+			return
+		}
+		if !exists {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading CDN resource",
+			fmt.Sprintf("%s\n\nThe resource is still listed by the CDN API, so this is likely a temporary API error. Try again later.", err))
 		return
 	}
 	if err != nil {
@@ -628,8 +641,9 @@ func (r *cdnResource) readSettings(ctx context.Context, uid string) (cdnSettings
 }
 
 // apply writes the settings that differ from current (all of them when current
-// is nil). It fails closed: an allowlist is in place before the hostnames and
-// flags that publish the resource, and removed only after them.
+// is nil). The API accepts an allowlist before the hostnames and flags that
+// publish the resource, and loses it only after them; a failure in between
+// leaves the resource restricted rather than open.
 func (r *cdnResource) apply(ctx context.Context, uid string, current *cdnSettings, desired cdnSettings) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -889,15 +903,9 @@ func cdnFlagsObject(f cdn_api.Flags) types.Object {
 }
 
 // createOutcomeUnknown reports whether a failed create may still have created
-// the resource: the request got no response, or the API failed partway (5xx).
+// the resource.
 func createOutcomeUnknown(err error) bool {
-	if errors.Is(err, cdn_api.ErrNoResponse) {
-		return true
-	}
-
-	var apiErr *cdn_api.APIError
-
-	return errors.As(err, &apiErr) && apiErr.StatusCode >= http.StatusInternalServerError
+	return errors.Is(err, cdn_api.ErrCreateOutcomeUnknown)
 }
 
 // objectAsOptions converts objects whose attributes may be unknown or null

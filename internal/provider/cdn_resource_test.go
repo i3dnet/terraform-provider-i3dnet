@@ -30,6 +30,11 @@ type fakeCDNAPI struct {
 	// staleDeletes makes DELETE of a resource refuse this many times with the
 	// API's "still has" error, as when its cleared settings are not visible yet.
 	staleDeletes int
+	// databaseDown makes GET of a resource answer 404 and the listing 500, as
+	// the API does when it cannot read its database.
+	databaseDown bool
+	// createBody, when set, replaces the body of a successful create.
+	createBody string
 }
 
 func newFakeCDNAPI(t *testing.T) (*fakeCDNAPI, *httptest.Server) {
@@ -96,7 +101,25 @@ func (f *fakeCDNAPI) handle(w http.ResponseWriter, r *http.Request) {
 			"uid": uid, "name": req.Name, "groupCode": req.GroupCode, "initiativeCode": req.InitiativeCode,
 		})
 		f.resources[uid] = map[string]json.RawMessage{"base": base}
+		if f.createBody != "" {
+			writeCDNJSON(w, 201, f.createBody)
+			return
+		}
 		writeCDNJSON(w, 201, fmt.Sprintf(`{"uid":%q,"name":%q}`, uid, req.Name))
+		return
+	}
+
+	if p == "service" && r.Method == http.MethodGet {
+		if f.databaseDown {
+			writeCDNJSON(w, 500, `{"code":500,"message":"failed to query vhosts"}`)
+			return
+		}
+		list := make([]json.RawMessage, 0, len(f.resources))
+		for _, res := range f.resources {
+			list = append(list, res["base"])
+		}
+		out, _ := json.Marshal(list)
+		writeCDNJSON(w, 200, string(out))
 		return
 	}
 
@@ -107,7 +130,7 @@ func (f *fakeCDNAPI) handle(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 1 {
 		switch r.Method {
 		case http.MethodGet:
-			if !ok {
+			if !ok || f.databaseDown {
 				writeCDNJSON(w, 404, `{"code":404,"message":"no vhost found with the provided uid"}`)
 				return
 			}
@@ -338,6 +361,57 @@ func TestCDNResourceDeletedOutsideTerraform(t *testing.T) {
 			},
 		},
 	})
+}
+
+// The API answers 404 for a resource when it cannot read its database. That
+// must not make Terraform forget a resource that still exists.
+func TestCDNResourceKeepsTheResourceWhenA404IsNotConfirmed(t *testing.T) {
+	api, srv := newFakeCDNAPI(t)
+	cdnDeleteRetryInterval = 10 * time.Millisecond
+
+	setDown := func(down bool) func() {
+		return func() { api.mu.Lock(); api.databaseDown = down; api.mu.Unlock() }
+	}
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{Config: cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site")},
+			{
+				// Database down: the listing fails too, so refresh errors.
+				PreConfig:   setDown(true),
+				Config:      cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
+				ExpectError: regexp.MustCompile(`Could not confirm that the resource is gone`),
+			},
+			{
+				// Back up: the same resource, no changes, nothing created.
+				PreConfig: setDown(false),
+				Config:    cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
+				Check:     resource.TestCheckResourceAttr("i3dnet_cdn_resource.site", "id", "uid1"),
+			},
+		},
+	})
+}
+
+// A create that succeeds without a usable uid says how to find the resource.
+func TestCDNResourceCreateWithoutAUIDGivesRecoveryGuidance(t *testing.T) {
+	// " " stands for an empty body: the fake treats "" as "not set".
+	for _, body := range []string{`{}`, ` `, `{"uid":`} {
+		t.Run(fmt.Sprintf("body %q", body), func(t *testing.T) {
+			api, srv := newFakeCDNAPI(t)
+			api.createBody = body
+
+			resource.UnitTest(t, resource.TestCase{
+				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+				Steps: []resource.TestStep{
+					{
+						Config:      cdnProviderBlock(srv.URL) + fmt.Sprintf(cdnResourceConfig, "site"),
+						ExpectError: regexp.MustCompile(`may have created the resource anyway`),
+					},
+				},
+			})
+		})
+	}
 }
 
 func TestCDNPredefinedAllowlistsDataSource(t *testing.T) {

@@ -98,15 +98,28 @@ func resourcePath(uid string) string {
 	return "service/resource/" + url.PathEscape(uid)
 }
 
+// ErrCreateOutcomeUnknown marks a create that may have created the resource
+// even though it failed: the request got no response, the API failed partway
+// (HTTP 5xx), or it answered success without a usable uid.
+var ErrCreateOutcomeUnknown = errors.New("the resource may have been created")
+
 // CreateResource creates a resource and returns its uid.
 func (c *Client) CreateResource(ctx context.Context, req CreateResourceRequest) (string, error) {
 	var out Resource
-	if err := c.do(ctx, http.MethodPost, "service/resource", req, &out); err != nil {
-		return "", err
+
+	err := c.do(ctx, http.MethodPost, "service/resource", req, &out)
+	if err != nil {
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode < http.StatusInternalServerError {
+			return "", err
+		}
+
+		// No response, a 5xx, or a 2xx whose body does not decode.
+		return "", fmt.Errorf("%w: %w", ErrCreateOutcomeUnknown, err)
 	}
 
 	if out.UID == "" {
-		return "", errors.New("POST service/resource: the response carries no uid")
+		return "", fmt.Errorf("%w: POST service/resource answered success without a uid", ErrCreateOutcomeUnknown)
 	}
 
 	return out.UID, nil
@@ -114,6 +127,9 @@ func (c *Client) CreateResource(ctx context.Context, req CreateResourceRequest) 
 
 // GetResource reads a resource. A missing resource is an error for which
 // IsNotFound is true.
+//
+// The API also answers 404 when it fails to read its database, so a 404 alone
+// does not prove the resource is gone: use ResourceExists for that.
 func (c *Client) GetResource(ctx context.Context, uid string) (*Resource, error) {
 	var out Resource
 	if err := c.do(ctx, http.MethodGet, resourcePath(uid), nil, &out); err != nil {
@@ -121,6 +137,24 @@ func (c *Client) GetResource(ctx context.Context, uid string) (*Resource, error)
 	}
 
 	return &out, nil
+}
+
+// ResourceExists reports whether the API lists a resource with this uid. The
+// listing fails with an error, rather than answering an empty list, when the
+// API cannot read its database.
+func (c *Client) ResourceExists(ctx context.Context, uid string) (bool, error) {
+	var out []Resource
+	if err := c.do(ctx, http.MethodGet, "service", nil, &out); err != nil {
+		return false, err
+	}
+
+	for _, r := range out {
+		if r.UID == uid {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // RenameResource changes only the resource's name.
@@ -228,7 +262,7 @@ func (c *Client) DeleteResource(ctx context.Context, uid string, retryInterval t
 			return nil
 		}
 
-		if _, getErr := c.GetResource(ctx, uid); IsNotFound(getErr) {
+		if exists, existsErr := c.ResourceExists(ctx, uid); existsErr == nil && !exists {
 			return nil
 		}
 
