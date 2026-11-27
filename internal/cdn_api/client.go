@@ -2,9 +2,11 @@
 // resources: a set of public hostnames served by the CDN edges from one or more
 // origins.
 //
-// The client is hand-written rather than generated: the API's published
-// Swagger document describes the strategy, location and dns_record enums as
-// integers, while the API reads and writes them as their names.
+// The client is hand-written rather than generated. The API's Swagger 2.0
+// document does not describe every behaviour the provider depends on: which
+// PUTs answer 200 and which 201, the text of the "still has" refusal that a
+// resource DELETE is retried on, and the 404 that GET answers for any database
+// read failure.
 package cdn_api
 
 import (
