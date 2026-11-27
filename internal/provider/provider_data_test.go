@@ -29,6 +29,8 @@ func configuredProviderData(t *testing.T) (resourceData, dataSourceData any) {
 	raw := tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), map[string]tftypes.Value{
 		"api_key":  tftypes.NewValue(tftypes.String, "key"),
 		"base_url": tftypes.NewValue(tftypes.String, "https://api-testing.example"),
+		"cdn_api_key":  tftypes.NewValue(tftypes.String, "cdn-key"),
+		"cdn_base_url": tftypes.NewValue(tftypes.String, "https://cdn-api-testing.example/api"),
 	})
 
 	var resp provider.ConfigureResponse
@@ -41,8 +43,8 @@ func configuredProviderData(t *testing.T) (resourceData, dataSourceData any) {
 	if !ok {
 		t.Fatalf("ResourceData is %T, want *providerClients", resp.ResourceData)
 	}
-	if data.oneAPI == nil || data.network == nil {
-		t.Fatalf("provider data = %+v, want both clients set", data)
+	if data.oneAPI == nil || data.network == nil || data.cdn == nil {
+		t.Fatalf("provider data = %+v, want every client set", data)
 	}
 	if resp.DataSourceData != resp.ResourceData {
 		t.Error("DataSourceData and ResourceData differ, want the same clients for both")
